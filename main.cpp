@@ -1,7 +1,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
+#include <fstream>
 #include <string>
+#include <bits/stdc++.h>
 #ifdef USE_CUDA
 #include <cuda_runtime.h>
 // #include <cutensor.h>
@@ -92,18 +94,48 @@ float* inside_algorithm(uint32_t* sequence, uint32_t* pretermination_lookuptable
     return alpha;
 };
 
-int main(int argc, char** argv)
+
+std::vector<uint32_t> parse_input_file(const std::string& file_path, pcfg* grammar){
+    std::vector<uint32_t> input_words;
+    std::string line;
+	std::ifstream file(file_path);
+    if (!file.is_open()) {
+        std::cerr << "Error: Could not open the input file at path: " << file_path << std::endl;
+        return input_words;
+    }
+    int N = grammar->N();
+
+    while (std::getline(file, line)) {
+        if(line == ""){
+            continue;
+        }
+        std::string word;
+        std::stringstream line_string_stream(line);
+        while (getline(line_string_stream, word, ' ')) {
+            input_words.push_back(grammar->terminate_map.find(std::string("\'") + word + std::string("\'"))->second + N);
+        }
+    }
+
+    return input_words;
+}
+int main(int argc, char* argv[])
 {
-    pcfg* grammar = prepare_grammar("grammar_demo_2.pcfg");
+    std::string grammar_filename = argc > 1 ? std::string(argv[1]) : "grammar_demo_2.pcfg";
+    std::string input_filename = argc > 2 ? std::string(argv[2]) : "sequence.txt";
+
+    pcfg* grammar = prepare_grammar(grammar_filename);
     float* alpha = new float[grammar->N() * MAX_SEQUENCE_LENGTH * MAX_SEQUENCE_LENGTH];
     float* beta = new float[grammar->N() * MAX_SEQUENCE_LENGTH * MAX_SEQUENCE_LENGTH];
     float* mu = new float[grammar->cnt_grammar * MAX_SEQUENCE_LENGTH * MAX_SEQUENCE_LENGTH];
     float* count = new float[grammar->cnt_grammar];
     float* f = new float[grammar->cnt_grammar];
 
-    int sequence_length = 5;
+    std::vector<uint32_t> words = parse_input_file(input_filename, grammar);
+
+    int sequence_length = words.size();
+    
     int N = grammar->N();
-    uint32_t* sequence = new uint32_t[sequence_length]{2 + N, 1 + N, 4 + N, 0 + N, 3 + N};
+    uint32_t* sequence = words.data();
 
     std::cout << "1. Proceeding Inside Algorithm..." << std::endl;
     inside_algorithm(sequence, 
