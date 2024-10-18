@@ -1,0 +1,20 @@
+#ifndef __MACRO_DEF__
+#define __MACRO_DEF__
+
+// Handle cuTENSOR errors
+#define HANDLE_ERROR(x)                                             \
+{ const auto err = x;                                               \
+    if( err != CUTENSOR_STATUS_SUCCESS )                              \
+    { printf("Error: %s\n", cutensorGetErrorString(err)); exit(-1); } \
+};
+
+#define HANDLE_CUDA_ERROR(x)                                      \
+{ const auto err = x;                                             \
+    if( err != cudaSuccess )                                        \
+    { printf("Error: %s\n", cudaGetErrorString(err)); exit(-1); } \
+};
+
+
+#define MAX_SEQUENCE_LENGTH 500
+#define _32bit_t int32_t
+#endif
