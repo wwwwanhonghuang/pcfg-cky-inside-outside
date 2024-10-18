@@ -18,8 +18,6 @@ CUDA version is partially implemented.
 2. Each line is a word sequence. Each word separated by a space.
 3. Currently, each line's works will be concated into one sequence. The parser will analyze a sequence of [line1_words  line2_words line3_words ...].
 
-### Modify the Source Code
-
 ### Make
 `$ make` 
 
