@@ -1,10 +1,10 @@
-# CYK Parser for PCFG
+# CKY Parser and Inside-outside Algorithm for PCFG
 This repository contains a C++ implementation of CYK parser[1, 2] and inside-outside algorithm[3] for
 estimating a PCFG.
 Currently, CPU-only version is under testing.
 CUDA version is partially implemented.
 
-## Usage
+## Usages
 ### Prepare the PCFG Definition File
 1. A PCFG definiton file contain multiple line, with each line define a PCFG rule. 
 2. A PCFG rule in the PCFG definiton file has the form of `A->B C [possibility]` or `A->B [possibility]`
@@ -28,5 +28,7 @@ CUDA version is partially implemented.
 
 ## Reference
 [1] Itiroo Sakai, “Syntax in universal translation”. In Proceedings 1961 International Conference on Machine Translation of Languages and Applied Language Analysis, Her Majesty’s Stationery Office, London, p. 593-608, 1962.
+
 [2] Grune, Dick (2008). Parsing techniques : a practical guide (2nd ed.). New York: Springer. p. 579. ISBN 978-0-387-20248-8.
+
 [3] Stratos, Karl. “The Inside-Outside Algorithm.” (2012).
