@@ -4,6 +4,7 @@
 #endif
 
 #include "utils/data_accessing.hpp"
+#include "macros.def"
 #define DEBUG_OUTSIDE_CELL(x, y, X) if(i == x && j == y) { X }
 
 #ifdef USE_CUDA
@@ -37,8 +38,8 @@ void kernel_outside_main(float* mu, float* beta, uint32_t* sequence, uint32_t* p
 
                 /* the outside possibility of the symbol we are currently attempting to calculate (i.e., symbol A)
                  cannot be empty, and it must be a nonterminate. */
-                if(sym_A == 0xFFFF || sym_A >= N){
-                        continue; 
+                if(IS_EPSILON(sym_A) || sym_A >= N){
+                    continue; 
                 }
                     
                 for(int k = 0; k < i; k++){
@@ -57,21 +58,20 @@ void kernel_outside_main(float* mu, float* beta, uint32_t* sequence, uint32_t* p
                          A has possibility of p(B->'w' A) * outside['B', k, j] become a root for spanning i to j under 
                          grammar B -> 'w' A.
                          we need add this contributions into A's outside possibity spanning i, j. */
-                        float beta_A_i_j = beta_get(beta, sym_A, i, j, MS);
                         float condition = (sequence[k] == sym_C && (k == i - 1) ? 1.0f : 0.0f);
-                        float delta = possibility * condition * beta_get(beta, sym_B, k, j, MS);
-                        beta_set(beta, beta_A_i_j + delta, sym_A, i, j, MS);                            
+                        float delta = possibility * condition * BETA(sym_B, k, j);
+                        BETA_INCREASE(sym_A, i, j, delta);
                         continue;
                     }
                     
                     // C: [k, i - 1] part
-                    float alpha_C = alpha_get(alpha, sym_C, k, i - 1, MS);
+                    float alpha_C = ALPHA(sym_C, k, i - 1);
                     // B: [k, j] part
-                    float beta_B = beta_get(beta, sym_B, k, j, MS);
+                    float beta_B = BETA(sym_B, k, j);
 
                     #pragma omp atomic
                     // A: [i, j] part
-                    beta[sym_A * MS * MS + i * MS + j] += possibility * alpha_C * beta_B;
+                    BETA_INCREASE(sym_A, i, j, possibility * alpha_C * beta_B);
                 }
             }
             
@@ -81,13 +81,13 @@ void kernel_outside_main(float* mu, float* beta, uint32_t* sequence, uint32_t* p
                 uint32_t sym_A = std::get<1>(item);
                 uint32_t sym_C = std::get<2>(item);
                 float possibility = std::get<3>(item);
-                if(sym_C == 0xFFFF){ // epsilon
+                if(IS_EPSILON(sym_C)){ // epsilon
                         /* grammar become B -> A. In this condition, B -> A contributes possibility * beta_B
                            to A's outside possibility spanning i to j-th symbols in the sequence. 
                            We doesn't need to iterate split point k, as there only one symbol in the right side
                            of this rule. 'continue;' is uesed to skip k iterations.
                         */
-                        beta[sym_A * MS * MS + i * MS + j] += possibility * beta[sym_B * MS * MS + i * MS + j];
+                        BETA_INCREASE(sym_A, i, j, possibility * BETA(sym_B, i, j));
                         continue;
                 }
 
@@ -99,18 +99,17 @@ void kernel_outside_main(float* mu, float* beta, uint32_t* sequence, uint32_t* p
                         'w' must span k-k, sequence[k] must equal to 'w', and A must span i-j, where j == k - 1. */
                     if(sym_A < N && sym_C >= N){
                         float condition =  (sequence[k] == sym_C && k == j + 1 ? 1.0 : 0.0);
-                        beta[sym_A * MS * MS + i * MS + j] += 
-                            possibility * condition * beta_get(beta, sym_B, i, k, MS);
+                        BETA_INCREASE(sym_A, i, j, possibility * condition * BETA(sym_B, i, k));
                         continue;
                     }
                         
                     /* C: [j + 1, k] part */
-                    float alpha_C = alpha_get(alpha, sym_C, j + 1, k, MS);
+                    float alpha_C = ALPHA(sym_C, j + 1, k);
                     // B: [i, k] part
-                    float beta_B = beta_get(beta, sym_B, i, k, MS); 
+                    float beta_B = BETA(sym_B, i, k); 
                     
                     #pragma omp atomic
-                    beta[sym_A * MS * MS + i * MS + j] += possibility * alpha_C * beta_B;
+                    BETA_INCREASE(sym_A, i, j, possibility * alpha_C * beta_B);
                 }                  
             }
         }
@@ -128,41 +127,43 @@ void kernel_outside_main(float* mu, float* beta, uint32_t* sequence, uint32_t* p
                     float possibility = std::get<3>(item);
                     uint32_t gid = std::get<4>(item);
 
-                    float beta_A_i_j = beta_get(beta, sym_A, i, j, MS);
+                    float beta_A_i_j = BETA(sym_A, i, j);
 
                     if(sym_B >= N && sym_C >= N){
                         
-                        if(sym_C == 0xFFFF){
+                        if(IS_EPSILON(sym_C)){
                             // unreachable code.
                             #pragma omp atomic
-                            mu[gid * MS * MS + i * MS + j] += possibility * beta_A_i_j * 
-                                (sequence[i] == sym_B && i == j ? 1.0f : 0.0f);
+                            MU_INCREASE(gid, i, j, possibility * beta_A_i_j * 
+                                (sequence[i] == sym_B && i == j ? 1.0f : 0.0f));
                         }else{
                             float condition = (sequence[i] == sym_B && sequence[j] == sym_C &&  span_length == 2 ? 1.0f : 0.0f);
                             #pragma omp atomic
-                            mu[gid * MS * MS + i * MS + j] += possibility * beta_A_i_j * condition;
+                            MU_INCREASE(gid, i, j, possibility * beta_A_i_j * condition);
                         }
                     }else if(sym_B < N && sym_C >= N){
-                        if(sym_C == 0xFFFF && k == i){
-                            float alpha_B_i_j = alpha_get(alpha, sym_B, i, j, MS);
+                        if(IS_EPSILON(sym_C)){
+                            /* this condition may A -> B only be considered once in multiple k-axis loops. */
+                            float limit_term = (i == k ? 1.0f : 0.0f); 
+                            float alpha_B_i_j = ALPHA(sym_B, i, j);
                             #pragma omp atomic
-                            mu[gid * MS * MS + i * MS + j] += possibility * beta_A_i_j * alpha_B_i_j;
+                            MU_INCREASE(gid, i, j, possibility * beta_A_i_j * alpha_B_i_j * limit_term);
                         }else{
                             float condition = (sequence[j] == sym_C && k == j - 1 ? 1.0f : 0.0f);
-                            float alpha_B_i_k = alpha_get(alpha, sym_B, i, k, MS);
+                            float alpha_B_i_k = ALPHA(sym_B, i, k);
                             #pragma omp atomic
-                            mu[gid * MS * MS + i * MS + j] += possibility * beta_A_i_j * alpha_B_i_k * condition;
+                            MU_INCREASE(gid, i, j, possibility * beta_A_i_j * alpha_B_i_k * condition);
                         }
                     }else if(sym_B >= N && sym_C < N){
                         float condition = (sequence[i] == sym_B && k == i ? 1.0f : 0.0f);
-                        float alpha_C_k_p1_j = alpha_get(alpha, sym_B, k + 1, j, MS);
+                        float alpha_C_k_p1_j = ALPHA(sym_C, k + 1, j);
                         #pragma omp atomic
-                        mu[gid * MS * MS + i * MS + j] += possibility * beta_A_i_j * alpha_C_k_p1_j * condition;
+                        MU_INCREASE(gid, i, j, possibility * beta_A_i_j * alpha_C_k_p1_j * condition);
                     }else{
-                        float alpha_B_i_k = alpha_get(alpha, sym_B, i, k, MS);
-                        float alpha_C_k_p1_j = alpha_get(alpha, sym_B, k + 1, j, MS);
+                        float alpha_B_i_k = ALPHA(sym_B, i, k);
+                        float alpha_C_k_p1_j = ALPHA(sym_C, k + 1, j);
                         #pragma omp atomic
-                        mu[gid * MS * MS + i * MS + j] += possibility * beta_A_i_j * alpha_B_i_k * alpha_C_k_p1_j;
+                        MU_INCREASE(gid, i, j, possibility * beta_A_i_j * alpha_B_i_k * alpha_C_k_p1_j);
                     }
                 }
             }

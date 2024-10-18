@@ -94,7 +94,6 @@ float* inside_algorithm(uint32_t* sequence, uint32_t* pretermination_lookuptable
     return alpha;
 };
 
-
 std::vector<uint32_t> parse_input_file(const std::string& file_path, pcfg* grammar){
     std::vector<uint32_t> input_words;
     std::string line;
@@ -106,9 +105,9 @@ std::vector<uint32_t> parse_input_file(const std::string& file_path, pcfg* gramm
     int N = grammar->N();
 
     while (std::getline(file, line)) {
-        if(line == ""){
+        if(line == "")
             continue;
-        }
+
         std::string word;
         std::stringstream line_string_stream(line);
         while (getline(line_string_stream, word, ' ')) {
@@ -122,8 +121,9 @@ int main(int argc, char* argv[])
 {
     std::string grammar_filename = argc > 1 ? std::string(argv[1]) : "grammar_demo_2.pcfg";
     std::string input_filename = argc > 2 ? std::string(argv[2]) : "sequence.txt";
-
+    
     pcfg* grammar = prepare_grammar(grammar_filename);
+
     float* alpha = new float[grammar->N() * MAX_SEQUENCE_LENGTH * MAX_SEQUENCE_LENGTH];
     float* beta = new float[grammar->N() * MAX_SEQUENCE_LENGTH * MAX_SEQUENCE_LENGTH];
     float* mu = new float[grammar->cnt_grammar * MAX_SEQUENCE_LENGTH * MAX_SEQUENCE_LENGTH];

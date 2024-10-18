@@ -3,6 +3,7 @@
 #endif
 #include "utils/data_accessing.hpp"
 #include "grammar/grammar.hpp"
+#include "macros.def"
 
 #ifdef USE_CUDA
 __global__
@@ -12,7 +13,7 @@ void kernel_expect_count(float* count, float* mu, float* beta, uint32_t* sequenc
                         uint32_t* grammar_index, uint32_t* grammar_table, float* alpha, 
                         int sequence_length, int n_syms, int N, int T, int MS, int n_grammars){
     memset(count, 0, n_grammars * sizeof(float));
-    float Z = alpha_get(alpha, 0, 0, sequence_length - 1, MS);
+    float Z = ALPHA(0, 0, sequence_length - 1); // 0 is the id of S symbol. This expression assign alpha['S', 0, sequence_length - 1] to Z;
 
     for(int span_length = 1; span_length <= sequence_length; span_length++){
         #pragma omp parallel for
@@ -25,7 +26,7 @@ void kernel_expect_count(float* count, float* mu, float* beta, uint32_t* sequenc
                 float possibility = std::get<3>(item);
                 uint32_t gid = std::get<4>(item);
                 #pragma omp atomic
-                count[gid] += mu[gid * MS * MS + i * MS + j];
+                count[gid] += MU(gid, i, j);
             }
         }
     }

@@ -20,7 +20,9 @@
  * S: Max sequence length
  * length: Current input sequence length
  * alpha: inside possibility with shape (N, S, S)
- */
+**/
+
+
 
 #ifdef USE_CUDA
 __device__ 
@@ -35,7 +37,7 @@ float reverse_grammar_hashtable_get_value(
         int cnt_trails = 0;
         for(int i = 0; i < cnt_hashtable_items; i++){
             if(hashtable[pos] == key){
-                return ((float*)hashtable)[pos + 1];
+                return ((float*) hashtable)[pos + 1];
             }else{
                 pos = (pos + 2) % hashtable_size;
             }
@@ -85,8 +87,7 @@ void kernel_inside_base_fill_alpha(
                 p = reverse_grammar_hashtable_get_value(pretermination_lookuptable, n_grammars * 2, key);
                 
                 if(abs(p - 0) < 1e-6) continue;               
-
-                alpha_set(alpha, p, sym_A, i, i, MS);
+                ALPHA(sym_A, i, i) = p;
             }
         }
         
@@ -102,13 +103,13 @@ void kernel_inside_base_fill_alpha(
                     uint32_t sym_C = std::get<2>(item);
                     float possibility = std::get<3>(item);
                     
-                    if(sym_C != 0xFFFF || sym_B >= N) continue;
-                            float alpha_B = alpha[sym_B * MS * MS + i * MS + i];
-                            
-                            if(alpha_B * possibility > alpha[sym_A * MS * MS + i * MS + i]){
-                                alpha[sym_A * MS * MS + i * MS + i] = alpha_B * possibility;
-                                changed = true;
-                            }
+                    if(!IS_EPSILON(sym_C) || sym_B >= N) continue;
+                    float alpha_B = ALPHA(sym_B, i, i);
+                    
+                    if(alpha_B * possibility > alpha_get(alpha, sym_A, i, i, MS)){
+                        ALPHA(sym_A, i, i) = alpha_B * possibility;
+                        changed = true;
+                    }
                 }
                 
             }
@@ -152,7 +153,6 @@ void kernel_inside_base_fill_alpha(
                 
                 // For computational effectiveness, we reused alpha space for each input. alpha is N x S x S tensor.
                 alpha[sym_id * (S * S) + i * S + i] = p;
-            
             }
         }
     #endif
@@ -170,6 +170,7 @@ void kernel_inside_computeSpanKernel(uint32_t* sequence, uint32_t* preterminatio
         ) {
     #ifndef USE_CUDA                        
         for (int span_length = 2; span_length <= sequence_length; span_length++) {
+            #pragma omp parallel for
             for (int i = 0; i <= sequence_length - span_length; i++) {
                 int j = i + span_length - 1; // Ending index of the spanx`
                 for (int k = i; k < j; k++) {
@@ -182,14 +183,18 @@ void kernel_inside_computeSpanKernel(uint32_t* sequence, uint32_t* preterminatio
                         uint32_t gid = std::get<4>(item);
                         if(sym_B >= N && sym_C >= N){
                             if(span_length != 2) continue;
-                            alpha[sym_A * MS * MS + i * MS + j] += 
-                                (sequence[i] == sym_B && sequence[i + 1] == sym_C) * possibility;
+                            float condition = (sequence[i] == sym_B && sequence[i + 1] == sym_C) ? 1.0f : 0.0f;
+                            #pragma omp atomic
+                            ALPHA_INCREASE(sym_A, i, j, condition * possibility);
                             continue;
                         }
-                        float alpha_B = sym_B >= N ? (sequence[i] == sym_B && k == i ? 1.0 : 0.0) : alpha[sym_B * MS * MS + i * MS + k];
-                        float alpha_C = ((sym_C == 0xFFFF) ? 1.0f : (sym_C >= N ? (sequence[j] == sym_C && k == j ? 1.0 : 0.0) : alpha[sym_C * MS * MS + (k + 1) * MS + j]));
+                        float condition_B = (sequence[i] == sym_B && k == i ? 1.0f : 0.0f);
+                        float condition_C = (sequence[j] == sym_C && k == j ? 1.0f : 0.0f);
+                        float alpha_B = sym_B >= N ?  condition_B : ALPHA(sym_B, i, k);
+                        float alpha_C = (IS_EPSILON(sym_C) ? 1.0f : (sym_C >= N ? condition_C : ALPHA(sym_C, k + 1, j)));
                         
-                        alpha[sym_A * MS * MS + i * MS + j] += alpha_B * alpha_C * possibility;
+                        #pragma omp atomic
+                        ALPHA_INCREASE(sym_A, i, j, alpha_B * alpha_C * possibility);
                     }
                 }
             }

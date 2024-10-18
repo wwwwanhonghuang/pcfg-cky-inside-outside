@@ -20,7 +20,6 @@ void kernel_update_parameters(float* f, float* count, float* mu, float* beta, ui
     memset(f, 0, n_grammars * sizeof(float));
     
     int gid = 0;
-    #pragma omp parallel for
     for(int sym_A = 0; sym_A < N; sym_A++){
         uint32_t grammar_pointer_current = *(grammar_index + sym_A);
         uint32_t grammar_pointer_next = *(grammar_index + sym_A + 1);
@@ -30,15 +29,14 @@ void kernel_update_parameters(float* f, float* count, float* mu, float* beta, ui
             float possibility = grammar_table[pt + 1].float32_value;
             uint32_t sym_B = (symbols >> 16) & 0xFFFF;
             uint32_t sym_C = symbols & 0xFFFF;
-            #pragma omp atomic
+            
             f[gid] += count[gid];
-            #pragma omp atomic
             gid++;
+            
         }
     }
 
     gid = 0;
-    #pragma omp parallel for
     for(int sym_A = 0; sym_A < N; sym_A++){
             float S = 0.0;
             uint32_t grammar_pointer_current = *(grammar_index + sym_A);
@@ -49,7 +47,6 @@ void kernel_update_parameters(float* f, float* count, float* mu, float* beta, ui
                 float possibility = grammar_table[pt + 1].float32_value;
                 uint32_t sym_B = (symbols >> 16) & 0xFFFF;
                 uint32_t sym_C = symbols & 0xFFFF;
-                #pragma omp atomic
                 S += f[gid];
             }
 
@@ -62,7 +59,6 @@ void kernel_update_parameters(float* f, float* count, float* mu, float* beta, ui
                 uint32_t sym_C = symbols & 0xFFFF;
                 float new_possibility = (S != 0 ? f[gid] / S : 0);;
             
-                #pragma omp atomic
                 *(float*)(grammar_table + pt + 1) += new_possibility;
                 gid++;
             }
