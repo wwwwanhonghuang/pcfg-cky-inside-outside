@@ -59,7 +59,7 @@ void kernel_update_parameters(float* f, float* count, float* mu, float* beta, ui
                 uint32_t sym_C = symbols & 0xFFFF;
                 float new_possibility = (S != 0 ? f[gid] / S : 0);;
             
-                *(float*)(grammar_table + pt + 1) += new_possibility;
+                *(float*)(grammar_table + pt + 1) = new_possibility;
                 gid++;
             }
     }    
