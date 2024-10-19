@@ -22,7 +22,7 @@ void kernel_outside_main(float* mu, float* beta, uint32_t* sequence, uint32_t* p
     memset(beta, 0, N * MS * MS * sizeof(float));
 
     /* base case: S is the root of the whole sequence with possibility 1.0. */
-    beta[0 * MS * MS + 0 * MS + sequence_length - 1] = 1.0; 
+    BETA(0, 0, sequence_length - 1) = 1.0;
 
     /* diagonal-order iteration */
     for(int span_length = 1; span_length < sequence_length + 1; span_length++){
@@ -38,13 +38,13 @@ void kernel_outside_main(float* mu, float* beta, uint32_t* sequence, uint32_t* p
 
                 /* the outside possibility of the symbol we are currently attempting to calculate (i.e., symbol A)
                  cannot be empty, and it must be a nonterminate. */
-                if(IS_EPSILON(sym_A) || sym_A >= N){
+                if(IS_EPSILON(sym_A) || IS_TERMINATE(sym_A)){
                     continue; 
                 }
                     
                 for(int k = 0; k < i; k++){
                     /* Specifal condition 1: Sym_C is a terminate, we have form B -> 'w' A */
-                    if(sym_C >= N && sym_A < N){ 
+                    if(IS_TERMINATE(sym_C) && IS_NONTERMINATE(sym_A)){ 
                         /* In the situation that C is a terminate 'w', as B span k to j,
                         'w' mast span k to k, and A must span k + 1 (= i, i.e., i = k - 1) to j, so that we can have B -> CA. 
                         If the conditions above are not satisfied, this loop must contribute 0.0 to symbol A's outside
@@ -91,13 +91,13 @@ void kernel_outside_main(float* mu, float* beta, uint32_t* sequence, uint32_t* p
                         continue;
                 }
 
-                /* it doesn't need to calculate a terminate's possibility. */
-                if(sym_A >= N) continue; 
+                /* it doesn't need to calculate a terminate's outside possibility. */
+                if(IS_TERMINATE(sym_A)) continue; 
 
                 for(int k = j + 1; k < sequence_length; k++){
                     /* in the condition of B -> A 'w'm and B span i-k.
                         'w' must span k-k, sequence[k] must equal to 'w', and A must span i-j, where j == k - 1. */
-                    if(sym_A < N && sym_C >= N){
+                    if(IS_NONTERMINATE(sym_A) && IS_TERMINATE(sym_C)){
                         float condition =  (sequence[k] == sym_C && k == j + 1 ? 1.0 : 0.0);
                         BETA_INCREASE(sym_A, i, j, possibility * condition * BETA(sym_B, i, k));
                         continue;
@@ -115,7 +115,8 @@ void kernel_outside_main(float* mu, float* beta, uint32_t* sequence, uint32_t* p
         }
     }
 
-    for (int span_length = 2; span_length <= sequence_length; span_length++) {
+    // fill mu[grammar_id, i, j]
+    for (int span_length = 1; span_length < sequence_length + 1; span_length++) {
         #pragma omp parallel for
         for (int i = 0; i <= sequence_length - span_length; i++) {
             int j = i + span_length - 1; // Ending index of the spanx`
@@ -129,8 +130,7 @@ void kernel_outside_main(float* mu, float* beta, uint32_t* sequence, uint32_t* p
 
                     float beta_A_i_j = BETA(sym_A, i, j);
 
-                    if(sym_B >= N && sym_C >= N){
-                        
+                    if(IS_TERMINATE(sym_B) && IS_TERMINATE(sym_C)){
                         if(IS_EPSILON(sym_C)){
                             // unreachable code.
                             #pragma omp atomic
@@ -141,7 +141,7 @@ void kernel_outside_main(float* mu, float* beta, uint32_t* sequence, uint32_t* p
                             #pragma omp atomic
                             MU_INCREASE(gid, i, j, possibility * beta_A_i_j * condition);
                         }
-                    }else if(sym_B < N && sym_C >= N){
+                    }else if(IS_NONTERMINATE(sym_B) && IS_TERMINATE(sym_C)){
                         if(IS_EPSILON(sym_C)){
                             /* this condition may A -> B only be considered once in multiple k-axis loops. */
                             float limit_term = (i == k ? 1.0f : 0.0f); 
@@ -170,7 +170,6 @@ void kernel_outside_main(float* mu, float* beta, uint32_t* sequence, uint32_t* p
         }
     }
 
-    
     
     #else
     std::err << "Error: CUDA Version Outside Algorithm is currently not be implemented." << std::endl;

@@ -18,6 +18,9 @@
 #define MAX_SEQUENCE_LENGTH 500
 #define _32bit_t int32_t
 #define IS_EPSILON(SYMBOL_ID) ((SYMBOL_ID) == 0xFFFF)
+#define IS_TERMINATE(SYMBOL_ID) ((SYMBOL_ID) >= N)
+#define IS_NONTERMINATE(SYMBOL_ID) ((SYMBOL_ID) < N)
+
 #define ALPHA_INCREASE(SYMBOL, I, J, VALUE) alpha[(SYMBOL) * MS * MS + (I) * MS + J] +=  VALUE;
 #define BETA_INCREASE(SYMBOL, I, J, VALUE) beta[(SYMBOL) * MS * MS + (I) * MS + J] +=  VALUE;
 #define MU_INCREASE(SYMBOL, I, J, VALUE) mu[(SYMBOL) * MS * MS + (I) * MS + J] +=  VALUE;
