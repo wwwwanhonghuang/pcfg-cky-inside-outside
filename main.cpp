@@ -94,28 +94,30 @@ float* inside_algorithm(uint32_t* sequence, uint32_t* pretermination_lookuptable
     return alpha;
 };
 
-std::vector<uint32_t> parse_input_file(const std::string& file_path, pcfg* grammar){
-    std::vector<uint32_t> input_words;
+std::vector<std::vector<uint32_t>> parse_input_file(const std::string& file_path, pcfg* grammar){
+    std::vector<std::vector<uint32_t>> sentences;
     std::string line;
 	std::ifstream file(file_path);
     if (!file.is_open()) {
         std::cerr << "Error: Could not open the input file at path: " << file_path << std::endl;
-        return input_words;
+        return sentences;
     }
     int N = grammar->N();
 
     while (std::getline(file, line)) {
         if(line == "")
             continue;
+        std::vector<uint32_t> input_words;
 
         std::string word;
         std::stringstream line_string_stream(line);
         while (getline(line_string_stream, word, ' ')) {
             input_words.push_back(grammar->terminate_map.find(std::string("\'") + word + std::string("\'"))->second + N);
         }
+        sentences.push_back(input_words);
     }
 
-    return input_words;
+    return sentences;
 }
 int main(int argc, char* argv[])
 {
@@ -130,63 +132,66 @@ int main(int argc, char* argv[])
     float* count = new float[grammar->cnt_grammar];
     float* f = new float[grammar->cnt_grammar];
 
-    std::vector<uint32_t> words = parse_input_file(input_filename, grammar);
-
-    int sequence_length = words.size();
+    std::vector<std::vector<uint32_t>> sentences = parse_input_file(input_filename, grammar);
+    if(sentences.empty()) return 0;
     
-    int N = grammar->N();
-    uint32_t* sequence = words.data();
+    for(auto& sentence: sentences){
+        int N = grammar->N();
+        uint32_t* sequence = sentence.data();
+        int sequence_length = sentence.size();
 
-    std::cout << "1. Proceeding Inside Algorithm..." << std::endl;
-    inside_algorithm(sequence, 
-        (uint32_t*)(grammar->preterminate_rule_lookup_table),
-        (uint32_t*)(grammar->grammar_index),
-        (uint32_t*)(grammar->grammar_table),
-        alpha,
-        sequence_length, grammar->n_syms(), grammar->N(), grammar->T(), MAX_SEQUENCE_LENGTH, grammar->cnt_grammar
-        #ifdef DEBUG_INSIDE_ALGORITHM
-        , grammar
-        #endif
-    );
-    
-    std::cout << "Inside Algorithm Finished." << std::endl;
-    cky_printer printer;
-    printer.print_inside_outside_table(alpha,  grammar->N(), grammar->T(), sequence_length, MAX_SEQUENCE_LENGTH, grammar);
-
-    std::cout << "2. Proceeding Outside Algorithm..." << std::endl;
-    outside_algorithm(mu, beta, sequence, 
-        (uint32_t*)(grammar->preterminate_rule_lookup_table),
-        (uint32_t*)(grammar->grammar_index),
-        (uint32_t*)(grammar->grammar_table),
-        alpha,
-        sequence_length, grammar->n_syms(), grammar->N(), grammar->T(), MAX_SEQUENCE_LENGTH, grammar->cnt_grammar
-        #ifdef DEBUG_INSIDE_ALGORITHM
-        ,grammar
-        #endif
+        std::cout << "1. Proceeding Inside Algorithm..." << std::endl;
+        inside_algorithm(sequence, 
+            (uint32_t*)(grammar->preterminate_rule_lookup_table),
+            (uint32_t*)(grammar->grammar_index),
+            (uint32_t*)(grammar->grammar_table),
+            alpha,
+            sequence_length, grammar->n_syms(), grammar->N(), grammar->T(), MAX_SEQUENCE_LENGTH, grammar->cnt_grammar
+            #ifdef DEBUG_INSIDE_ALGORITHM
+            , grammar
+            #endif
         );
+        
+        std::cout << "Inside Algorithm Finished." << std::endl;
+        cky_printer printer;
+        printer.print_inside_outside_table(alpha,  grammar->N(), grammar->T(), sequence_length, MAX_SEQUENCE_LENGTH, grammar);
+
+        std::cout << "2. Proceeding Outside Algorithm..." << std::endl;
+        outside_algorithm(mu, beta, sequence, 
+            (uint32_t*)(grammar->preterminate_rule_lookup_table),
+            (uint32_t*)(grammar->grammar_index),
+            (uint32_t*)(grammar->grammar_table),
+            alpha,
+            sequence_length, grammar->n_syms(), grammar->N(), grammar->T(), MAX_SEQUENCE_LENGTH, grammar->cnt_grammar
+            #ifdef DEBUG_INSIDE_ALGORITHM
+            ,grammar
+            #endif
+            );
+        
+        std::cout << "Outside Algorithm Finished." << std::endl;
+        printer.print_inside_outside_table(beta,  grammar->N(), grammar->T(), sequence_length, MAX_SEQUENCE_LENGTH, grammar);
+
+
+        std::cout << "3. Proceeding Calculate Expectation Count..." << std::endl;
+        kernel_expect_count(count, mu, beta, sequence, 
+            (uint32_t*)(grammar->preterminate_rule_lookup_table),
+            (uint32_t*)(grammar->grammar_index),
+            (uint32_t*)(grammar->grammar_table),
+            alpha,
+            sequence_length, grammar->n_syms(), grammar->N(), grammar->T(), MAX_SEQUENCE_LENGTH, grammar->cnt_grammar);
+        std::cout << "Calculate Expectation Count Finished." << std::endl;
+
+
+        std::cout << "4. Proceeding Update Parameters..." << std::endl;
+        kernel_update_parameters(f, count, mu, beta, sequence, 
+            (uint32_t*)(grammar->preterminate_rule_lookup_table),
+            (uint32_t*)(grammar->grammar_index),
+            (grammar->grammar_table),
+            alpha,
+            sequence_length, grammar->n_syms(), grammar->N(), grammar->T(), MAX_SEQUENCE_LENGTH, grammar->cnt_grammar);
+        std::cout << "Update Parameter Finished." << std::endl;
+    }
     
-    std::cout << "Outside Algorithm Finished." << std::endl;
-    printer.print_inside_outside_table(beta,  grammar->N(), grammar->T(), sequence_length, MAX_SEQUENCE_LENGTH, grammar);
-
-
-    std::cout << "3. Proceeding Calculate Expectation Count..." << std::endl;
-    kernel_expect_count(count, mu, beta, sequence, 
-        (uint32_t*)(grammar->preterminate_rule_lookup_table),
-        (uint32_t*)(grammar->grammar_index),
-        (uint32_t*)(grammar->grammar_table),
-        alpha,
-        sequence_length, grammar->n_syms(), grammar->N(), grammar->T(), MAX_SEQUENCE_LENGTH, grammar->cnt_grammar);
-    std::cout << "Calculate Expectation Count Finished." << std::endl;
-
-
-    std::cout << "4. Proceeding Update Parameters..." << std::endl;
-    kernel_update_parameters(f, count, mu, beta, sequence, 
-        (uint32_t*)(grammar->preterminate_rule_lookup_table),
-        (uint32_t*)(grammar->grammar_index),
-        (grammar->grammar_table),
-        alpha,
-        sequence_length, grammar->n_syms(), grammar->N(), grammar->T(), MAX_SEQUENCE_LENGTH, grammar->cnt_grammar);
-    std::cout << "Update Parameter Finished." << std::endl;
     
     return 0;
 }

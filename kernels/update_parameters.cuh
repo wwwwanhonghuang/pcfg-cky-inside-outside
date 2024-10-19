@@ -32,7 +32,6 @@ void kernel_update_parameters(float* f, float* count, float* mu, float* beta, ui
             
             f[gid] += count[gid];
             gid++;
-            
         }
     }
 
