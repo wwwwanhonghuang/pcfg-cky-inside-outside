@@ -45,15 +45,13 @@ float* outside_algorithm(float* mu, float* beta, uint32_t* sequence, uint32_t* p
                         #ifdef DEBUG_INSIDE_ALGORITHM
                         ,pcfg* pcfg
                         #endif
-                        ){
-    
+                    ){
     #ifdef USE_CUDA
     <<<16, 16>>>
     #endif
     kernel_outside_main(mu, beta, sequence, pretermination_lookuptable,
         grammar_index, grammar_table, alpha, sequence_length, n_syms, N, T, MS, n_grammars, pcfg);
     return beta;
-    
 }
 
 float* em_algorithm_calculate_expection_count(float* count, float* mu, float* beta, uint32_t* sequence, uint32_t* pretermination_lookuptable, 
@@ -72,7 +70,6 @@ float* inside_algorithm(uint32_t* sequence, uint32_t* pretermination_lookuptable
                         int sequence_length, int n_syms, int N, int T, int MS, int n_grammars, pcfg* pcfg = nullptr){
     
     if(n_syms >= 65536) return nullptr;
-
 
     // 1. zerolization alpha.
     kernel_inside_alpha_zerolization

@@ -7,6 +7,15 @@
 #ifdef USE_CUDA
 __global__
 #endif
+
+const float epsilon = 1e-12f;
+inline float _calculate_new_possibility(float S, float f_gid) {
+    // Handle potential division by zero by checking if S is close to zero
+    if(abs(f_gid) < epsilon)
+        f_gid = epsilon;
+    return f_gid / S;  // Calculate the new possibility
+}
+
 void kernel_update_parameters(float* f, float* count, float* mu, float* beta, uint32_t* sequence, uint32_t* pretermination_lookuptable, 
                         uint32_t* grammar_index, 
                         #ifdef USE_CUDA
@@ -18,7 +27,6 @@ void kernel_update_parameters(float* f, float* count, float* mu, float* beta, ui
                         int sequence_length, int n_syms, int N, int T, int MS, int n_grammars
                         
                         ){
-    // memset(f, 0, n_grammars * sizeof(float));
     
     int gid = 0;
     for(int sym_A = 0; sym_A < N; sym_A++){
@@ -47,8 +55,8 @@ void kernel_update_parameters(float* f, float* count, float* mu, float* beta, ui
                 float possibility = grammar_table[pt + 1].float32_value;
                 uint32_t sym_B = (symbols >> 16) & 0xFFFF;
                 uint32_t sym_C = symbols & 0xFFFF;
-                S += f[gid];
-                // std::cout << " - " << f[gid] << " " << S << std::endl;
+                float f_gid = f[gid];
+                S += abs(f_gid - 0) < epsilon ? epsilon : f_gid;
                 gid ++;
             }
 
@@ -60,8 +68,8 @@ void kernel_update_parameters(float* f, float* count, float* mu, float* beta, ui
                 float possibility = grammar_table[pt + 1].float32_value;
                 uint32_t sym_B = (symbols >> 16) & 0xFFFF;
                 uint32_t sym_C = symbols & 0xFFFF;
-                const float epsilon = 1e-9f;
-                float new_possibility = (abs(S - 0) < epsilon ? 0.0f : f[gid] / S);;
+                
+                float new_possibility = _calculate_new_possibility(S, f[gid]);
                 
                 if(!((new_possibility + epsilon) >= 0.0f && new_possibility - epsilon <= 1.0f)){
                     std::cout << "Improper possibility updation, possibility = " << new_possibility << ", caused by " <<
@@ -71,7 +79,6 @@ void kernel_update_parameters(float* f, float* count, float* mu, float* beta, ui
                 }
                 
                 *(float*)(grammar_table + pt + 1) = new_possibility;
-                // std::cout << "set grammar id:" << gid << " p = " << new_possibility << " == " << f[gid] << "/" << S << std::endl;
                 gid++;
             }
     }    
