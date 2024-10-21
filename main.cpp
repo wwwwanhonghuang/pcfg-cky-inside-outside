@@ -25,7 +25,6 @@
 #include "grammar/grammar_parser.hpp"
 #include "utils/printer.hpp"
 
-
 float* outside_algorithm(float* mu, float* beta, uint32_t* sequence, uint32_t* pretermination_lookuptable, 
                         uint32_t* grammar_index, uint32_t* grammar_table, float* alpha, 
                         int sequence_length, int n_syms, int N, int T, int MS, int n_grammars
@@ -166,11 +165,10 @@ int main(int argc, char* argv[])
             #ifdef DEBUG_INSIDE_ALGORITHM
             ,grammar
             #endif
-            );
+        );
         
         std::cout << "Outside Algorithm Finished." << std::endl;
         printer.print_inside_outside_table(beta,  grammar->N(), grammar->T(), sequence_length, MAX_SEQUENCE_LENGTH, grammar);
-
 
         std::cout << "3. Proceeding Calculate Expectation Count..." << std::endl;
         kernel_expect_count(count, mu, beta, sequence, 
@@ -181,7 +179,6 @@ int main(int argc, char* argv[])
             sequence_length, grammar->n_syms(), grammar->N(), grammar->T(), MAX_SEQUENCE_LENGTH, grammar->cnt_grammar);
         std::cout << "Calculate Expectation Count Finished." << std::endl;
 
-
         std::cout << "4. Proceeding Update Parameters..." << std::endl;
         kernel_update_parameters(f, count, mu, beta, sequence, 
             (uint32_t*)(grammar->preterminate_rule_lookup_table),
@@ -191,7 +188,6 @@ int main(int argc, char* argv[])
             sequence_length, grammar->n_syms(), grammar->N(), grammar->T(), MAX_SEQUENCE_LENGTH, grammar->cnt_grammar);
         std::cout << "Update Parameter Finished." << std::endl;
     }
-    
-    
+
     return 0;
 }
