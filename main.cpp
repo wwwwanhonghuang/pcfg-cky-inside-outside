@@ -25,10 +25,19 @@
 #include "grammar/grammar_parser.hpp"
 #include "utils/printer.hpp"
 
-#define PRINT_INSIDE 0
-#define PRINT_OUTSIDE 0
-#define PRINT_STEPS 0
+#define PRINT_INSIDE 1
+#define PRINT_OUTSIDE 1
+#define PRINT_STEPS 1
 #define PRINT_GRAMMAR_EACH_UPDATION 0
+
+#define SANITARY_OUTPUT 1
+
+#if SANITARY_OUTPUT == 1
+#undef PRINT_INSIDE
+#undef PRINT_OUTSIDE
+#undef PRINT_STEPS
+#undef PRINT_GRAMMAR_EACH_UPDATION
+#endif
 
 float* outside_algorithm(float* mu, float* beta, uint32_t* sequence, uint32_t* pretermination_lookuptable, 
                         uint32_t* grammar_index, uint32_t* grammar_table, float* alpha, 
@@ -245,3 +254,4 @@ int main(int argc, char* argv[])
 
     return 0;
 }
+

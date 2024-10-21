@@ -60,7 +60,8 @@ void kernel_update_parameters(float* f, float* count, float* mu, float* beta, ui
                 uint32_t sym_B = (symbols >> 16) & 0xFFFF;
                 uint32_t sym_C = symbols & 0xFFFF;
                 float new_possibility = (S != 0 ? f[gid] / S : 0);;
-            
+                const float epsilon = 1e-7f;
+                assert((new_possibility + epsilon) >= 0.0f && new_possibility - epsilon <= 1.0f);
                 *(float*)(grammar_table + pt + 1) = new_possibility;
                 // std::cout << "set grammar id:" << gid << " p = " << new_possibility << " == " << f[gid] << "/" << S << std::endl;
                 gid++;
