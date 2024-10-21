@@ -1,7 +1,6 @@
 
 #include<omp.h>
 #include "data_structure.hpp"
-
 #ifndef USE_CUDA
 #include <cstring>
 #endif
@@ -16,7 +15,9 @@ void kernel_update_parameters(float* f, float* count, float* mu, float* beta, ui
                         common_32bit*
                         #endif
                         grammar_table, float* alpha, 
-                        int sequence_length, int n_syms, int N, int T, int MS, int n_grammars){
+                        int sequence_length, int n_syms, int N, int T, int MS, int n_grammars
+                        
+                        ){
     // memset(f, 0, n_grammars * sizeof(float));
     
     int gid = 0;
@@ -59,9 +60,16 @@ void kernel_update_parameters(float* f, float* count, float* mu, float* beta, ui
                 float possibility = grammar_table[pt + 1].float32_value;
                 uint32_t sym_B = (symbols >> 16) & 0xFFFF;
                 uint32_t sym_C = symbols & 0xFFFF;
-                float new_possibility = (S != 0 ? f[gid] / S : 0);;
-                const float epsilon = 1e-7f;
-                assert((new_possibility + epsilon) >= 0.0f && new_possibility - epsilon <= 1.0f);
+                const float epsilon = 1e-9f;
+                float new_possibility = (abs(S - 0) < epsilon ? 0.0f : f[gid] / S);;
+                
+                if(!((new_possibility + epsilon) >= 0.0f && new_possibility - epsilon <= 1.0f)){
+                    std::cout << "Improper possibility updation, possibility = " << new_possibility << ", caused by " <<
+                    f[gid] << "/" << S 
+                     << std::endl;
+                    assert(false);
+                }
+                
                 *(float*)(grammar_table + pt + 1) = new_possibility;
                 // std::cout << "set grammar id:" << gid << " p = " << new_possibility << " == " << f[gid] << "/" << S << std::endl;
                 gid++;

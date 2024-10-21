@@ -275,9 +275,6 @@ pcfg* _build_preterminate_grammar_lookup_table(pcfg* grammar, common_32bit* non_
                     }
                     hashtable[position].int32_value = key;
                     hashtable[position + 1].float32_value = rule.possibility;
-                    // std::cout << "write rule " << grammar->reversed_nonterminate_map[nonterminate_id] <<
-                    //  "(" << nonterminate_id << ")" << " -> " << grammar->reversed_nonterminate_map[symbol_id_right_1]  
-                    //  << "(" << symbol_id_right_1 << ") in " << position << " p=" <<  rule.possibility << std::endl; 
                 }
                 offset += 2;
                 rule_index_inner++;

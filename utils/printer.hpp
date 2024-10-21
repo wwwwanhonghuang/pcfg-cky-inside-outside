@@ -3,6 +3,7 @@
 #include <map>
 #include <iostream>
 #include "grammar.hpp"
+#include "macros.def"
 template<typename T1, typename T2>
 void print_map(const std::map<T1, T2>& map){
     std::cout << "{" << std::endl;
@@ -57,4 +58,6 @@ public:
         }
     };
 };
+
+void print_grammar(pcfg* grammar);
 #endif
