@@ -25,6 +25,11 @@
 #include "grammar/grammar_parser.hpp"
 #include "utils/printer.hpp"
 
+#define PRINT_INSIDE 0
+#define PRINT_OUTSIDE 0
+#define PRINT_STEPS 0
+#define PRINT_GRAMMAR_EACH_UPDATION 0
+
 float* outside_algorithm(float* mu, float* beta, uint32_t* sequence, uint32_t* pretermination_lookuptable, 
                         uint32_t* grammar_index, uint32_t* grammar_table, float* alpha, 
                         int sequence_length, int n_syms, int N, int T, int MS, int n_grammars
@@ -56,7 +61,7 @@ float* em_algorithm_calculate_expection_count(float* count, float* mu, float* be
 float* inside_algorithm(uint32_t* sequence, uint32_t* pretermination_lookuptable, 
                         uint32_t* grammar_index, uint32_t* grammar_table, float* alpha, 
                         int sequence_length, int n_syms, int N, int T, int MS, int n_grammars, pcfg* pcfg = nullptr){
-    std::cout << "n_syms = " << n_syms << " N = " << N << " T = " << T << std::endl;
+    
     if(n_syms >= 65536) return nullptr;
 
 
@@ -118,6 +123,19 @@ std::vector<std::vector<uint32_t>> parse_input_file(const std::string& file_path
 
     return sentences;
 }
+void print_grammar(pcfg* grammar){
+    int N = grammar->N();
+    for(std::tuple<uint32_t, uint32_t, uint32_t, float, uint32_t> item : 
+        PCFGItemIterator(N, (uint32_t*) grammar->grammar_index, (uint32_t*) grammar->grammar_table)){
+        uint32_t sym_A = std::get<0>(item);
+        uint32_t sym_B = std::get<1>(item);
+        uint32_t sym_C = std::get<2>(item);
+        float possibility = std::get<3>(item);
+        uint32_t gid = std::get<4>(item);
+        std::cout << "[" << gid << "] " << SYMBOL_STR(grammar, sym_A, N) << " -> " << SYMBOL_STR(grammar, sym_B, N) << " " <<
+            SYMBOL_STR(grammar, sym_C, N)  << " [" << possibility << "]" << std::endl;
+    }
+}
 int main(int argc, char* argv[])
 {
     std::string grammar_filename = argc > 1 ? std::string(argv[1]) : "grammar_demo_2.pcfg";
@@ -135,11 +153,19 @@ int main(int argc, char* argv[])
     if(sentences.empty()) return 0;
     
     for(auto& sentence: sentences){
+        // print_grammar(grammar);
         int N = grammar->N();
+        // std::cout << " -- proceed sentence: ";
+        // for(auto&& word_id : sentence){
+        //     std::cout << word_id << " ";
+        // }
+        // std::cout << std::endl;
         uint32_t* sequence = sentence.data();
         int sequence_length = sentence.size();
 
+        #if PRINT_STEPS == 1
         std::cout << "1. Proceeding Inside Algorithm..." << std::endl;
+        #endif
         inside_algorithm(sequence, 
             (uint32_t*)(grammar->preterminate_rule_lookup_table),
             (uint32_t*)(grammar->grammar_index),
@@ -150,12 +176,19 @@ int main(int argc, char* argv[])
             , grammar
             #endif
         );
-        
+        #if PRINT_STEPS == 1
         std::cout << "Inside Algorithm Finished." << std::endl;
-        cky_printer printer;
-        printer.print_inside_outside_table(alpha,  grammar->N(), grammar->T(), sequence_length, MAX_SEQUENCE_LENGTH, grammar);
+        #endif
 
+        cky_printer printer;
+        #if PRINT_INSIDE == 1
+        printer.print_inside_outside_table(alpha,  grammar->N(), grammar->T(), sequence_length, MAX_SEQUENCE_LENGTH, grammar);
+        #endif
+
+        #if PRINT_STEPS == 1
         std::cout << "2. Proceeding Outside Algorithm..." << std::endl;
+        #endif
+
         outside_algorithm(mu, beta, sequence, 
             (uint32_t*)(grammar->preterminate_rule_lookup_table),
             (uint32_t*)(grammar->grammar_index),
@@ -167,27 +200,48 @@ int main(int argc, char* argv[])
             #endif
         );
         
+        #if PRINT_STEPS == 1
         std::cout << "Outside Algorithm Finished." << std::endl;
-        printer.print_inside_outside_table(beta,  grammar->N(), grammar->T(), sequence_length, MAX_SEQUENCE_LENGTH, grammar);
+        #endif
 
+        #if PRINT_OUTSIDE == 1
+        printer.print_inside_outside_table(beta,  grammar->N(), grammar->T(), sequence_length, MAX_SEQUENCE_LENGTH, grammar);
+        #endif
+
+        #if PRINT_STEPS == 1
         std::cout << "3. Proceeding Calculate Expectation Count..." << std::endl;
+        #endif
+
         kernel_expect_count(count, mu, beta, sequence, 
             (uint32_t*)(grammar->preterminate_rule_lookup_table),
             (uint32_t*)(grammar->grammar_index),
             (uint32_t*)(grammar->grammar_table),
             alpha,
             sequence_length, grammar->n_syms(), grammar->N(), grammar->T(), MAX_SEQUENCE_LENGTH, grammar->cnt_grammar);
+        #if PRINT_STEPS == 1
         std::cout << "Calculate Expectation Count Finished." << std::endl;
-
+        #endif
+        #if PRINT_STEPS == 1
         std::cout << "4. Proceeding Update Parameters..." << std::endl;
+        #endif
+
         kernel_update_parameters(f, count, mu, beta, sequence, 
             (uint32_t*)(grammar->preterminate_rule_lookup_table),
             (uint32_t*)(grammar->grammar_index),
             (grammar->grammar_table),
             alpha,
             sequence_length, grammar->n_syms(), grammar->N(), grammar->T(), MAX_SEQUENCE_LENGTH, grammar->cnt_grammar);
+        #if PRINT_STEPS == 1
         std::cout << "Update Parameter Finished." << std::endl;
+        #endif
+
+        #if PRINT_GRAMMAR_EACH_UPDATION == 1
+        print_grammar(grammar);
+        #endif
     }
+
+    std::cout << std::endl << "All finished" << std::endl;
+    print_grammar(grammar);
 
     return 0;
 }

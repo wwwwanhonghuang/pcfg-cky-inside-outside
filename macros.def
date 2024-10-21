@@ -29,4 +29,6 @@
 #define BETA(SYMBOL, I, J) beta[(SYMBOL) * MS * MS + (I) * MS + J]
 #define MU(GID, I, J) beta[(GID) * MS * MS + (I) * MS + J]
 
+#define SYMBOL_STR(GRAMMAR, SYMBOL_ID, N) ((SYMBOL_ID) < N ? (GRAMMAR)->reversed_nonterminate_map[(SYMBOL_ID)]: (GRAMMAR)->reversed_terminate_map[(SYMBOL_ID) - N])
+
 #endif
