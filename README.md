@@ -4,6 +4,7 @@ estimating a PCFG.
 Currently, CPU-only version is under testing.
 CUDA version is partially implemented.
 
+Current implementation may contain errors.
 ## Usages
 ### Prepare the PCFG Definition File
 1. A PCFG definiton file contain multiple line, with each line define a PCFG rule. 
