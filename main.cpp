@@ -1,22 +1,18 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <assert.h>
-#include <fstream>
-#include <string>
-#include <bits/stdc++.h>
 #ifdef USE_CUDA
 #include <cuda_runtime.h>
 // #include <cutensor.h>
 #endif
-#include <map>
 
-#include <unordered_map>
+#include <stdlib.h>
+#include <stdio.h>
+#include <assert.h>
+#include <string>
+#include <bits/stdc++.h>
 #include <vector>
 #include <iostream>
 
 #include "macros.def"
 #include "utils/tensor.hpp"
-
 #include "kernels/inside.cuh"
 #include "kernels/outside.cuh"
 #include "kernels/expect_count.cuh"
@@ -24,6 +20,7 @@
 #include "grammar/grammar.hpp"
 #include "grammar/grammar_parser.hpp"
 #include "utils/printer.hpp"
+#include "utils/application_io.hpp"
 
 
 #define PRINT_INSIDE 0
@@ -32,7 +29,7 @@
 #define PRINT_GRAMMAR_EACH_UPDATION_BEFORE 0
 #define PRINT_GRAMMAR_EACH_UPDATION_AFTER 1
 
-#define SANITARY_OUTPUT 0
+#define SANITARY_OUTPUT 1
 
 #if SANITARY_OUTPUT == 1
 #undef PRINT_INSIDE
@@ -45,7 +42,6 @@
 void progress_bar(int progress, int total, int barWidth = 50) {
     float percentage = (float) progress / total;
     int pos = (int)(barWidth * percentage);
-    std::cout<<pos <<std::endl;
     std::cout << "[";
     for (int i = 0; i < barWidth; ++i) {
         if (i < pos) {
@@ -136,31 +132,6 @@ float* inside_algorithm(uint32_t* sequence, uint32_t* pretermination_lookuptable
     return alpha;
 };
 
-std::vector<std::vector<uint32_t>> parse_input_file(const std::string& file_path, pcfg* grammar){
-    std::vector<std::vector<uint32_t>> sentences;
-    std::string line;
-	std::ifstream file(file_path);
-    if (!file.is_open()) {
-        std::cerr << "Error: Could not open the input file at path: " << file_path << std::endl;
-        return sentences;
-    }
-    int N = grammar->N();
-
-    while (std::getline(file, line)) {
-        if(line == "")
-            continue;
-        std::vector<uint32_t> input_words;
-
-        std::string word;
-        std::stringstream line_string_stream(line);
-        while (getline(line_string_stream, word, ' ')) {
-            input_words.push_back(grammar->terminate_map.find(std::string("\'") + word + std::string("\'"))->second + N);
-        }
-        sentences.push_back(input_words);
-    }
-
-    return sentences;
-}
 
 int main(int argc, char* argv[])
 {
