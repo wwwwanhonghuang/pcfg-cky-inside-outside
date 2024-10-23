@@ -25,9 +25,10 @@
 #define BETA_INCREASE(SYMBOL, I, J, VALUE) beta[(SYMBOL) * MS * MS + (I) * MS + J] +=  VALUE;
 #define MU_INCREASE(SYMBOL, I, J, VALUE) mu[(SYMBOL) * MS * MS + (I) * MS + J] +=  VALUE;
 
-#define ALPHA(SYMBOL, I, J) alpha[(SYMBOL) * MS * MS + (I) * MS + J]
+#define ALPHA(SYMBOL, I, J) alpha[(SYMBOL) * MS * MS + (I) * MS + J] 
 #define BETA(SYMBOL, I, J) beta[(SYMBOL) * MS * MS + (I) * MS + J]
 #define MU(GID, I, J) mu[(GID) * MS * MS + (I) * MS + J]
+#define ALPHA_GET(SYMBOL, I, J) (SYMBOL) < N ? ALPHA(SYMBOL, I, J) : ((I) == (J) && sequence[I] == (SYMBOL) ? 1.0f : 0.0f)
 
 #define SYMBOL_STR(GRAMMAR, SYMBOL_ID, N) ((SYMBOL_ID) < N ? (GRAMMAR)->reversed_nonterminate_map[(SYMBOL_ID)]: (GRAMMAR)->reversed_terminate_map[(SYMBOL_ID) - N])
 

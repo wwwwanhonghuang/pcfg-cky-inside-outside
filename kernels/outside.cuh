@@ -43,6 +43,7 @@ void kernel_outside_main(float* mu, float* beta, uint32_t* sequence, uint32_t* p
                 }
                     
                 for(int k = 0; k < i; k++){
+                    
                     /* Specifal condition 1: Sym_C is a terminate, we have form B -> 'w' A */
                     if(IS_TERMINATE(sym_C) && IS_NONTERMINATE(sym_A)){ 
                         /* In the situation that C is a terminate 'w', as B span k to j,
@@ -87,6 +88,7 @@ void kernel_outside_main(float* mu, float* beta, uint32_t* sequence, uint32_t* p
                            We doesn't need to iterate split point k, as there only one symbol in the right side
                            of this rule. 'continue;' is uesed to skip k iterations.
                         */
+
                         BETA_INCREASE(sym_A, i, j, possibility * BETA(sym_B, i, j));
                         continue;
                 }
@@ -94,6 +96,7 @@ void kernel_outside_main(float* mu, float* beta, uint32_t* sequence, uint32_t* p
                 /* it doesn't need to calculate a terminate's outside possibility. */
                 if(IS_TERMINATE(sym_A)) continue; 
 
+                
                 for(int k = j + 1; k < sequence_length; k++){
                     /* in the condition of B -> A 'w'm and B span i-k.
                         'w' must span k-k, sequence[k] must equal to 'w', and A must span i-j, where j == k - 1. */
@@ -120,7 +123,7 @@ void kernel_outside_main(float* mu, float* beta, uint32_t* sequence, uint32_t* p
         #pragma omp parallel for
         for (int i = 0; i <= sequence_length - span_length; i++) {
             int j = i + span_length - 1; // Ending index of the spanx`
-            for (int k = i; k < j; k++) { // TODO: k < j? k == j?
+            for (int k = i; k <= j; k++) { // TODO: k < j? k == j?
                 for(std::tuple<uint32_t, uint32_t, uint32_t, float, uint32_t> item : PCFGItemIterator(N, grammar_index, grammar_table)){
                     uint32_t sym_A = std::get<0>(item);
                     uint32_t sym_B = std::get<1>(item);
@@ -129,9 +132,21 @@ void kernel_outside_main(float* mu, float* beta, uint32_t* sequence, uint32_t* p
                     uint32_t gid = std::get<4>(item);
 
                     float beta_A_i_j = BETA(sym_A, i, j);
+                    if(!IS_EPSILON(sym_C) && k == j) continue;
 
                     if(IS_TERMINATE(sym_B) && IS_TERMINATE(sym_C)){
                         if(IS_EPSILON(sym_C)){
+                            if((gid >= 2 && gid <=6) || gid == 10 || gid == 11){
+                                float increase = possibility * beta_A_i_j * (sequence[i] == sym_B && i == j ? 1.0f : 0.0f);
+                                if(increase > 0){
+                                    std::cout << "outside::gid::" << gid << ", (" << i << "," << j << ")" << " increase " << std::endl;
+                                }else if(sequence[i] == sym_B && i == j){
+                                    std::cout << "gid = " << gid << " i = " << i << " j = " << j << ", " << 
+                                    "possibility = " << possibility << " , " << "beta_A_i_j = " << beta_A_i_j << " , "
+                                    << " i == j :: " << (i == j)  << std::endl << std::endl;
+                                }
+                                
+                            }
                             // unreachable code.
                             #pragma omp atomic
                             MU_INCREASE(gid, i, j, possibility * beta_A_i_j * 

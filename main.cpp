@@ -25,49 +25,78 @@
 #include "grammar/grammar_parser.hpp"
 #include "utils/printer.hpp"
 
-#define PRINT_INSIDE 1
-#define PRINT_OUTSIDE 1
-#define PRINT_STEPS 1
-#define PRINT_GRAMMAR_EACH_UPDATION 0
 
-#define SANITARY_OUTPUT 1
+#define PRINT_INSIDE 1
+#define PRINT_OUTSIDE 0
+#define PRINT_STEPS 0
+#define PRINT_GRAMMAR_EACH_UPDATION_BEFORE 0
+#define PRINT_GRAMMAR_EACH_UPDATION_AFTER 1
+
+#define SANITARY_OUTPUT 0
 
 #if SANITARY_OUTPUT == 1
 #undef PRINT_INSIDE
 #undef PRINT_OUTSIDE
 #undef PRINT_STEPS
-#undef PRINT_GRAMMAR_EACH_UPDATION
+#undef PRINT_GRAMMAR_EACH_UPDATION_BEFORE
+#undef PRINT_GRAMMAR_EACH_UPDATION_AFTER
 #endif
+
+void progress_bar(int progress, int total, int barWidth = 50) {
+    float percentage = (float) progress / total;
+    int pos = (int)(barWidth * percentage);
+    std::cout<<pos <<std::endl;
+    std::cout << "[";
+    for (int i = 0; i < barWidth; ++i) {
+        if (i < pos) {
+            std::cout << "=";
+        } else if (i == pos) {
+            std::cout << ">";
+        } else {
+            std::cout << " ";
+        }
+    }
+    std::cout << "] " << int(percentage * 100.0) << " %  " << progress << "/" << total << "\r";
+    std::cout.flush();  // Ensures the line is updated in place
+}
 
 float* outside_algorithm(float* mu, float* beta, uint32_t* sequence, uint32_t* pretermination_lookuptable, 
                         uint32_t* grammar_index, uint32_t* grammar_table, float* alpha, 
                         int sequence_length, int n_syms, int N, int T, int MS, int n_grammars
                         #ifdef DEBUG_INSIDE_ALGORITHM
-                        ,pcfg* pcfg
+                        ,pcfg* grammar
                         #endif
                     ){
     #ifdef USE_CUDA
     <<<16, 16>>>
     #endif
     kernel_outside_main(mu, beta, sequence, pretermination_lookuptable,
-        grammar_index, grammar_table, alpha, sequence_length, n_syms, N, T, MS, n_grammars, pcfg);
+        grammar_index, grammar_table, alpha, sequence_length, n_syms, N, T, MS, n_grammars, grammar);
     return beta;
 }
 
 float* em_algorithm_calculate_expection_count(float* count, float* mu, float* beta, uint32_t* sequence, uint32_t* pretermination_lookuptable, 
                         uint32_t* grammar_index, uint32_t* grammar_table, float* alpha, 
-                        int sequence_length, int n_syms, int N, int T, int MS, int n_grammars){
+                        int sequence_length, int n_syms, int N, int T, int MS, int n_grammars
+                        #ifdef DEBUG_INSIDE_ALGORITHM
+                        ,pcfg* grammar
+                        #endif
+                        ){
     #ifdef USE_CUDA
     <<<16, 16>>>
     #endif
     kernel_expect_count(count, mu, beta, sequence, pretermination_lookuptable,
-        grammar_index, grammar_table, alpha, sequence_length, n_syms, N, T, MS, n_grammars);
+        grammar_index, grammar_table, alpha, sequence_length, n_syms, N, T, MS, n_grammars
+        #ifdef DEBUG_INSIDE_ALGORITHM
+            ,  grammar
+        #endif
+    );
     return count;
 }
 
 float* inside_algorithm(uint32_t* sequence, uint32_t* pretermination_lookuptable, 
                         uint32_t* grammar_index, uint32_t* grammar_table, float* alpha, 
-                        int sequence_length, int n_syms, int N, int T, int MS, int n_grammars, pcfg* pcfg = nullptr){
+                        int sequence_length, int n_syms, int N, int T, int MS, int n_grammars, pcfg* grammar = nullptr){
     
     if(n_syms >= 65536) return nullptr;
 
@@ -86,7 +115,7 @@ float* inside_algorithm(uint32_t* sequence, uint32_t* pretermination_lookuptable
     (sequence, pretermination_lookuptable, grammar_index, grammar_table, alpha, 
                         sequence_length, n_syms, N, T, MS, n_grammars 
                         #ifdef DEBUG_INSIDE_ALGORITHM
-                            ,pcfg
+                            ,grammar
                         #endif
     );
     // 3. fill alpha (recursive case).
@@ -97,7 +126,7 @@ float* inside_algorithm(uint32_t* sequence, uint32_t* pretermination_lookuptable
     (sequence, pretermination_lookuptable, grammar_index, grammar_table, alpha, 
                         sequence_length, n_syms, N, T, MS, n_grammars
                         #ifdef DEBUG_INSIDE_ALGORITHM
-                        , pcfg
+                        , grammar
                         #endif
                         );
     
@@ -143,11 +172,20 @@ int main(int argc, char* argv[])
     float* count = new float[grammar->cnt_grammar]();
     float* f = new float[grammar->cnt_grammar]();
 
+    std::cout << "Load sentences..." << std::endl;
     std::vector<std::vector<uint32_t>> sentences = parse_input_file(input_filename, grammar);
+    std::cout << "Load sentences finished. Total instances:" << sentences.size() << std::endl;
+
     if(sentences.empty()) return 0;
     
+    int sentence_id = 0;
     for(auto& sentence: sentences){
-        // print_grammar(grammar);
+        progress_bar(sentence_id + 1, sentences.size());
+        
+        #if PRINT_GRAMMAR_EACH_UPDATION_BEFORE == 1
+        std::cout << "grammar before iteration: " << sentence_id << " :" << std::endl;
+        print_grammar(grammar);
+        #endif
         int N = grammar->N();
         // std::cout << " -- proceed sentence: ";
         // for(auto&& word_id : sentence){
@@ -160,6 +198,7 @@ int main(int argc, char* argv[])
         #if PRINT_STEPS == 1
         std::cout << "1. Proceeding Inside Algorithm..." << std::endl;
         #endif
+        
         inside_algorithm(sequence, 
             (uint32_t*)(grammar->preterminate_rule_lookup_table),
             (uint32_t*)(grammar->grammar_index),
@@ -170,6 +209,7 @@ int main(int argc, char* argv[])
             , grammar
             #endif
         );
+
         #if PRINT_STEPS == 1
         std::cout << "Inside Algorithm Finished." << std::endl;
         #endif
@@ -211,7 +251,12 @@ int main(int argc, char* argv[])
             (uint32_t*)(grammar->grammar_index),
             (uint32_t*)(grammar->grammar_table),
             alpha,
-            sequence_length, grammar->n_syms(), grammar->N(), grammar->T(), MAX_SEQUENCE_LENGTH, grammar->cnt_grammar);
+            sequence_length, grammar->n_syms(), grammar->N(), grammar->T(), MAX_SEQUENCE_LENGTH, 
+            grammar->cnt_grammar
+            #ifdef DEBUG_INSIDE_ALGORITHM
+            , grammar
+            #endif
+            );
         #if PRINT_STEPS == 1
         std::cout << "Calculate Expectation Count Finished." << std::endl;
         #endif
@@ -224,14 +269,22 @@ int main(int argc, char* argv[])
             (uint32_t*)(grammar->grammar_index),
             (grammar->grammar_table),
             alpha,
-            sequence_length, grammar->n_syms(), grammar->N(), grammar->T(), MAX_SEQUENCE_LENGTH, grammar->cnt_grammar);
+            sequence_length, grammar->n_syms(), grammar->N(), grammar->T(),
+             MAX_SEQUENCE_LENGTH, grammar->cnt_grammar
+             #ifdef DEBUG_INSIDE_ALGORITHM
+            , grammar
+            #endif
+            );
         #if PRINT_STEPS == 1
         std::cout << "Update Parameter Finished." << std::endl;
         #endif
 
-        #if PRINT_GRAMMAR_EACH_UPDATION == 1
+        #if PRINT_GRAMMAR_EACH_UPDATION_AFTER == 1
+        std::cout << "grammar after iteration: " << sentence_id << " :" << std::endl;
+
         print_grammar(grammar);
         #endif
+        sentence_id++;
     }
 
     std::cout << std::endl << "All finished" << std::endl;

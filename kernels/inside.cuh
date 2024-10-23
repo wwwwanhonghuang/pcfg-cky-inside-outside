@@ -75,7 +75,7 @@ void kernel_inside_base_fill_alpha(
         uint32_t* grammar_index, uint32_t* grammar_table, float* alpha, 
         int sequence_length, int n_syms, int N, int T, int MS, int n_grammars
         #ifdef DEBUG_INSIDE_ALGORITHM
-        , pcfg* pcfg
+        , pcfg* grammar
         #endif
         ) {
     #ifndef USE_CUDA
@@ -165,14 +165,14 @@ void kernel_inside_computeSpanKernel(uint32_t* sequence, uint32_t* preterminatio
         uint32_t* grammar_index, uint32_t* grammar_table, float* alpha, 
         int sequence_length, int n_syms, int N, int T, int MS, int n_grammars
         #ifdef DEBUG_INSIDE_ALGORITHM
-        , pcfg* pcfg
+        , pcfg* grammar
         #endif
         ) {
     #ifndef USE_CUDA                        
         for (int span_length = 2; span_length <= sequence_length; span_length++) {
             #pragma omp parallel for
             for (int i = 0; i <= sequence_length - span_length; i++) {
-                int j = i + span_length - 1; // Ending index of the spanx`
+                int j = i + span_length - 1; // Ending index of the span
                 for (int k = i; k < j; k++) {
                     // iterate all grammars
                     for(std::tuple<uint32_t, uint32_t, uint32_t, float, uint32_t> item : PCFGItemIterator(N, grammar_index, grammar_table)){
