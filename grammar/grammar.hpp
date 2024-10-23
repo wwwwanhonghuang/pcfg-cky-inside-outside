@@ -3,8 +3,10 @@
 #include <string>
 #include <map>
 #include <vector>
+#include <iostream>
+#include <cassert>
 #include "data_structure.hpp"
-
+#include "macros.def"
 struct pcfg_grammar_item{
 public:
     std::string left;
@@ -71,5 +73,6 @@ private:
 };
 
 pcfg_grammar_item parse_grammar_single_line(std::string line);
+std::vector<std::tuple<uint32_t, uint32_t>> generate_inside_perterminate_iteration_paths(pcfg* grammar);
 #endif
 

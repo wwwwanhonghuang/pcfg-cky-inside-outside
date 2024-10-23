@@ -119,3 +119,79 @@ PCFGItemIterator PCFGItemIterator::end() const{
         iterator._current_gid =  *(this->_grammar_index + this->_N) / 2;
         return iterator;
 }
+
+
+std::vector<std::tuple<uint32_t, uint32_t>> generate_inside_perterminate_iteration_paths(pcfg* grammar){
+    int n_syms = grammar->N() + grammar->T();
+    int N = grammar->N();
+    bool dependency_graph[n_syms * n_syms]{0};
+    int edges = 0;
+    std::vector<std::tuple<uint32_t, uint32_t>> rules = std::vector<std::tuple<uint32_t, uint32_t>>();
+    std::vector<std::tuple<uint32_t, uint32_t>> results;
+    
+    for(std::tuple<uint32_t, uint32_t, uint32_t, float, uint32_t> item : 
+                                PCFGItemIterator(N, (uint32_t*) grammar->grammar_index, (uint32_t*)grammar->grammar_table)){
+        uint32_t sym_A = std::get<0>(item);
+        uint32_t sym_B = std::get<1>(item);
+        uint32_t sym_C = std::get<2>(item);
+        float possibility = std::get<3>(item);
+        uint32_t gid = std::get<4>(item);
+        if(!IS_EPSILON(sym_C)) continue;
+        dependency_graph[sym_A * n_syms + sym_B] = 1;
+        edges++;
+    }
+    
+    // topological sort
+    for(int sym_B = 0; sym_B < n_syms; sym_B++){
+        bool elimnatable = true;
+        for(int sym_A = 0; sym_A < n_syms; sym_A++){
+            assert(sym_A != sym_B || !dependency_graph[sym_B * n_syms + sym_A]);
+            if(dependency_graph[sym_B * n_syms + sym_A]){
+                elimnatable = false;
+            }
+        }
+        if(!elimnatable) continue;
+        for(int sym_A = 0; sym_A < n_syms; sym_A++){
+            if(dependency_graph[sym_A * n_syms + sym_B]){
+                dependency_graph[sym_A * n_syms + sym_B] = 0;
+                rules.emplace_back(std::make_pair(sym_A, sym_B));
+                edges--;
+            }
+        }
+    }
+    
+    if(edges > 0){
+        std::cout << "Cyclic preterminate production detected." << std::endl;
+        assert(edges == 0);
+    }
+    
+    for(auto&& syms : rules){
+        uint32_t sym_A = std::get<0>(syms);
+        uint32_t sym_B = std::get<1>(syms);
+
+        for(std::tuple<uint32_t, uint32_t, uint32_t, float, uint32_t> item : 
+                                PCFGItemIterator(N, (uint32_t*) grammar->grammar_index, (uint32_t*)grammar->grammar_table)){
+        
+            uint32_t _sym_A = std::get<0>(item);
+            uint32_t _sym_B = std::get<1>(item);
+            uint32_t sym_C = std::get<2>(item);
+            float possibility = std::get<3>(item);
+            uint32_t gid = std::get<4>(item);
+            if(!IS_EPSILON(sym_C)) continue;
+            if(sym_A == _sym_A && sym_B == _sym_B){
+                results.emplace_back(std::make_pair(gid, sym_A));
+            }
+        }
+    }
+
+    // for(auto&& gid : results){
+    //     uint32_t* addr = ((uint32_t*)grammar->grammar_table + gid * 2);
+    //     uint32_t syms = *addr;
+    //     uint32_t sym_A = (syms >> 16) & 0xFFFF;
+    //     uint32_t sym_B = syms & 0xFFFF;
+
+    //     std::cout << SYMBOL_STR(sym_A) << "->" << SYMBOL_STR(sym_B) << sym_B << std::endl;
+    // }
+    
+    return results;
+}

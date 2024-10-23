@@ -12,11 +12,12 @@ __global__
 #endif
 void kernel_outside_main(float* mu, float* beta, uint32_t* sequence, uint32_t* pretermination_lookuptable, 
                         uint32_t* grammar_index, uint32_t* grammar_table, float* alpha, 
-                        int sequence_length, int n_syms, int N, int T, int MS, int n_grammars
-                                #ifdef DEBUG_INSIDE_ALGORITHM
-                                , pcfg* grammar
-                                #endif
-                        ){
+                        int sequence_length, int n_syms, int N, int T, int MS, int n_grammars,
+                        std::vector<std::tuple<uint32_t, uint32_t>> inside_order_1_rule_iteration_path
+                        #ifdef DEBUG_INSIDE_ALGORITHM
+                        , pcfg* grammar
+                        #endif
+){
     #ifndef USE_CUDA
     memset(mu, 0, n_grammars * MS * MS * sizeof(float));
     memset(beta, 0, n_syms * MS * MS * sizeof(float));
@@ -67,13 +68,6 @@ void kernel_outside_main(float* mu, float* beta, uint32_t* sequence, uint32_t* p
                 if(IS_TERMINATE(sym_A)) continue; 
 
                 if(IS_EPSILON(sym_C)){
-                    // B->A
-                    /* grammar become B -> A. In this condition, B -> A contributes possibility * beta_B
-                        to A's outside possibility spanning i to j-th symbols in the sequence. 
-                        We doesn't need to iterate split point k, as there only one symbol in the right side
-                        of this rule. 'continue;' is uesed to skip k iterations.
-                    */
-                    BETA_INCREASE(sym_A, i, j, possibility * BETA(sym_B, i, j));
                     continue;
                 }else{
                     // B -> AC
@@ -88,6 +82,28 @@ void kernel_outside_main(float* mu, float* beta, uint32_t* sequence, uint32_t* p
                     }  
                 }               
             }
+
+            for(std::vector<std::tuple<uint32_t, uint32_t>>::reverse_iterator it = inside_order_1_rule_iteration_path.rbegin(); 
+                it != inside_order_1_rule_iteration_path.rend(); ++it) {
+                std::tuple<uint32_t, uint32_t> rule_id = *it;
+                uint32_t gid = std::get<0>(rule_id);
+                uint32_t sym_B = std::get<1>(rule_id);
+                uint32_t* addr = (grammar_table + gid * 2);
+                uint32_t sym_A = ((*addr) >> 16) & 0xFFFF;
+                float alpha_B = ALPHA_GET(sym_B, i, j);
+                float possibility = *(float*)(addr + 1);
+                if(IS_TERMINATE(sym_A)) continue; 
+                // B->A
+                /* grammar become B -> A. In this condition, B -> A contributes possibility * beta_B
+                    to A's outside possibility spanning i to j-th symbols in the sequence. 
+                    We doesn't need to iterate split point k, as there only one symbol in the right side
+                    of this rule. 'continue;' is uesed to skip k iterations.
+                */
+                #pragma omp atomic
+                BETA_INCREASE(sym_A, i, j, possibility * BETA(sym_B, i, j));
+            }
+            
+            
         }
     }
 
@@ -111,7 +127,6 @@ void kernel_outside_main(float* mu, float* beta, uint32_t* sequence, uint32_t* p
             }else{
                 continue;
             }
-        
         }
     }
     

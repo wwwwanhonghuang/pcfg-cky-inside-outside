@@ -163,7 +163,8 @@ __global__
 #endif
 void kernel_inside_computeSpanKernel(uint32_t* sequence, uint32_t* pretermination_lookuptable, 
         uint32_t* grammar_index, uint32_t* grammar_table, float* alpha, 
-        int sequence_length, int n_syms, int N, int T, int MS, int n_grammars
+        int sequence_length, int n_syms, int N, int T, int MS, int n_grammars,
+        std::vector<std::tuple<uint32_t, uint32_t>> inside_order_1_rule_iteration_path
         #ifdef DEBUG_INSIDE_ALGORITHM
         , pcfg* grammar
         #endif
@@ -189,16 +190,31 @@ void kernel_inside_computeSpanKernel(uint32_t* sequence, uint32_t* preterminatio
                             float alpha_C = ALPHA_GET(sym_C, k + 1, j);
                             #pragma omp atomic
                             ALPHA_INCREASE(sym_A, i, j, alpha_B * alpha_C * possibility);
-                        }else{
-                            // A->B
-                            /* TODO: correctness of the result of follow code is not always ensured, 
-                                for A_ij^k -> B_ij^k. alpha(B_ij^k) must be calculated before 
-                                calculating A_ij^k*/
-                            float alpha_B = ALPHA_GET(sym_B, i, j);
-                            #pragma omp atomic
-                            ALPHA_INCREASE(sym_A, i, j, alpha_B * possibility);
-                        }                        
+                        }
+                        
+                        // else{
+                        //     // A->B
+                        //     /* TODO: correctness of the result of follow code is not always ensured, 
+                        //         for A_ij^k -> B_ij^k. alpha(B_ij^k) must be calculated before 
+                        //         calculating A_ij^k*/
+                        //     float alpha_B = ALPHA_GET(sym_B, i, j);
+                        //     #pragma omp atomic
+                        //     ALPHA_INCREASE(sym_A, i, j, alpha_B * possibility);
+                        // }                        
                     }
+
+                    // A->B
+                    for(std::tuple<uint32_t, uint32_t>& rule_id: inside_order_1_rule_iteration_path) {
+                        uint32_t gid = std::get<0>(rule_id);
+                        uint32_t sym_A = std::get<1>(rule_id);
+                        uint32_t* addr = (grammar_table + gid * 2);
+                        uint32_t sym_B = ((*addr) >> 16) & 0xFFFF;
+                        float alpha_B = ALPHA_GET(sym_B, i, j);
+                        float possibility = *(float*)(addr + 1);
+                        #pragma omp atomic
+                        ALPHA_INCREASE(sym_A, i, j, alpha_B * possibility);
+                    }                        
+                    
                 }
             }
         }
