@@ -39,9 +39,7 @@ void kernel_update_parameters(float* f, float* count, float* mu, float* beta, ui
                 float possibility = grammar_table[pt + 1].float32_value;
                 uint32_t sym_B = (symbols >> 16) & 0xFFFF;
                 uint32_t sym_C = symbols & 0xFFFF;
-                // if((gid >= 2 && gid <=6) || gid == 10 || gid == 11){
-                //         std::cout << "gid:" << gid << ", count[gid] = " << count[gid] << std::endl;
-                // }
+                
                 f[gid] += count[gid];
                 gid++;
             }
@@ -59,9 +57,6 @@ void kernel_update_parameters(float* f, float* count, float* mu, float* beta, ui
                     uint32_t sym_B = (symbols >> 16) & 0xFFFF;
                     uint32_t sym_C = symbols & 0xFFFF;
                     float f_gid = f[gid];
-                    // if((gid >= 2 && gid <=6) || gid == 10 || gid == 11){
-                    //     std::cout << "gid:" << gid << ", f[gid] = " << (abs(f_gid - 0) < epsilon ? epsilon : f_gid) << std::endl;
-                    // }
                     S += abs(f_gid - 0) < epsilon ? epsilon : f_gid;
                     gid ++;
                 }

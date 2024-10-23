@@ -25,65 +25,75 @@ void kernel_outside_main(float* mu, float* beta, uint32_t* sequence, uint32_t* p
     /* base case: S is the root of the whole sequence with possibility 1.0. */
     BETA(0, 0, sequence_length - 1) = 1.0;
 
+    /* all cases:
+                    1. B->AC      <1>
+                    2. B->CA      <1>
+                    3. B->A       <2>
+                    4. B->C       (x)
+                    5. B->w_A C   <3>
+                    6. B->w_C A   <1>
+                    7. B->A w_C   <1>
+                    8. B->C w_A   <3>
+                    9. B->w_A w_C <3>
+                    10. B->w_Cw_A <3>
+                    11. B->w_A    <4>
+                    12. B->w_C    (x)
+        , where w_A w_C are terminates.
+    */
+
+
+    // Case 1: A is non-terminate 
+    // confirm these codes are correct.
     /* diagonal-order iteration */
     for(int span_length = sequence_length; span_length >= 1; span_length--){
         /* for one diagnal of the beta table, all cell can be parallelly computed. */
         #pragma omp parallel for
         for(int i = 0; i < sequence_length - span_length + 1; i++){
             int j = i + span_length - 1;
-            for(std::tuple<uint32_t, uint32_t, uint32_t, float, uint32_t> item : PCFGItemIterator(N, grammar_index, grammar_table)){
-                uint32_t sym_B = std::get<0>(item);
-                uint32_t sym_C = std::get<1>(item);
-                uint32_t sym_A = std::get<2>(item);
-                float possibility = std::get<3>(item);
-
-                /* the outside possibility of the symbol we are currently attempting to calculate (i.e., symbol A)
-                 cannot be empty. */
-                if(IS_EPSILON(sym_A)){
-                    continue; 
-                }
-
-                if(IS_TERMINATE(sym_A))
-                    continue;
+            // 1. 2. 6. 7.
+            for(std::tuple<uint32_t, uint32_t, uint32_t, float, uint32_t> item : 
+                PCFGItemIterator(N, grammar_index, grammar_table)){                    
+                for(int k = 0; k < i; k++){       
+                    uint32_t sym_B = std::get<0>(item);
+                    uint32_t sym_C = std::get<1>(item);
+                    uint32_t sym_A = std::get<2>(item);
+                    float possibility = std::get<3>(item);
                     
-                for(int k = 0; k < i; k++){                    
-                    // C: [k, i - 1] part
-                    float alpha_C = ALPHA_GET(sym_C, k, i - 1);
-                    // B: [k, j] part
-                    float beta_B = BETA(sym_B, k, j);
+                    // 1. 7.
+                    if(IS_NONTERMINATE(sym_A) && !IS_EPSILON(sym_C)){
+                        // C: [k, i - 1] part
+                        float alpha_C = ALPHA_GET(sym_C, k, i - 1);
+                        // B: [k, j] part
+                        float beta_B = BETA(sym_B, k, j);
 
-                    #pragma omp atomic
-                    // A: [i, j] part
-                    BETA_INCREASE(sym_A, i, j, possibility * alpha_C * beta_B);
+                        #pragma omp atomic
+                        // A: [i, j] part
+                        BETA_INCREASE(sym_A, i, j, possibility * alpha_C * beta_B);   
+                    }   
+                }
+
+                for(int k = j + 1; k < sequence_length; k++){       
+                    uint32_t sym_B = std::get<0>(item);
+                    uint32_t sym_A = std::get<1>(item);
+                    uint32_t sym_C = std::get<2>(item);
+                    float possibility = std::get<3>(item);
+                    // 2. 6.
+                    if(IS_NONTERMINATE(sym_A) && !IS_EPSILON(sym_C)){
+                        // C: [k, i - 1] part
+                        float alpha_C = ALPHA_GET(sym_C, j + 1, k);
+                        // B: [k, j] part
+                        float beta_B = BETA(sym_B, i, k);
+
+                        #pragma omp atomic
+                        // A: [i, j] part
+                        BETA_INCREASE(sym_A, i, j, possibility * alpha_C * beta_B);   
+                    }   
                 }
             }
-            
-            // B -> AC.
-            for(std::tuple<uint32_t, uint32_t, uint32_t, float, uint32_t> item : PCFGItemIterator(N, grammar_index, grammar_table)){
-                uint32_t sym_B = std::get<0>(item);
-                uint32_t sym_A = std::get<1>(item);
-                uint32_t sym_C = std::get<2>(item);
-                float possibility = std::get<3>(item);
-                /* it doesn't need to calculate a terminate's outside possibility. */
-                if(IS_TERMINATE(sym_A)) continue; 
 
-                if(IS_EPSILON(sym_C)){
-                    continue;
-                }else{
-                    // B -> AC
-                    for(int k = j + 1; k < sequence_length; k++){
-                        /* C: [j + 1, k] part */
-                        float alpha_C = ALPHA_GET(sym_C, j + 1, k);
-                        // B: [i, k] part
-                        float beta_B = BETA(sym_B, i, k); 
-                        
-                        #pragma omp atomic
-                        BETA_INCREASE(sym_A, i, j, possibility * alpha_C * beta_B);
-                    }  
-                }               
-            }
-
+            // 3.
             for(std::vector<std::tuple<uint32_t, uint32_t>>::reverse_iterator it = inside_order_1_rule_iteration_path.rbegin(); 
+                // B -> A
                 it != inside_order_1_rule_iteration_path.rend(); ++it) {
                 std::tuple<uint32_t, uint32_t> rule_id = *it;
                 uint32_t gid = std::get<0>(rule_id);
@@ -92,6 +102,7 @@ void kernel_outside_main(float* mu, float* beta, uint32_t* sequence, uint32_t* p
                 uint32_t sym_A = ((*addr) >> 16) & 0xFFFF;
                 float alpha_B = ALPHA_GET(sym_B, i, j);
                 float possibility = *(float*)(addr + 1);
+                
                 if(IS_TERMINATE(sym_A)) continue; 
                 // B->A
                 /* grammar become B -> A. In this condition, B -> A contributes possibility * beta_B
@@ -102,35 +113,74 @@ void kernel_outside_main(float* mu, float* beta, uint32_t* sequence, uint32_t* p
                 #pragma omp atomic
                 BETA_INCREASE(sym_A, i, j, possibility * BETA(sym_B, i, j));
             }
-            
-            
-        }
-    }
 
-    // fill terminate's beta
-    #pragma omp parallel for
-    for(int i = 0; i < sequence_length; i++){
-        int j = i;
-        
-        // B -> AC.
-        for(std::tuple<uint32_t, uint32_t, uint32_t, float, uint32_t> item : PCFGItemIterator(N, grammar_index, grammar_table)){
-            uint32_t sym_B = std::get<0>(item);
-            uint32_t sym_A = std::get<1>(item);
-            uint32_t sym_C = std::get<2>(item);
-            float possibility = std::get<3>(item);
-            /* it doesn't need to calculate a terminate's outside possibility. */
-            if(IS_TERMINATE(sym_A) && IS_EPSILON(sym_C)){
-                // B->w (== A)
+            // 5. 8. 9. 10.
+            // Case 2: A is terminate 
+            for(std::tuple<uint32_t, uint32_t, uint32_t, float, uint32_t> item : PCFGItemIterator(N, grammar_index, grammar_table)){                    
+                    
+                uint32_t sym_B = std::get<0>(item);
+                float possibility = std::get<3>(item);
+                
+                uint32_t sym_A = std::get<1>(item);
+                uint32_t sym_C = std::get<2>(item);
+                if(IS_NONTERMINATE(sym_A) || i != j) break;
+                if(IS_EPSILON(sym_C)) continue;
+
+                // 5.
+                if(IS_TERMINATE(sym_A) && IS_NONTERMINATE(sym_C)){
+                    for(int k = j + 1; k < sequence_length; k++){
+                        BETA(sym_A, i, j) += BETA(sym_B, i, k) * ALPHA(sym_C, j + 1, k) * possibility;
+                    }
+                }
+                // 9. 
+                if(IS_TERMINATE(sym_A) && IS_TERMINATE(sym_C)){
+                    if(j + 1 < sequence_length){
+                        BETA(sym_A, i, j) += ALPHA(sym_C, j + 1, j + 1) * BETA(sym_B, i, j + 1) * possibility;
+                    }
+                }
+                
+                sym_C = std::get<1>(item);
+                sym_A = std::get<2>(item);
+                // 8.
+                if(IS_NONTERMINATE(sym_C) && IS_TERMINATE(sym_A)){
+                    for(int k = 0; k < i - 1; k++){
+                        BETA(sym_A, i, j) += ALPHA(sym_C, k, i - 1) * BETA(sym_B, k, j) * possibility;
+                    }
+                }
+                // 10.
+                if(IS_TERMINATE(sym_C) && IS_TERMINATE(sym_A)){
+                    if(i - 1 >= 0){
+                        BETA(sym_A, i, j) += ALPHA(sym_C, i - 1, i - 1) * BETA(sym_B, i - 1, j) * possibility;
+                    }                   
+                }
+
+                
+            
+            }
+
+            // 11.
+            for(std::vector<std::tuple<uint32_t, uint32_t>>::reverse_iterator it = inside_order_1_rule_iteration_path.rbegin(); 
+                // B -> A
+                it != inside_order_1_rule_iteration_path.rend(); ++it) {
+                std::tuple<uint32_t, uint32_t> rule_id = *it;
+                uint32_t gid = std::get<0>(rule_id);
+                uint32_t sym_B = std::get<1>(rule_id);
+                uint32_t* addr = (grammar_table + gid * 2);
+                uint32_t sym_A = ((*addr) >> 16) & 0xFFFF;
+                float alpha_B = ALPHA_GET(sym_B, i, j);
+                float possibility = *(float*)(addr + 1);
+                if(i != j) break;
+                if(IS_NONTERMINATE(sym_A)) continue; 
+                // B->w_A
+                
                 #pragma omp atomic
-                BETA_INCREASE(sym_A, i, j, possibility * (sequence[i] == sym_A ? 1.0f : 0.0f) * BETA(sym_B, i, i));
-                // B[i, i] must be calculated correctly.
-            }else{
-                continue;
+                BETA_INCREASE(sym_A, i, j, possibility * BETA(sym_B, i, j));
             }
         }
     }
-    
 
+    
+    
     // fill mu[grammar_id, i, j]
     for (int span_length = 1; span_length < sequence_length + 1; span_length++) {
         #pragma omp parallel for
@@ -143,55 +193,13 @@ void kernel_outside_main(float* mu, float* beta, uint32_t* sequence, uint32_t* p
                     uint32_t sym_C = std::get<2>(item);
                     float possibility = std::get<3>(item);
                     uint32_t gid = std::get<4>(item);
+                    if(k == j && !IS_EPSILON(sym_C)) continue;
 
                     float beta_A_i_j = BETA(sym_A, i, j);
-                    if(!IS_EPSILON(sym_C) && k == j) continue;
-
-                    if(IS_TERMINATE(sym_B) && IS_TERMINATE(sym_C)){
-                        if(IS_EPSILON(sym_C)){
-                            if((gid >= 2 && gid <=6) || gid == 10 || gid == 11){
-                                float increase = possibility * beta_A_i_j * (sequence[i] == sym_B && i == j ? 1.0f : 0.0f);
-                                if(increase > 0){
-                                    // std::cout << "outside::gid::" << gid << ", (" << i << "," << j << ")" << " increase " << std::endl;
-                                }else if(sequence[i] == sym_B && i == j){
-                                    // std::cout << "<<gid = " << gid << " i = " << i << " j = " << j << ", " << 
-                                    // "possibility = " << possibility << " , " << "beta_A_i_j = " << beta_A_i_j << " , "
-                                    // << " i == j :: " << (i == j) << ">>" << std::endl << std::endl;
-                                }
-                            }
-                            // unreachable code.
-                            #pragma omp atomic
-                            MU_INCREASE(gid, i, j, possibility * beta_A_i_j * 
-                                (sequence[i] == sym_B && i == j ? 1.0f : 0.0f));
-                        }else{
-                            float condition = (sequence[i] == sym_B && sequence[j] == sym_C &&  span_length == 2 ? 1.0f : 0.0f);
-                            #pragma omp atomic
-                            MU_INCREASE(gid, i, j, possibility * beta_A_i_j * condition);
-                        }
-                    }else if(IS_NONTERMINATE(sym_B) && IS_TERMINATE(sym_C)){
-                        if(IS_EPSILON(sym_C)){
-                            /* this condition may A -> B only be considered once in multiple k-axis loops. */
-                            float limit_term = (i == k ? 1.0f : 0.0f); 
-                            float alpha_B_i_j = ALPHA(sym_B, i, j);
-                            #pragma omp atomic
-                            MU_INCREASE(gid, i, j, possibility * beta_A_i_j * alpha_B_i_j * limit_term);
-                        }else{
-                            float condition = (sequence[j] == sym_C && k == j - 1 ? 1.0f : 0.0f);
-                            float alpha_B_i_k = ALPHA(sym_B, i, k);
-                            #pragma omp atomic
-                            MU_INCREASE(gid, i, j, possibility * beta_A_i_j * alpha_B_i_k * condition);
-                        }
-                    }else if(sym_B >= N && sym_C < N){
-                        float condition = (sequence[i] == sym_B && k == i ? 1.0f : 0.0f);
-                        float alpha_C_k_p1_j = ALPHA(sym_C, k + 1, j);
-                        #pragma omp atomic
-                        MU_INCREASE(gid, i, j, possibility * beta_A_i_j * alpha_C_k_p1_j * condition);
-                    }else{
-                        float alpha_B_i_k = ALPHA(sym_B, i, k);
-                        float alpha_C_k_p1_j = ALPHA(sym_C, k + 1, j);
-                        #pragma omp atomic
-                        MU_INCREASE(gid, i, j, possibility * beta_A_i_j * alpha_B_i_k * alpha_C_k_p1_j);
-                    }
+                    float alpha_B_i_k = ALPHA_GET(sym_B, i, k);
+                    float alpha_C_k_p1_j = ALPHA_GET(sym_C, k + 1, j);
+                    #pragma omp atomic
+                    MU_INCREASE(gid, i, j, possibility * beta_A_i_j * alpha_B_i_k * alpha_C_k_p1_j);
                 }
             }
         }

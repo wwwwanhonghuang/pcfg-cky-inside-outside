@@ -32,12 +32,15 @@ public:
     int N(){
         return this->nonterminate_map.size();
     }
+
     int T(){
         return this->terminate_map.size();
     }
+
     int n_syms(){
         return this->N() + this->T();
     }
+    
     int get_sym_id(const std::string& symbol);
 };
 
