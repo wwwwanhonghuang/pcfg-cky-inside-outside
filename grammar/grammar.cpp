@@ -128,7 +128,8 @@ std::vector<std::tuple<uint32_t, uint32_t>> generate_inside_perterminate_iterati
     int edges = 0;
     std::vector<std::tuple<uint32_t, uint32_t>> rules = std::vector<std::tuple<uint32_t, uint32_t>>();
     std::vector<std::tuple<uint32_t, uint32_t>> results;
-    
+    std::map<uint32_t, uint32_t> gid_map = {};
+
     for(std::tuple<uint32_t, uint32_t, uint32_t, float, uint32_t> item : 
                                 PCFGItemIterator(N, (uint32_t*) grammar->grammar_index, (uint32_t*)grammar->grammar_table)){
         uint32_t sym_A = std::get<0>(item);
@@ -138,6 +139,7 @@ std::vector<std::tuple<uint32_t, uint32_t>> generate_inside_perterminate_iterati
         uint32_t gid = std::get<4>(item);
         if(!IS_EPSILON(sym_C)) continue;
         dependency_graph[sym_A * n_syms + sym_B] = 1;
+        gid_map[((sym_A << 16) & 0xFFFF0000) | (sym_B & 0x0000FFFF)] = gid;
         edges++;
     }
     
@@ -151,6 +153,7 @@ std::vector<std::tuple<uint32_t, uint32_t>> generate_inside_perterminate_iterati
             }
         }
         if(!elimnatable) continue;
+
         for(int sym_A = 0; sym_A < n_syms; sym_A++){
             if(dependency_graph[sym_A * n_syms + sym_B]){
                 dependency_graph[sym_A * n_syms + sym_B] = 0;
@@ -169,29 +172,23 @@ std::vector<std::tuple<uint32_t, uint32_t>> generate_inside_perterminate_iterati
         uint32_t sym_A = std::get<0>(syms);
         uint32_t sym_B = std::get<1>(syms);
 
-        for(std::tuple<uint32_t, uint32_t, uint32_t, float, uint32_t> item : 
-                                PCFGItemIterator(N, (uint32_t*) grammar->grammar_index, (uint32_t*)grammar->grammar_table)){
-        
-            uint32_t _sym_A = std::get<0>(item);
-            uint32_t _sym_B = std::get<1>(item);
-            uint32_t sym_C = std::get<2>(item);
-            float possibility = std::get<3>(item);
-            uint32_t gid = std::get<4>(item);
-            if(!IS_EPSILON(sym_C)) continue;
-            if(sym_A == _sym_A && sym_B == _sym_B){
-                results.emplace_back(std::make_pair(gid, sym_A));
-            }
+        // Lookup gid directly from gid_map
+        auto it = gid_map.find((sym_A << 16) | sym_B);
+        if (it != gid_map.end()) {
+            results.emplace_back(std::make_pair(it->second, sym_A));
+        }else{
+            std::cout << "Algorithm Error: cannot find a specific rule's ID." << std::endl;
         }
     }
 
-    // for(auto&& gid : results){
-    //     uint32_t* addr = ((uint32_t*)grammar->grammar_table + gid * 2);
-    //     uint32_t syms = *addr;
-    //     uint32_t sym_A = (syms >> 16) & 0xFFFF;
-    //     uint32_t sym_B = syms & 0xFFFF;
+    for(auto&& gid : results){
+        uint32_t* addr = ((uint32_t*)grammar->grammar_table + std::get<0>(gid) * 2);
+        uint32_t syms = *addr;
+        uint32_t sym_A = (syms >> 16) & 0xFFFF;
+        uint32_t sym_B = syms & 0xFFFF;
 
-    //     std::cout << SYMBOL_STR(sym_A) << "->" << SYMBOL_STR(sym_B) << sym_B << std::endl;
-    // }
+        std::cout << SYMBOL_STR(sym_A) << "->" << SYMBOL_STR(sym_B) << sym_B << std::endl;
+    }
     
     return results;
 }

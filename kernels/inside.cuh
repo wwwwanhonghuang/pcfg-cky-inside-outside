@@ -21,9 +21,6 @@
  * length: Current input sequence length
  * alpha: inside possibility with shape (N, S, S)
 **/
-
-
-
 #ifdef USE_CUDA
 __device__ 
 #endif
@@ -183,24 +180,14 @@ void kernel_inside_computeSpanKernel(uint32_t* sequence, uint32_t* preterminatio
                         float possibility = std::get<3>(item);
                         uint32_t gid = std::get<4>(item);
 
+                        if(IS_EPSILON(sym_C)) continue;
+
                         
-                        if(!IS_EPSILON(sym_C)){
-                            // A->BC
-                            float alpha_B = ALPHA_GET(sym_B, i, k);
-                            float alpha_C = ALPHA_GET(sym_C, k + 1, j);
-                            #pragma omp atomic
-                            ALPHA_INCREASE(sym_A, i, j, alpha_B * alpha_C * possibility);
-                        }
-                        
-                        // else{
-                        //     // A->B
-                        //     /* TODO: correctness of the result of follow code is not always ensured, 
-                        //         for A_ij^k -> B_ij^k. alpha(B_ij^k) must be calculated before 
-                        //         calculating A_ij^k*/
-                        //     float alpha_B = ALPHA_GET(sym_B, i, j);
-                        //     #pragma omp atomic
-                        //     ALPHA_INCREASE(sym_A, i, j, alpha_B * possibility);
-                        // }                        
+                        // A->BC
+                        float alpha_B = ALPHA_GET(sym_B, i, k);
+                        float alpha_C = ALPHA_GET(sym_C, k + 1, j);
+                        #pragma omp atomic
+                        ALPHA_INCREASE(sym_A, i, j, alpha_B * alpha_C * possibility);   
                     }
 
                     // A->B
@@ -211,6 +198,7 @@ void kernel_inside_computeSpanKernel(uint32_t* sequence, uint32_t* preterminatio
                         uint32_t sym_B = ((*addr) >> 16) & 0xFFFF;
                         float alpha_B = ALPHA_GET(sym_B, i, j);
                         float possibility = *(float*)(addr + 1);
+                        
                         #pragma omp atomic
                         ALPHA_INCREASE(sym_A, i, j, alpha_B * possibility);
                     }                        
