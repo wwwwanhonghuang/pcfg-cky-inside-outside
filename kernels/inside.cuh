@@ -181,20 +181,23 @@ void kernel_inside_computeSpanKernel(uint32_t* sequence, uint32_t* preterminatio
                         uint32_t sym_C = std::get<2>(item);
                         float possibility = std::get<3>(item);
                         uint32_t gid = std::get<4>(item);
-                        if(IS_TERMINATE(sym_B) && IS_TERMINATE(sym_C)){
-                            if(span_length != 2) continue;
-                            float condition = (sequence[i] == sym_B && sequence[i + 1] == sym_C) ? 1.0f : 0.0f;
-                            #pragma omp atomic
-                            ALPHA_INCREASE(sym_A, i, j, condition * possibility);
-                            continue;
-                        }
-                        float condition_B = (sequence[i] == sym_B && k == i ? 1.0f : 0.0f);
-                        float condition_C = (sequence[j] == sym_C && k == j ? 1.0f : 0.0f);
-                        float alpha_B = IS_TERMINATE(sym_B) ?  condition_B : ALPHA(sym_B, i, k);
-                        float alpha_C = (IS_EPSILON(sym_C) ? 1.0f : (IS_TERMINATE(sym_C) ? condition_C : ALPHA(sym_C, k + 1, j)));
+
                         
-                        #pragma omp atomic
-                        ALPHA_INCREASE(sym_A, i, j, alpha_B * alpha_C * possibility);
+                        if(!IS_EPSILON(sym_C)){
+                            // A->BC
+                            float alpha_B = ALPHA_GET(sym_B, i, k);
+                            float alpha_C = ALPHA_GET(sym_C, k + 1, j);
+                            #pragma omp atomic
+                            ALPHA_INCREASE(sym_A, i, j, alpha_B * alpha_C * possibility);
+                        }else{
+                            // A->B
+                            /* TODO: correctness of the result of follow code is not always ensured, 
+                                for A_ij^k -> B_ij^k. alpha(B_ij^k) must be calculated before 
+                                calculating A_ij^k*/
+                            float alpha_B = ALPHA_GET(sym_B, i, j);
+                            #pragma omp atomic
+                            ALPHA_INCREASE(sym_A, i, j, alpha_B * possibility);
+                        }                        
                     }
                 }
             }

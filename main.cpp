@@ -167,7 +167,7 @@ int main(int argc, char* argv[])
     pcfg* grammar = prepare_grammar(grammar_filename);
 
     float* alpha = new float[grammar->N() * MAX_SEQUENCE_LENGTH * MAX_SEQUENCE_LENGTH]();
-    float* beta = new float[grammar->N() * MAX_SEQUENCE_LENGTH * MAX_SEQUENCE_LENGTH]();
+    float* beta = new float[(grammar->N() + grammar->T()) * MAX_SEQUENCE_LENGTH * MAX_SEQUENCE_LENGTH]();
     float* mu = new float[grammar->cnt_grammar * MAX_SEQUENCE_LENGTH * MAX_SEQUENCE_LENGTH]();
     float* count = new float[grammar->cnt_grammar]();
     float* f = new float[grammar->cnt_grammar]();

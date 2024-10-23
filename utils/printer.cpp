@@ -10,7 +10,7 @@ void print_grammar(pcfg* grammar){
         uint32_t sym_C = std::get<2>(item);
         float possibility = std::get<3>(item);
         uint32_t gid = std::get<4>(item);
-        std::cout << "[" << gid << "] " << SYMBOL_STR(grammar, sym_A, N) << " -> " << SYMBOL_STR(grammar, sym_B, N) << " " <<
-            SYMBOL_STR(grammar, sym_C, N)  << " [" << possibility << "]" << std::endl;
+        std::cout << "[" << gid << "] " << SYMBOL_STR(grammar, sym_A) << " -> " << SYMBOL_STR(grammar, sym_B) << " " <<
+            SYMBOL_STR(grammar, sym_C)  << " [" << possibility << "]" << std::endl;
     }
 }
