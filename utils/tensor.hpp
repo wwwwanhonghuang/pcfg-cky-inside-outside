@@ -11,7 +11,6 @@ void print_vector(std::vector<T> vec){
     std::cout << "]" << std::endl;
 };
 
-
 template<class T>
 struct tensor
 {
@@ -21,8 +20,6 @@ struct tensor
         T operator[](int offset);
         tensor(T* pt, const std::vector<int>& m) : tensor_pt(pt), mode(m) {}
 };
-
-
 
 struct tensor_printer{
     template<typename T>

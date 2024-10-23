@@ -162,11 +162,7 @@ int main(int argc, char* argv[])
         print_grammar(grammar);
         #endif
         int N = grammar->N();
-        // std::cout << " -- proceed sentence: ";
-        // for(auto&& word_id : sentence){
-        //     std::cout << word_id << " ";
-        // }
-        // std::cout << std::endl;
+        
         uint32_t* sequence = sentence.data();
         int sequence_length = sentence.size();
 
@@ -182,21 +178,21 @@ int main(int argc, char* argv[])
             sequence_length, grammar->n_syms(), grammar->N(), grammar->T(), MAX_SEQUENCE_LENGTH, grammar->cnt_grammar,
             inside_order_1_rule_iteration_path
             #ifdef DEBUG_INSIDE_ALGORITHM
-            , grammar
+                , grammar
             #endif
         );
 
         #if PRINT_STEPS == 1
-        std::cout << "Inside Algorithm Finished." << std::endl;
+            std::cout << "Inside Algorithm Finished." << std::endl;
         #endif
 
         cky_printer printer;
         #if PRINT_INSIDE == 1
-        printer.print_inside_outside_table(alpha,  grammar->N(), grammar->T(), sequence_length, MAX_SEQUENCE_LENGTH, grammar);
+            printer.print_inside_outside_table(alpha,  grammar->N(), grammar->T(), sequence_length, MAX_SEQUENCE_LENGTH, grammar);
         #endif
 
         #if PRINT_STEPS == 1
-        std::cout << "2. Proceeding Outside Algorithm..." << std::endl;
+            std::cout << "2. Proceeding Outside Algorithm..." << std::endl;
         #endif
 
         outside_algorithm(mu, beta, sequence, 
@@ -207,20 +203,20 @@ int main(int argc, char* argv[])
             sequence_length, grammar->n_syms(), grammar->N(), grammar->T(), MAX_SEQUENCE_LENGTH, grammar->cnt_grammar,
             inside_order_1_rule_iteration_path
             #ifdef DEBUG_INSIDE_ALGORITHM
-            ,grammar
+                ,grammar
             #endif
         );
         
         #if PRINT_STEPS == 1
-        std::cout << "Outside Algorithm Finished." << std::endl;
+            std::cout << "Outside Algorithm Finished." << std::endl;
         #endif
 
         #if PRINT_OUTSIDE == 1
-        printer.print_inside_outside_table(beta,  grammar->N(), grammar->T(), sequence_length, MAX_SEQUENCE_LENGTH, grammar);
+            printer.print_inside_outside_table(beta,  grammar->N(), grammar->T(), sequence_length, MAX_SEQUENCE_LENGTH, grammar);
         #endif
 
         #if PRINT_STEPS == 1
-        std::cout << "3. Proceeding Calculate Expectation Count..." << std::endl;
+            std::cout << "3. Proceeding Calculate Expectation Count..." << std::endl;
         #endif
 
         kernel_expect_count(count, mu, beta, sequence, 
@@ -231,14 +227,16 @@ int main(int argc, char* argv[])
             sequence_length, grammar->n_syms(), grammar->N(), grammar->T(), MAX_SEQUENCE_LENGTH, 
             grammar->cnt_grammar
             #ifdef DEBUG_INSIDE_ALGORITHM
-            , grammar
+                , grammar
             #endif
-            );
+        );
+        
         #if PRINT_STEPS == 1
-        std::cout << "Calculate Expectation Count Finished." << std::endl;
+            std::cout << "Calculate Expectation Count Finished." << std::endl;
         #endif
+
         #if PRINT_STEPS == 1
-        std::cout << "4. Proceeding Update Parameters..." << std::endl;
+            std::cout << "4. Proceeding Update Parameters..." << std::endl;
         #endif
 
         kernel_update_parameters(f, count, mu, beta, sequence, 
@@ -247,19 +245,19 @@ int main(int argc, char* argv[])
             (grammar->grammar_table),
             alpha,
             sequence_length, grammar->n_syms(), grammar->N(), grammar->T(),
-             MAX_SEQUENCE_LENGTH, grammar->cnt_grammar
-             #ifdef DEBUG_INSIDE_ALGORITHM
-            , grammar
+            MAX_SEQUENCE_LENGTH, grammar->cnt_grammar
+            #ifdef DEBUG_INSIDE_ALGORITHM
+                , grammar
             #endif
-            );
+        );
+
         #if PRINT_STEPS == 1
-        std::cout << "Update Parameter Finished." << std::endl;
+            std::cout << "Update Parameter Finished." << std::endl;
         #endif
 
         #if PRINT_GRAMMAR_EACH_UPDATION_AFTER == 1
-        std::cout << "grammar after iteration: " << sentence_id << " :" << std::endl;
-
-        print_grammar(grammar);
+            std::cout << "grammar after iteration: " << sentence_id << " :" << std::endl;
+            print_grammar(grammar);
         #endif
         sentence_id++;
     }
