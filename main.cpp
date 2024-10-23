@@ -26,7 +26,7 @@
 #include "utils/printer.hpp"
 
 
-#define PRINT_INSIDE 1
+#define PRINT_INSIDE 0
 #define PRINT_OUTSIDE 0
 #define PRINT_STEPS 0
 #define PRINT_GRAMMAR_EACH_UPDATION_BEFORE 0
@@ -62,7 +62,8 @@ void progress_bar(int progress, int total, int barWidth = 50) {
 
 float* outside_algorithm(float* mu, float* beta, uint32_t* sequence, uint32_t* pretermination_lookuptable, 
                         uint32_t* grammar_index, uint32_t* grammar_table, float* alpha, 
-                        int sequence_length, int n_syms, int N, int T, int MS, int n_grammars
+                        int sequence_length, int n_syms, int N, int T, int MS, int n_grammars,
+                        std::vector<std::tuple<uint32_t, uint32_t>> inside_order_1_rule_iteration_path
                         #ifdef DEBUG_INSIDE_ALGORITHM
                         ,pcfg* grammar
                         #endif
@@ -71,7 +72,7 @@ float* outside_algorithm(float* mu, float* beta, uint32_t* sequence, uint32_t* p
     <<<16, 16>>>
     #endif
     kernel_outside_main(mu, beta, sequence, pretermination_lookuptable,
-        grammar_index, grammar_table, alpha, sequence_length, n_syms, N, T, MS, n_grammars, grammar);
+        grammar_index, grammar_table, alpha, sequence_length, n_syms, N, T, MS, n_grammars, inside_order_1_rule_iteration_path, grammar);
     return beta;
 }
 
@@ -96,7 +97,8 @@ float* em_algorithm_calculate_expection_count(float* count, float* mu, float* be
 
 float* inside_algorithm(uint32_t* sequence, uint32_t* pretermination_lookuptable, 
                         uint32_t* grammar_index, uint32_t* grammar_table, float* alpha, 
-                        int sequence_length, int n_syms, int N, int T, int MS, int n_grammars, pcfg* grammar = nullptr){
+                        int sequence_length, int n_syms, int N, int T, int MS, int n_grammars,
+                        std::vector<std::tuple<uint32_t, uint32_t>> inside_order_1_rule_iteration_path, pcfg* grammar = nullptr){
     
     if(n_syms >= 65536) return nullptr;
 
@@ -124,7 +126,8 @@ float* inside_algorithm(uint32_t* sequence, uint32_t* pretermination_lookuptable
             <<<16, 16>>>>
         #endif
     (sequence, pretermination_lookuptable, grammar_index, grammar_table, alpha, 
-                        sequence_length, n_syms, N, T, MS, n_grammars
+                        sequence_length, n_syms, N, T, MS, n_grammars,
+                        inside_order_1_rule_iteration_path
                         #ifdef DEBUG_INSIDE_ALGORITHM
                         , grammar
                         #endif
@@ -175,6 +178,7 @@ int main(int argc, char* argv[])
     std::cout << "Load sentences..." << std::endl;
     std::vector<std::vector<uint32_t>> sentences = parse_input_file(input_filename, grammar);
     std::cout << "Load sentences finished. Total instances:" << sentences.size() << std::endl;
+    auto inside_order_1_rule_iteration_path = generate_inside_perterminate_iteration_paths(grammar);
 
     if(sentences.empty()) return 0;
     
@@ -204,7 +208,8 @@ int main(int argc, char* argv[])
             (uint32_t*)(grammar->grammar_index),
             (uint32_t*)(grammar->grammar_table),
             alpha,
-            sequence_length, grammar->n_syms(), grammar->N(), grammar->T(), MAX_SEQUENCE_LENGTH, grammar->cnt_grammar
+            sequence_length, grammar->n_syms(), grammar->N(), grammar->T(), MAX_SEQUENCE_LENGTH, grammar->cnt_grammar,
+            inside_order_1_rule_iteration_path
             #ifdef DEBUG_INSIDE_ALGORITHM
             , grammar
             #endif
@@ -228,7 +233,8 @@ int main(int argc, char* argv[])
             (uint32_t*)(grammar->grammar_index),
             (uint32_t*)(grammar->grammar_table),
             alpha,
-            sequence_length, grammar->n_syms(), grammar->N(), grammar->T(), MAX_SEQUENCE_LENGTH, grammar->cnt_grammar
+            sequence_length, grammar->n_syms(), grammar->N(), grammar->T(), MAX_SEQUENCE_LENGTH, grammar->cnt_grammar,
+            inside_order_1_rule_iteration_path
             #ifdef DEBUG_INSIDE_ALGORITHM
             ,grammar
             #endif

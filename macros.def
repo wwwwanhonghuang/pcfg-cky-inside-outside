@@ -30,6 +30,6 @@
 #define MU(GID, I, J) mu[(GID) * MS * MS + (I) * MS + J]
 #define ALPHA_GET(SYMBOL, I, J) (SYMBOL) < N ? ALPHA(SYMBOL, I, J) : ((I) == (J) && sequence[I] == (SYMBOL) ? 1.0f : 0.0f)
 
-#define SYMBOL_STR(GRAMMAR, SYMBOL_ID) ((SYMBOL_ID) < N ? (GRAMMAR)->reversed_nonterminate_map[(SYMBOL_ID)]: (GRAMMAR)->reversed_terminate_map[(SYMBOL_ID) - N])
+#define SYMBOL_STR(SYMBOL_ID) ((SYMBOL_ID) < N ? grammar->reversed_nonterminate_map[(SYMBOL_ID)]: grammar->reversed_terminate_map[(SYMBOL_ID) - N])
 
 #endif
