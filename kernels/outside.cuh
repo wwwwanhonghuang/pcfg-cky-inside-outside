@@ -59,7 +59,7 @@ void kernel_outside_main(float* mu, float* beta, uint32_t* sequence, uint32_t* p
                     uint32_t sym_A = std::get<2>(item);
                     float possibility = std::get<3>(item);
                     
-                    // 1. 7.
+                    // 1. 7. (A is nonterminate, and C is terminate or nonterminate. A at right side.)
                     if(IS_NONTERMINATE(sym_A) && !IS_EPSILON(sym_C)){
                         // C: [k, i - 1] part
                         float alpha_C = ALPHA_GET(sym_C, k, i - 1);
@@ -77,7 +77,8 @@ void kernel_outside_main(float* mu, float* beta, uint32_t* sequence, uint32_t* p
                     uint32_t sym_A = std::get<1>(item);
                     uint32_t sym_C = std::get<2>(item);
                     float possibility = std::get<3>(item);
-                    // 2. 6.
+
+                    // 2. 6. (A is nonterminate, and C is terminate or nonterminate. A at left side.)
                     if(IS_NONTERMINATE(sym_A) && !IS_EPSILON(sym_C)){
                         // C: [k, i - 1] part
                         float alpha_C = ALPHA_GET(sym_C, j + 1, k);
@@ -93,7 +94,7 @@ void kernel_outside_main(float* mu, float* beta, uint32_t* sequence, uint32_t* p
 
             // 3.
             for(std::vector<std::tuple<uint32_t, uint32_t>>::reverse_iterator it = inside_order_1_rule_iteration_path.rbegin(); 
-                // B -> A
+                // B -> A, A is a nonterminate.
                 it != inside_order_1_rule_iteration_path.rend(); ++it) {
                 std::tuple<uint32_t, uint32_t> rule_id = *it;
                 uint32_t gid = std::get<0>(rule_id);
@@ -104,19 +105,19 @@ void kernel_outside_main(float* mu, float* beta, uint32_t* sequence, uint32_t* p
                 float possibility = *(float*)(addr + 1);
                 
                 if(IS_TERMINATE(sym_A)) continue; 
-                // B->A
                 /* grammar become B -> A. In this condition, B -> A contributes possibility * beta_B
                     to A's outside possibility spanning i to j-th symbols in the sequence. 
                     We doesn't need to iterate split point k, as there only one symbol in the right side
-                    of this rule. 'continue;' is uesed to skip k iterations.
-                */
+                    of this rule. 'continue;' is uesed to skip k iterations. */
+                
                 #pragma omp atomic
                 BETA_INCREASE(sym_A, i, j, possibility * BETA(sym_B, i, j));
             }
 
             // 5. 8. 9. 10.
             // Case 2: A is terminate 
-            for(std::tuple<uint32_t, uint32_t, uint32_t, float, uint32_t> item : PCFGItemIterator(N, grammar_index, grammar_table)){                    
+            for(std::tuple<uint32_t, uint32_t, uint32_t, float, uint32_t> item : 
+                                                        PCFGItemIterator(N, grammar_index, grammar_table)){                    
                     
                 uint32_t sym_B = std::get<0>(item);
                 float possibility = std::get<3>(item);
@@ -126,14 +127,15 @@ void kernel_outside_main(float* mu, float* beta, uint32_t* sequence, uint32_t* p
                 if(IS_NONTERMINATE(sym_A) || i != j) break;
                 if(IS_EPSILON(sym_C)) continue;
 
-                // 5.
-                if(IS_TERMINATE(sym_A) && IS_NONTERMINATE(sym_C)){
+                // 5. B -> w_A C
+                if(IS_TERMINATE(sym_A) && IS_NONTERMINATE(sym_C) && (i == j)){
                     for(int k = j + 1; k < sequence_length; k++){
-                        BETA(sym_A, i, j) += BETA(sym_B, i, k) * ALPHA(sym_C, j + 1, k) * possibility;
+                            BETA(sym_A, i, j) += BETA(sym_B, i, k) * ALPHA(sym_C, j + 1, k) * possibility;
                     }
                 }
-                // 9. 
-                if(IS_TERMINATE(sym_A) && IS_TERMINATE(sym_C)){
+
+                // 9. B->w_C w_A 
+                if(IS_TERMINATE(sym_A) && IS_TERMINATE(sym_C) && (i == j)){
                     if(j + 1 < sequence_length){
                         BETA(sym_A, i, j) += ALPHA(sym_C, j + 1, j + 1) * BETA(sym_B, i, j + 1) * possibility;
                     }
@@ -141,14 +143,16 @@ void kernel_outside_main(float* mu, float* beta, uint32_t* sequence, uint32_t* p
                 
                 sym_C = std::get<1>(item);
                 sym_A = std::get<2>(item);
+
                 // 8.
-                if(IS_NONTERMINATE(sym_C) && IS_TERMINATE(sym_A)){
-                    for(int k = 0; k < i - 1; k++){
+                if(IS_NONTERMINATE(sym_C) && IS_TERMINATE(sym_A) && (i == j)){
+                    for(int k = 0; k <= i - 1; k++){
                         BETA(sym_A, i, j) += ALPHA(sym_C, k, i - 1) * BETA(sym_B, k, j) * possibility;
                     }
                 }
+
                 // 10.
-                if(IS_TERMINATE(sym_C) && IS_TERMINATE(sym_A)){
+                if(IS_TERMINATE(sym_C) && IS_TERMINATE(sym_A) && (i == j)){
                     if(i - 1 >= 0){
                         BETA(sym_A, i, j) += ALPHA(sym_C, i - 1, i - 1) * BETA(sym_B, i - 1, j) * possibility;
                     }                   
