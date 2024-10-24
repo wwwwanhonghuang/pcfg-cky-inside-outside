@@ -89,12 +89,17 @@ void kernel_inside_base_fill_alpha(
         }
         
         bool changed = false;
+        std::unordered_set<uint32_t> nonterminate_remains; 
+        
+        for(int sym_id = 0; sym_id < N; sym_id++){
+            nonterminate_remains.insert(sym_id);
+        }
 
-        while(true){
-            changed = false;
-            
+        for(int i = 0; i < N; i++){
+            int size = nonterminate_remains.size();
             for(int i = 0; i < sequence_length; i++){
-                for(std::tuple<uint32_t, uint32_t, uint32_t, float, uint32_t> item : PCFGItemIterator(N, grammar_index, grammar_table)){
+                for(std::tuple<uint32_t, uint32_t, uint32_t, float, uint32_t> item : 
+                                                        PCFGItemIterator(N, grammar_index, grammar_table)){
                     uint32_t sym_A = std::get<0>(item);
                     uint32_t sym_B = std::get<1>(item);
                     uint32_t sym_C = std::get<2>(item);
@@ -105,14 +110,12 @@ void kernel_inside_base_fill_alpha(
                     
                     if(alpha_B * possibility > alpha_get(alpha, sym_A, i, i, MS)){
                         ALPHA(sym_A, i, i) = alpha_B * possibility;
-                        changed = true;
+                        nonterminate_remains.erase(sym_A);
                     }
                 }
                 
             }
-            if(!changed){
-                break;
-            }
+            if(nonterminate_remains.size() == size) break;
         }
             
     #else

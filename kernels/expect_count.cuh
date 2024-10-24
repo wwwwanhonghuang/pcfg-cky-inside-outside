@@ -18,7 +18,9 @@ void kernel_expect_count(float* count, float* mu, float* beta, uint32_t* sequenc
 
                         ){
     memset(count, 0, n_grammars * sizeof(float));
-    float Z = ALPHA(0, 0, sequence_length - 1); // 0 is the id of S symbol. This expression assign alpha['S', 0, sequence_length - 1] to Z;
+
+    /* 0 is the id of S symbol. This expression assign alpha['S', 0, sequence_length - 1] to Z */
+    float Z = ALPHA(0, 0, sequence_length - 1); 
 
     for(int span_length = 1; span_length <= sequence_length; span_length++){
         #pragma omp parallel for
