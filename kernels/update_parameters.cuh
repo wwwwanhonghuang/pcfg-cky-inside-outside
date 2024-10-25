@@ -15,7 +15,7 @@ inline float _calculate_new_possibility(float S, float f_gid) {
     return f_gid / S;
 }
 
-void kernel_update_parameters(float* f, float* count, float* mu, float* beta, uint32_t* sequence, 
+void kernel_update_parameters(double* f, float* count, float* mu, float* beta, uint32_t* sequence, 
         uint32_t* pretermination_lookuptable, 
         uint32_t* grammar_index, 
     #ifdef USE_CUDA
@@ -26,10 +26,11 @@ void kernel_update_parameters(float* f, float* count, float* mu, float* beta, ui
         grammar_table, float* alpha, 
         int sequence_length, int n_syms, int N, int T, int MS, int n_grammars
         #ifdef DEBUG_INSIDE_ALGORITHM
-        , pcfg* grammar
+            , pcfg* grammar
         #endif
 ){
         int gid = 0;
+
         for(int sym_A = 0; sym_A < N; sym_A++){
             uint32_t grammar_pointer_current = *(grammar_index + sym_A);
             uint32_t grammar_pointer_next = *(grammar_index + sym_A + 1);
