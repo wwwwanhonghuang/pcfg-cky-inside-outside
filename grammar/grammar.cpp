@@ -144,28 +144,32 @@ std::vector<std::tuple<uint32_t, uint32_t>> generate_inside_perterminate_iterati
     }
     
     // topological sort
-    for(int sym_B = 0; sym_B < n_syms; sym_B++){
-        bool elimnatable = true;
-        for(int sym_A = 0; sym_A < n_syms; sym_A++){
-            assert(sym_A != sym_B || !dependency_graph[sym_B * n_syms + sym_A]);
-            if(dependency_graph[sym_B * n_syms + sym_A]){
-                elimnatable = false;
+    while(true){
+        int _pre_n_edges = edges;
+        for(int sym_B = 0; sym_B < n_syms; sym_B++){
+            bool elimnatable = true;
+            for(int sym_A = 0; sym_A < n_syms; sym_A++){
+                assert(sym_A != sym_B || !dependency_graph[sym_B * n_syms + sym_A]);
+                if(dependency_graph[sym_B * n_syms + sym_A]){ 
+                    elimnatable = false;
+                }
             }
-        }
-        if(!elimnatable) continue;
+            if(!elimnatable) continue;
+            
 
-        for(int sym_A = 0; sym_A < n_syms; sym_A++){
-            if(dependency_graph[sym_A * n_syms + sym_B]){
-                dependency_graph[sym_A * n_syms + sym_B] = 0;
-                rules.emplace_back(std::make_pair(sym_A, sym_B));
-                edges--;
+            for(int sym_A = 0; sym_A < n_syms; sym_A++){
+                if(dependency_graph[sym_A * n_syms + sym_B]){
+                    dependency_graph[sym_A * n_syms + sym_B] = 0;
+                    rules.emplace_back(std::make_pair(sym_A, sym_B));
+                    edges--;
+                }
             }
         }
-    }
-    
-    if(edges > 0){
-        std::cout << "Cyclic preterminate production detected." << std::endl;
-        assert(edges == 0);
+        if(edges == 0) break;
+        if(_pre_n_edges == edges) {
+            std::cout << "Cyclic preterminate production detected. Edge remains == " << edges << std::endl;
+            assert(edges == 0);
+        }
     }
     
     for(auto&& syms : rules){
@@ -185,10 +189,9 @@ std::vector<std::tuple<uint32_t, uint32_t>> generate_inside_perterminate_iterati
         uint32_t* addr = ((uint32_t*)grammar->grammar_table + std::get<0>(gid) * 2);
         uint32_t syms = *addr;
         uint32_t sym_A = (syms >> 16) & 0xFFFF;
-        uint32_t sym_B = syms & 0xFFFF;
-
-        std::cout << SYMBOL_STR(sym_A) << "->" << SYMBOL_STR(sym_B) << sym_B << std::endl;
+        assert(IS_EPSILON(syms & (0xFFFF)));
     }
     
     return results;
 }
+

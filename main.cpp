@@ -116,6 +116,7 @@ float* inside_algorithm(uint32_t* sequence, uint32_t* pretermination_lookuptable
                             ,grammar
                         #endif
     );
+
     // 3. fill alpha (recursive case).
     kernel_inside_computeSpanKernel
         #ifdef USE_CUDA
@@ -125,36 +126,46 @@ float* inside_algorithm(uint32_t* sequence, uint32_t* pretermination_lookuptable
                         sequence_length, n_syms, N, T, MS, n_grammars,
                         inside_order_1_rule_iteration_path
                         #ifdef DEBUG_INSIDE_ALGORITHM
-                        , grammar
+                            , grammar
                         #endif
                         );
     
     return alpha;
 };
 
+void log_grammar(std::string log_file_path, pcfg* pcfg, int iter){
+
+}
 
 int main(int argc, char* argv[])
 {
-    std::string grammar_filename = argc > 1 ? std::string(argv[1]) : "grammar_demo_2.pcfg";
-    std::string input_filename = argc > 2 ? std::string(argv[2]) : "sequence.txt";
+    std::string grammar_filename = argc > 1 ? std::string(argv[1]) : "grammar.pcfg";
+    std::string input_filename = argc > 2 ? std::string(argv[2]) : "eeg_sentences.txt";
+    int sentence_from = argc > 3 ? std::atoi(std::string(argv[3]).c_str()) : 0;
+    uint32_t log_itervals = argc > 4 ?  std::atoi(std::string(argv[4]).c_str()) : 1000; // 0xFFFFFFFF;
     
     pcfg* grammar = prepare_grammar(grammar_filename);
+    auto inside_order_1_rule_iteration_path = generate_inside_perterminate_iteration_paths(grammar);
+
 
     float* alpha = new float[grammar->N() * MAX_SEQUENCE_LENGTH * MAX_SEQUENCE_LENGTH]();
     float* beta = new float[(grammar->N() + grammar->T()) * MAX_SEQUENCE_LENGTH * MAX_SEQUENCE_LENGTH]();
     float* mu = new float[grammar->cnt_grammar * MAX_SEQUENCE_LENGTH * MAX_SEQUENCE_LENGTH]();
     float* count = new float[grammar->cnt_grammar]();
-    float* f = new float[grammar->cnt_grammar]();
+    double* f = new double[grammar->cnt_grammar]();
 
     std::cout << "Load sentences..." << std::endl;
     std::vector<std::vector<uint32_t>> sentences = parse_input_file(input_filename, grammar);
     std::cout << "Load sentences finished. Total instances:" << sentences.size() << std::endl;
-    auto inside_order_1_rule_iteration_path = generate_inside_perterminate_iteration_paths(grammar);
 
     if(sentences.empty()) return 0;
     
     int sentence_id = 0;
-    for(auto& sentence: sentences){
+    int n_sequences = sentences.size();
+    int batch_size = n_sequences;
+
+    for(int i = sentence_from; i < sentences.size(); i++){
+        auto& sentence = sentences[i];
         progress_bar(sentence_id + 1, sentences.size());
         
         #if PRINT_GRAMMAR_EACH_UPDATION_BEFORE == 1
@@ -235,35 +246,51 @@ int main(int argc, char* argv[])
             std::cout << "Calculate Expectation Count Finished." << std::endl;
         #endif
 
-        #if PRINT_STEPS == 1
-            std::cout << "4. Proceeding Update Parameters..." << std::endl;
-        #endif
 
-        kernel_update_parameters(f, count, mu, beta, sequence, 
-            (uint32_t*)(grammar->preterminate_rule_lookup_table),
-            (uint32_t*)(grammar->grammar_index),
-            (grammar->grammar_table),
-            alpha,
-            sequence_length, grammar->n_syms(), grammar->N(), grammar->T(),
-            MAX_SEQUENCE_LENGTH, grammar->cnt_grammar
-            #ifdef DEBUG_INSIDE_ALGORITHM
-                , grammar
+        if((i + 1) % batch_size == 0 || ((i + 1) == n_sequences)){
+            #if PRINT_STEPS == 1
+                std::cout << "4. Proceeding Update Parameters..." << std::endl;
             #endif
-        );
 
-        #if PRINT_STEPS == 1
-            std::cout << "Update Parameter Finished." << std::endl;
-        #endif
+            kernel_update_parameters(f, count, mu, beta, sequence, 
+                (uint32_t*)(grammar->preterminate_rule_lookup_table),
+                (uint32_t*)(grammar->grammar_index),
+                (grammar->grammar_table),
+                alpha,
+                sequence_length, grammar->n_syms(), grammar->N(), grammar->T(),
+                MAX_SEQUENCE_LENGTH, grammar->cnt_grammar
+                #ifdef DEBUG_INSIDE_ALGORITHM
+                    , grammar
+                #endif
+            );
+
+            #if PRINT_STEPS == 1
+                std::cout << "Update Parameter Finished." << std::endl;
+            #endif
+            memset(f, 0, grammar->cnt_grammar * sizeof(double));
+        }
+        
 
         #if PRINT_GRAMMAR_EACH_UPDATION_AFTER == 1
             std::cout << "grammar after iteration: " << sentence_id << " :" << std::endl;
             print_grammar(grammar);
         #endif
         sentence_id++;
+        if((i + 1) % log_itervals == 0){
+            std::ofstream logfile_ostream = std::ofstream("./logs/log_" + std::to_string(i) + ".pcfg");
+            if(!logfile_ostream){
+                std::cerr << "Error: Could not open log file for writing.\n";
+            }
+            print_grammar(grammar, logfile_ostream);
+        }
+        
     }
 
     std::cout << std::endl << "All finished" << std::endl;
     print_grammar(grammar);
+    
+    std::ofstream logfile_ostream = std::ofstream("./logs/log_final_" + std::to_string(sentences.size()) + ".pcfg");
+    print_grammar(grammar, logfile_ostream);
     delete[] alpha;
     delete[] beta;
     delete[] mu;

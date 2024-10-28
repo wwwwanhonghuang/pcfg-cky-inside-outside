@@ -59,5 +59,5 @@ public:
     };
 };
 
-void print_grammar(pcfg* grammar);
+void print_grammar(pcfg* grammar, std::ostream& stream=std::cout);
 #endif
