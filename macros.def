@@ -1,6 +1,26 @@
 #ifndef __MACRO_DEF__
 #define __MACRO_DEF__
 
+
+#define PRINT_INSIDE 1
+#define PRINT_OUTSIDE 1
+#define PRINT_STEPS 0
+#define PRINT_EXPECTATION_COUNT 1
+#define PRINT_GRAMMAR_EACH_UPDATION_BEFORE 0
+#define PRINT_GRAMMAR_EACH_UPDATION_AFTER 1
+
+#define SANITARY_OUTPUT 1
+
+#if SANITARY_OUTPUT == 1
+#undef PRINT_INSIDE
+#undef PRINT_OUTSIDE
+#undef PRINT_STEPS
+#undef PRINT_GRAMMAR_EACH_UPDATION_BEFORE
+#undef PRINT_GRAMMAR_EACH_UPDATION_AFTER
+#undef PRINT_EXPECTATION_COUNT
+#endif
+
+
 // Handle cuTENSOR errors
 #define HANDLE_ERROR(x)                                             \
 { const auto err = x;                                               \
@@ -28,7 +48,7 @@
 #define ALPHA(SYMBOL, I, J) alpha[(SYMBOL) * MS * MS + (I) * MS + J] 
 #define BETA(SYMBOL, I, J) beta[(SYMBOL) * MS * MS + (I) * MS + J]
 #define MU(GID, I, J) mu[(GID) * MS * MS + (I) * MS + J]
-#define ALPHA_GET(SYMBOL, I, J) ((I) > (J) ? 1.0f : (SYMBOL) < N ? ALPHA(SYMBOL, I, J) : ((SYMBOL) == 0xFFFF ? 1.0f : ((I) == (J) && sequence[I] == (SYMBOL) ? 1.0f : 0.0f)))
+#define ALPHA_GET(SYMBOL, I, J) ((I) > (J) ? 1.0f : (SYMBOL) < N ? ALPHA(SYMBOL, I, J) : ((SYMBOL) == 0xFFFF ? 0.0f : ((I) == (J) && sequence[I] == (SYMBOL) ? 1.0f : 0.0f)))
 
 #define SYMBOL_STR(SYMBOL_ID) ((SYMBOL_ID) < N ? grammar->reversed_nonterminate_map[(SYMBOL_ID)]: grammar->reversed_terminate_map[(SYMBOL_ID) - N])
 

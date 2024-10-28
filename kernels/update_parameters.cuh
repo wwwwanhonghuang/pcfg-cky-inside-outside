@@ -79,8 +79,14 @@ void kernel_update_parameters(double* f, float* count, float* mu, float* beta, u
                         << std::endl;
                         assert(false);
                     }
-                    
                     *(float*)(grammar_table + pt + 1) = new_possibility;
+                    
+                    if(IS_EPSILON(sym_C) && IS_TERMINATE(sym_B)){
+                        uint64_t key = encode_key(sym_A, sym_B);
+                        reverse_grammar_hashtable_set_value(
+                            pretermination_lookuptable, n_grammars * 2, key, new_possibility);
+                    }
+                    
                     gid++;
                 }
         }    
