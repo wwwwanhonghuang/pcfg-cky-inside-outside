@@ -202,6 +202,22 @@ void kernel_outside_main(float* mu, float* beta, uint32_t* sequence, uint32_t* p
                     float beta_A_i_j = BETA(sym_A, i, j);
                     float alpha_B_i_k = ALPHA_GET(sym_B, i, k);
                     float alpha_C_k_p1_j = ALPHA_GET(sym_C, k + 1, j);
+                    // if(i == 2 && j == 4 && gid == 5){
+                    //     std::cout << "mu::increase::: " <<
+                    //         possibility * beta_A_i_j * alpha_B_i_k * alpha_C_k_p1_j 
+                    //         << "[" << 
+                    //         " possibility = " << possibility <<
+                    //         " beta_A_i_j = " << beta_A_i_j <<
+                    //         " alpha_B_i_k = " <<  alpha_B_i_k << 
+                    //         " alpha_C_k_p1_j = " << alpha_C_k_p1_j <<
+                    //         " i = " << i << 
+                    //         " j = " << j <<
+                    //         " k = " << k <<
+                    //         " sym_A = " << sym_A << " " << SYMBOL_STR(sym_A) <<
+                    //         " sym_B = " << sym_B << " " << SYMBOL_STR(sym_B) <<
+                    //         " sym_C = " << sym_C << " " << SYMBOL_STR(sym_C) <<
+                    //          "]"<< std::endl;
+                    // }
                     #pragma omp atomic
                     MU_INCREASE(gid, i, j, possibility * beta_A_i_j * alpha_B_i_k * alpha_C_k_p1_j);
                 }

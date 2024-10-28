@@ -264,7 +264,7 @@ pcfg* _build_preterminate_grammar_lookup_table(pcfg* grammar, common_32bit* non_
                     int key = ((nonterminate_id << 16) & (0xFFFF0000)) | ((symbol_id_right_1) & (0x0000FFFF));
                     int position = (key % cnt_hashtable_items) * 2;
                     int trail_count = 0;
-
+                  
                     while (hashtable[position].int32_value != 0 && hashtable[position].int32_value != key) {
                         position = (position + 2) % hashtable_length;
                         if (++trail_count >= hashtable_length / 2) {

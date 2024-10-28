@@ -25,22 +25,6 @@
 #include "utils/application_io.hpp"
 
 
-#define PRINT_INSIDE 1
-#define PRINT_OUTSIDE 0
-#define PRINT_STEPS 0
-#define PRINT_GRAMMAR_EACH_UPDATION_BEFORE 0
-#define PRINT_GRAMMAR_EACH_UPDATION_AFTER 1
-
-#define SANITARY_OUTPUT 0
-
-#if SANITARY_OUTPUT == 1
-#undef PRINT_INSIDE
-#undef PRINT_OUTSIDE
-#undef PRINT_STEPS
-#undef PRINT_GRAMMAR_EACH_UPDATION_BEFORE
-#undef PRINT_GRAMMAR_EACH_UPDATION_AFTER
-#endif
-
 void progress_bar(int progress, int total, int barWidth = 50) {
     float percentage = (float) progress / total;
     int pos = (int)(barWidth * percentage);
@@ -65,9 +49,9 @@ float* outside_algorithm(float* mu, float* beta, uint32_t* sequence, uint32_t* p
                         #ifdef DEBUG_INSIDE_ALGORITHM
                         ,pcfg* grammar
                         #endif
-                    ){
+){
     #ifdef USE_CUDA
-    <<<16, 16>>>
+        <<<16, 16>>>
     #endif
     kernel_outside_main(mu, beta, sequence, pretermination_lookuptable,
         grammar_index, grammar_table, alpha, sequence_length, n_syms, N, T, MS, n_grammars, inside_order_1_rule_iteration_path, grammar);

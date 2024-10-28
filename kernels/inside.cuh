@@ -68,6 +68,7 @@ __inline__ void reverse_grammar_hashtable_set_value(
         for(int i = 0; i < cnt_hashtable_items; i++){
             if(hashtable[pos] == key){
                 ((float*) hashtable)[pos + 1] = val;
+                return;
             }else{
                 pos = (pos + 2) % hashtable_size;
             }
