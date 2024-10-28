@@ -10,6 +10,8 @@
 #include <bits/stdc++.h>
 #include <vector>
 #include <iostream>
+#include <random>
+#include <algorithm>
 
 #include "macros.def"
 #include "utils/tensor.hpp"
@@ -103,7 +105,7 @@ float* inside_algorithm(uint32_t* sequence, uint32_t* pretermination_lookuptable
         #ifdef USE_CUDA
             <<<16, 16>>>>
         #endif
-    (alpha, N, sequence_length);
+    (alpha, N, MS);
 
     // 2. fill alpha (base case).
     kernel_inside_base_fill_alpha
@@ -116,6 +118,7 @@ float* inside_algorithm(uint32_t* sequence, uint32_t* pretermination_lookuptable
                             ,grammar
                         #endif
     );
+    
 
     // 3. fill alpha (recursive case).
     kernel_inside_computeSpanKernel
@@ -137,12 +140,57 @@ void log_grammar(std::string log_file_path, pcfg* pcfg, int iter){
 
 }
 
+void split_dataset(const std::vector<std::vector<uint32_t>>& sentences,
+                  std::vector<std::vector<uint32_t>>& train_set,
+                  std::vector<std::vector<uint32_t>>& valid_set,
+                  double train_fraction) {
+    if (train_fraction <= 0.0 || train_fraction >= 1.0) {
+        throw std::invalid_argument("train_fraction must be between 0 and 1.");
+    }
+
+    std::vector<std::vector<uint32_t>> shuffled_sentences = sentences;
+
+    std::random_device rd;
+    std::mt19937 generator(rd());
+    std::shuffle(shuffled_sentences.begin(), shuffled_sentences.end(), generator);
+
+    size_t total_sentences = shuffled_sentences.size();
+    size_t split_point = static_cast<size_t>(total_sentences * train_fraction);
+
+    train_set.assign(shuffled_sentences.begin(), shuffled_sentences.begin() + split_point);
+    valid_set.assign(shuffled_sentences.begin() + split_point, shuffled_sentences.end());
+}
+std::string remove_quotes(const std::string& str) {
+    if (!str.empty() && str.front() == '\'' && str.back() == '\'') {
+        return str.substr(1, str.size() - 2);
+    }
+    return str;
+}
+void save_data_set_to_file(std::string file_path, std::vector<std::vector<uint32_t>> sentences, pcfg* grammar){
+    std::ofstream output_file(file_path);
+    if (!output_file.is_open()) {
+        std::cerr << "Error opening file: " << file_path << std::endl;
+        return;
+    }
+    int N = grammar->N();
+    for(size_t i = 0; i < sentences.size(); i++){
+        const auto& sentence = sentences[i];
+        size_t sequence_length = sentence.size();
+        for(size_t j = 0; j < sequence_length; j++){
+            output_file << remove_quotes(grammar->reversed_terminate_map[sentence[j] - N]);
+            if(j != sequence_length - 1){
+                output_file << " ";
+            }
+        }
+        output_file << std::endl;
+    }
+}
+
 int main(int argc, char* argv[])
 {
-    std::string grammar_filename = argc > 1 ? std::string(argv[1]) : "grammar.pcfg";
-    std::string input_filename = argc > 2 ? std::string(argv[2]) : "eeg_sentences.txt";
-    int sentence_from = argc > 3 ? std::atoi(std::string(argv[3]).c_str()) : 0;
-    uint32_t log_itervals = argc > 4 ?  std::atoi(std::string(argv[4]).c_str()) : 1000; // 0xFFFFFFFF;
+    std::string grammar_filename = argc > 1 ? std::string(argv[1]) : "grammar_demo_2.pcfg";
+    std::string input_filename = argc > 2 ? std::string(argv[2]) : "sequence.txt";
+    uint32_t log_itervals = argc > 3 ?  std::atoi(std::string(argv[3]).c_str()) : 1000; // 0xFFFFFFFF;
     
     pcfg* grammar = prepare_grammar(grammar_filename);
     auto inside_order_1_rule_iteration_path = generate_inside_perterminate_iteration_paths(grammar);
@@ -158,100 +206,112 @@ int main(int argc, char* argv[])
     std::vector<std::vector<uint32_t>> sentences = parse_input_file(input_filename, grammar);
     std::cout << "Load sentences finished. Total instances:" << sentences.size() << std::endl;
 
+    std::vector<std::vector<uint32_t>> train_set;
+    std::vector<std::vector<uint32_t>> valid_set;
+    double train_fraction = 0.8;
+    split_dataset(sentences, train_set, valid_set, train_fraction);
+    save_data_set_to_file("train_sentences.txt", train_set, grammar);
+    save_data_set_to_file("validate_sentences.txt", valid_set, grammar);
+
     if(sentences.empty()) return 0;
     
     int sentence_id = 0;
     int n_sequences = sentences.size();
-    int batch_size = n_sequences;
+    int n_sequences_train = train_set.size();
+    int n_sequences_val = valid_set.size();
+    std::cout << "train set size = " << n_sequences_train << std::endl;
+    std::cout << "val set size = " << n_sequences_val << std::endl;
 
-    for(int i = sentence_from; i < sentences.size(); i++){
-        auto& sentence = sentences[i];
-        progress_bar(sentence_id + 1, sentences.size());
-        
-        #if PRINT_GRAMMAR_EACH_UPDATION_BEFORE == 1
-        std::cout << "grammar before iteration: " << sentence_id << " :" << std::endl;
-        print_grammar(grammar);
-        #endif
-        int N = grammar->N();
-        
-        uint32_t* sequence = sentence.data();
-        int sequence_length = sentence.size();
-
-        #if PRINT_STEPS == 1
-        std::cout << "1. Proceeding Inside Algorithm..." << std::endl;
-        #endif
-        
-        inside_algorithm(sequence, 
-            (uint32_t*)(grammar->preterminate_rule_lookup_table),
-            (uint32_t*)(grammar->grammar_index),
-            (uint32_t*)(grammar->grammar_table),
-            alpha,
-            sequence_length, grammar->n_syms(), grammar->N(), grammar->T(), MAX_SEQUENCE_LENGTH, grammar->cnt_grammar,
-            inside_order_1_rule_iteration_path
-            #ifdef DEBUG_INSIDE_ALGORITHM
-                , grammar
+    int T = 0;
+    int n_epochs = 5;
+    cky_printer printer;
+    for(int epoch = 0; epoch < n_epochs; epoch++){
+        // trainning
+        for(int i = 0; i < n_sequences_train; i++){
+            auto& sentence = train_set[i];
+            progress_bar(i + 1, n_sequences_train);
+            
+            #if PRINT_GRAMMAR_EACH_UPDATION_BEFORE == 1
+                std::cout << "grammar before iteration: " << sentence_id << " :" << std::endl;
+                print_grammar(grammar);
             #endif
-        );
+            int N = grammar->N();
+            
+            uint32_t* sequence = sentence.data();
+            int sequence_length = sentence.size();
 
-        #if PRINT_STEPS == 1
-            std::cout << "Inside Algorithm Finished." << std::endl;
-        #endif
-
-        cky_printer printer;
-        #if PRINT_INSIDE == 1
-            printer.print_inside_outside_table(alpha,  grammar->N(), grammar->T(), sequence_length, MAX_SEQUENCE_LENGTH, grammar);
-        #endif
-
-        #if PRINT_STEPS == 1
-            std::cout << "2. Proceeding Outside Algorithm..." << std::endl;
-        #endif
-
-        outside_algorithm(mu, beta, sequence, 
-            (uint32_t*)(grammar->preterminate_rule_lookup_table),
-            (uint32_t*)(grammar->grammar_index),
-            (uint32_t*)(grammar->grammar_table),
-            alpha,
-            sequence_length, grammar->n_syms(), grammar->N(), grammar->T(), MAX_SEQUENCE_LENGTH, grammar->cnt_grammar,
-            inside_order_1_rule_iteration_path
-            #ifdef DEBUG_INSIDE_ALGORITHM
-                ,grammar
+            #if PRINT_STEPS == 1
+            std::cout << "1. Proceeding Inside Algorithm..." << std::endl;
             #endif
-        );
-        
-        #if PRINT_STEPS == 1
-            std::cout << "Outside Algorithm Finished." << std::endl;
-        #endif
+            
+            inside_algorithm(sequence, 
+                (uint32_t*)(grammar->preterminate_rule_lookup_table),
+                (uint32_t*)(grammar->grammar_index),
+                (uint32_t*)(grammar->grammar_table),
+                alpha,
+                sequence_length, grammar->n_syms(), grammar->N(), grammar->T(), MAX_SEQUENCE_LENGTH, grammar->cnt_grammar,
+                inside_order_1_rule_iteration_path
+                #ifdef DEBUG_INSIDE_ALGORITHM
+                    , grammar
+                #endif
+            );
 
-        #if PRINT_OUTSIDE == 1
-            printer.print_inside_outside_table(beta,  grammar->N(), grammar->T(), sequence_length, MAX_SEQUENCE_LENGTH, grammar);
-        #endif
-
-        #if PRINT_STEPS == 1
-            std::cout << "3. Proceeding Calculate Expectation Count..." << std::endl;
-        #endif
-
-        kernel_expect_count(count, mu, beta, sequence, 
-            (uint32_t*)(grammar->preterminate_rule_lookup_table),
-            (uint32_t*)(grammar->grammar_index),
-            (uint32_t*)(grammar->grammar_table),
-            alpha,
-            sequence_length, grammar->n_syms(), grammar->N(), grammar->T(), MAX_SEQUENCE_LENGTH, 
-            grammar->cnt_grammar
-            #ifdef DEBUG_INSIDE_ALGORITHM
-                , grammar
+            #if PRINT_STEPS == 1
+                std::cout << "Inside Algorithm Finished." << std::endl;
             #endif
-        );
-        
-        #if PRINT_STEPS == 1
-            std::cout << "Calculate Expectation Count Finished." << std::endl;
-        #endif
 
+            #if PRINT_INSIDE == 1
+                printer.print_inside_outside_table(alpha,  grammar->N(), grammar->T(), sequence_length, MAX_SEQUENCE_LENGTH, grammar);
+            #endif
 
-        if((i + 1) % batch_size == 0 || ((i + 1) == n_sequences)){
+            #if PRINT_STEPS == 1
+                std::cout << "2. Proceeding Outside Algorithm..." << std::endl;
+            #endif
+
+            outside_algorithm(mu, beta, sequence, 
+                (uint32_t*)(grammar->preterminate_rule_lookup_table),
+                (uint32_t*)(grammar->grammar_index),
+                (uint32_t*)(grammar->grammar_table),
+                alpha,
+                sequence_length, grammar->n_syms(), grammar->N(), grammar->T(), MAX_SEQUENCE_LENGTH, grammar->cnt_grammar,
+                inside_order_1_rule_iteration_path
+                #ifdef DEBUG_INSIDE_ALGORITHM
+                    ,grammar
+                #endif
+            );
+            
+            #if PRINT_STEPS == 1
+                std::cout << "Outside Algorithm Finished." << std::endl;
+            #endif
+
+            #if PRINT_OUTSIDE == 1
+                printer.print_inside_outside_table(beta,  grammar->N(), grammar->T(), sequence_length, MAX_SEQUENCE_LENGTH, grammar);
+            #endif
+
+            #if PRINT_STEPS == 1
+                std::cout << "3. Proceeding Calculate Expectation Count..." << std::endl;
+            #endif
+
+            kernel_expect_count(count, mu, beta, sequence, 
+                (uint32_t*)(grammar->preterminate_rule_lookup_table),
+                (uint32_t*)(grammar->grammar_index),
+                (uint32_t*)(grammar->grammar_table),
+                alpha,
+                sequence_length, grammar->n_syms(), grammar->N(), grammar->T(), MAX_SEQUENCE_LENGTH, 
+                grammar->cnt_grammar
+                #ifdef DEBUG_INSIDE_ALGORITHM
+                    , grammar
+                #endif
+            );
+            
+            #if PRINT_STEPS == 1
+                std::cout << "Calculate Expectation Count Finished." << std::endl;
+            #endif
+
             #if PRINT_STEPS == 1
                 std::cout << "4. Proceeding Update Parameters..." << std::endl;
             #endif
-
+                
             kernel_update_parameters(f, count, mu, beta, sequence, 
                 (uint32_t*)(grammar->preterminate_rule_lookup_table),
                 (uint32_t*)(grammar->grammar_index),
@@ -267,24 +327,91 @@ int main(int argc, char* argv[])
             #if PRINT_STEPS == 1
                 std::cout << "Update Parameter Finished." << std::endl;
             #endif
-            memset(f, 0, grammar->cnt_grammar * sizeof(double));
-        }
-        
 
-        #if PRINT_GRAMMAR_EACH_UPDATION_AFTER == 1
-            std::cout << "grammar after iteration: " << sentence_id << " :" << std::endl;
-            print_grammar(grammar);
-        #endif
-        sentence_id++;
-        if((i + 1) % log_itervals == 0){
-            std::ofstream logfile_ostream = std::ofstream("./logs/log_" + std::to_string(i) + ".pcfg");
-            if(!logfile_ostream){
-                std::cerr << "Error: Could not open log file for writing.\n";
+            #if PRINT_GRAMMAR_EACH_UPDATION_AFTER == 1
+                std::cout << "grammar after iteration: " << sentence_id << " :" << std::endl;
+                print_grammar(grammar);
+            #endif
+            sentence_id++;
+            if((i + 1) == log_itervals){
+                std::ofstream logfile_ostream = std::ofstream("./logs/log_" + std::to_string(i + 1) + "_epoch_id_" + std::to_string(epoch) + ".pcfg");
+                if(!logfile_ostream){
+                    std::cerr << "Error: Could not open log file for writing.\n";
+                }
+                print_grammar(grammar, logfile_ostream);
             }
-            print_grammar(grammar, logfile_ostream);
+            
         }
+
+        // clear memory f at the end of an epoch.
+        memset(f, 0, grammar->cnt_grammar * sizeof(double));
+        std::ofstream logfile_ostream = std::ofstream("./logs/log_epoch_id_" + std::to_string(epoch) + ".pcfg");
+        if(!logfile_ostream){
+            std::cerr << "Error: Could not open log file for writing.\n";
+        }
+        print_grammar(grammar, logfile_ostream);
+        
+        
+        // validation
+        double log_likelihood = 0.0;
+        for(int i = 0; i < n_sequences_val; i++){
+            auto& sentence = valid_set[i];
+            progress_bar(i + 1, n_sequences_val);
+            
+            int N = grammar->N();
+            
+            uint32_t* sequence = sentence.data();
+            int sequence_length = sentence.size();
+            
+            inside_algorithm(sequence, 
+                (uint32_t*)(grammar->preterminate_rule_lookup_table),
+                (uint32_t*)(grammar->grammar_index),
+                (uint32_t*)(grammar->grammar_table),
+                alpha,
+                sequence_length, grammar->n_syms(), grammar->N(), grammar->T(), MAX_SEQUENCE_LENGTH, grammar->cnt_grammar,
+                inside_order_1_rule_iteration_path
+                #ifdef DEBUG_INSIDE_ALGORITHM
+                    , grammar
+                #endif
+            );
+            if(alpha[0 + 0 + sequence_length - 1] >= 1){
+                std::cout << alpha[0 + 0 + sequence_length - 1] << std::endl;
+                print_grammar(grammar);
+                for(std::tuple<uint32_t, uint32_t, uint32_t, float, uint32_t> item : 
+                        PCFGItemIterator(grammar->N(), (uint32_t*)grammar->grammar_index, (uint32_t*)grammar->grammar_table)){
+                    float p = std::get<3>(item);
+                    assert(p <= 1);
+                    std::cout << "gid: " << std::get<4>(item) << ":" << p << std::endl;
+                }
+                
+                inside_algorithm(sequence, 
+                    (uint32_t*)(grammar->preterminate_rule_lookup_table),
+                    (uint32_t*)(grammar->grammar_index),
+                    (uint32_t*)(grammar->grammar_table),
+                    alpha,
+                    sequence_length, grammar->n_syms(), grammar->N(), grammar->T(), MAX_SEQUENCE_LENGTH, grammar->cnt_grammar,
+                    inside_order_1_rule_iteration_path
+                    #ifdef DEBUG_INSIDE_ALGORITHM
+                        , grammar
+                    #endif
+                );
+                    
+                printer.print_inside_outside_table(alpha,  grammar->N(), grammar->T(), sequence_length, MAX_SEQUENCE_LENGTH, grammar);
+
+
+                assert(alpha[0 + 0 + sequence_length - 1] <= 1);
+            }
+            
+            
+            log_likelihood += std::log(alpha[0 + 0 + sequence_length - 1]);            
+        }
+        double average_likelihood = (double)log_likelihood / (double)n_sequences_val;
+        std::cout << "Average likelihood on validate set at epoch " << epoch << " = " ;
+        std::cout << std::fixed << std::setprecision(9) << (double)(average_likelihood);
+        std::cout << "  " << std::endl; 
         
     }
+    
 
     std::cout << std::endl << "All finished" << std::endl;
     print_grammar(grammar);
