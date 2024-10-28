@@ -25,13 +25,13 @@
 #include "utils/application_io.hpp"
 
 
-#define PRINT_INSIDE 0
+#define PRINT_INSIDE 1
 #define PRINT_OUTSIDE 0
 #define PRINT_STEPS 0
 #define PRINT_GRAMMAR_EACH_UPDATION_BEFORE 0
 #define PRINT_GRAMMAR_EACH_UPDATION_AFTER 1
 
-#define SANITARY_OUTPUT 1
+#define SANITARY_OUTPUT 0
 
 #if SANITARY_OUTPUT == 1
 #undef PRINT_INSIDE
@@ -190,7 +190,7 @@ int main(int argc, char* argv[])
 {
     std::string grammar_filename = argc > 1 ? std::string(argv[1]) : "grammar_demo_2.pcfg";
     std::string input_filename = argc > 2 ? std::string(argv[2]) : "sequence.txt";
-    uint32_t log_itervals = argc > 3 ?  std::atoi(std::string(argv[3]).c_str()) : 1000; // 0xFFFFFFFF;
+    uint32_t log_itervals = argc > 3 ?  std::atoi(std::string(argv[3]).c_str()) : 10000; // 0xFFFFFFFF;
     
     pcfg* grammar = prepare_grammar(grammar_filename);
     auto inside_order_1_rule_iteration_path = generate_inside_perterminate_iteration_paths(grammar);
