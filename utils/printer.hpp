@@ -4,6 +4,9 @@
 #include <iostream>
 #include "grammar.hpp"
 #include "macros.def"
+
+void progress_bar(int progress, int total, int barWidth = 50);
+
 template<typename T1, typename T2>
 void print_map(const std::map<T1, T2>& map){
     std::cout << "{" << std::endl;
