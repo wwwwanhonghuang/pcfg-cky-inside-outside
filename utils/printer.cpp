@@ -14,3 +14,21 @@ void print_grammar(pcfg* grammar, std::ostream& stream){
             SYMBOL_STR(sym_C)  << " [" << possibility << "]" << std::endl;
     }
 }
+
+
+void progress_bar(int progress, int total, int barWidth) {
+    float percentage = (float) progress / total;
+    int pos = (int)(barWidth * percentage);
+    std::cout << "[";
+    for (int i = 0; i < barWidth; ++i) {
+        if (i < pos) {
+            std::cout << "=";
+        } else if (i == pos) {
+            std::cout << ">";
+        } else {
+            std::cout << " ";
+        }
+    }
+    std::cout << "] " << int(percentage * 100.0) << " %  " << progress << "/" << total << "\r";
+    std::cout.flush();  // Ensures the line is updated in place
+}

@@ -10,8 +10,6 @@
 #include <bits/stdc++.h>
 #include <vector>
 #include <iostream>
-#include <random>
-#include <algorithm>
 
 #include "macros.def"
 #include "utils/tensor.hpp"
@@ -23,24 +21,10 @@
 #include "grammar/grammar_parser.hpp"
 #include "utils/printer.hpp"
 #include "utils/application_io.hpp"
+#include "dataset/dataset_helper.hpp"
 
 
-void progress_bar(int progress, int total, int barWidth = 50) {
-    float percentage = (float) progress / total;
-    int pos = (int)(barWidth * percentage);
-    std::cout << "[";
-    for (int i = 0; i < barWidth; ++i) {
-        if (i < pos) {
-            std::cout << "=";
-        } else if (i == pos) {
-            std::cout << ">";
-        } else {
-            std::cout << " ";
-        }
-    }
-    std::cout << "] " << int(percentage * 100.0) << " %  " << progress << "/" << total << "\r";
-    std::cout.flush();  // Ensures the line is updated in place
-}
+
 
 float* outside_algorithm(float* mu, float* beta, uint32_t* sequence, uint32_t* pretermination_lookuptable, 
                         uint32_t* grammar_index, uint32_t* grammar_table, float* alpha, 
@@ -120,55 +104,8 @@ float* inside_algorithm(uint32_t* sequence, uint32_t* pretermination_lookuptable
     return alpha;
 };
 
-void log_grammar(std::string log_file_path, pcfg* pcfg, int iter){
 
-}
 
-void split_dataset(const std::vector<std::vector<uint32_t>>& sentences,
-                  std::vector<std::vector<uint32_t>>& train_set,
-                  std::vector<std::vector<uint32_t>>& valid_set,
-                  double train_fraction) {
-    if (train_fraction <= 0.0 || train_fraction >= 1.0) {
-        throw std::invalid_argument("train_fraction must be between 0 and 1.");
-    }
-
-    std::vector<std::vector<uint32_t>> shuffled_sentences = sentences;
-
-    std::random_device rd;
-    std::mt19937 generator(rd());
-    std::shuffle(shuffled_sentences.begin(), shuffled_sentences.end(), generator);
-
-    size_t total_sentences = shuffled_sentences.size();
-    size_t split_point = static_cast<size_t>(total_sentences * train_fraction);
-
-    train_set.assign(shuffled_sentences.begin(), shuffled_sentences.begin() + split_point);
-    valid_set.assign(shuffled_sentences.begin() + split_point, shuffled_sentences.end());
-}
-std::string remove_quotes(const std::string& str) {
-    if (!str.empty() && str.front() == '\'' && str.back() == '\'') {
-        return str.substr(1, str.size() - 2);
-    }
-    return str;
-}
-void save_data_set_to_file(std::string file_path, std::vector<std::vector<uint32_t>> sentences, pcfg* grammar){
-    std::ofstream output_file(file_path);
-    if (!output_file.is_open()) {
-        std::cerr << "Error opening file: " << file_path << std::endl;
-        return;
-    }
-    int N = grammar->N();
-    for(size_t i = 0; i < sentences.size(); i++){
-        const auto& sentence = sentences[i];
-        size_t sequence_length = sentence.size();
-        for(size_t j = 0; j < sequence_length; j++){
-            output_file << remove_quotes(grammar->reversed_terminate_map[sentence[j] - N]);
-            if(j != sequence_length - 1){
-                output_file << " ";
-            }
-        }
-        output_file << std::endl;
-    }
-}
 
 int main(int argc, char* argv[])
 {
@@ -178,7 +115,6 @@ int main(int argc, char* argv[])
     
     pcfg* grammar = prepare_grammar(grammar_filename);
     auto inside_order_1_rule_iteration_path = generate_inside_perterminate_iteration_paths(grammar);
-
 
     float* alpha = new float[grammar->N() * MAX_SEQUENCE_LENGTH * MAX_SEQUENCE_LENGTH]();
     float* beta = new float[(grammar->N() + grammar->T()) * MAX_SEQUENCE_LENGTH * MAX_SEQUENCE_LENGTH]();

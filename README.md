@@ -1,4 +1,4 @@
-!!! Current Result are incorrect, fixing.
+!!! Current Result may be incorrect. The appliaction is under testing.
 # CKY Parser and Inside-outside Algorithm for PCFG
 This repository contains a C++ implementation of CYK parser[1, 2] and inside-outside algorithm[3] for
 estimating a PCFG.
