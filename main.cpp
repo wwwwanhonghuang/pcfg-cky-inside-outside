@@ -109,9 +109,9 @@ float* inside_algorithm(uint32_t* sequence, uint32_t* pretermination_lookuptable
 
 int main(int argc, char* argv[])
 {
-    std::string grammar_filename = argc > 1 ? std::string(argv[1]) : "grammar_demo_2.pcfg";
-    std::string input_filename = argc > 2 ? std::string(argv[2]) : "sequence.txt";
-    uint32_t log_itervals = argc > 3 ?  std::atoi(std::string(argv[3]).c_str()) : 10000; // 0xFFFFFFFF;
+    std::string grammar_filename = argc > 1 ? std::string(argv[1]) : "grammar.pcfg";
+    std::string input_filename = argc > 2 ? std::string(argv[2]) : "eeg_sentences.txt";
+    uint32_t log_itervals = argc > 3 ?  std::atoi(std::string(argv[3]).c_str()) : 100000; // 0xFFFFFFFF;
     
     pcfg* grammar = prepare_grammar(grammar_filename);
     auto inside_order_1_rule_iteration_path = generate_inside_perterminate_iteration_paths(grammar);
@@ -253,7 +253,7 @@ int main(int argc, char* argv[])
                 print_grammar(grammar);
             #endif
             sentence_id++;
-            if((i + 1) == log_itervals){
+            if((i + 1) % log_itervals == 0){
                 std::ofstream logfile_ostream = std::ofstream("./logs/log_" + std::to_string(i + 1) + "_epoch_id_" + std::to_string(epoch) + ".pcfg");
                 if(!logfile_ostream){
                     std::cerr << "Error: Could not open log file for writing.\n";

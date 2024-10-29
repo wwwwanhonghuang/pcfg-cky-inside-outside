@@ -35,9 +35,8 @@ void kernel_expect_count(float* count, float* mu, float* beta, uint32_t* sequenc
     float Z = ALPHA(0, 0, sequence_length - 1); 
 
     for(int span_length = 1; span_length <= sequence_length; span_length++){
-        #if DEBUG_MODE == 0
+        
         #pragma omp parallel for
-        #endif
         for(int i = 0; i < sequence_length - span_length + 1; i++){
             int j = i + span_length - 1;
             for(std::tuple<uint32_t, uint32_t, uint32_t, float, uint32_t> item : PCFGItemIterator(N, grammar_index, grammar_table)){
@@ -48,9 +47,7 @@ void kernel_expect_count(float* count, float* mu, float* beta, uint32_t* sequenc
                 uint32_t gid = std::get<4>(item);
                 float mu_val = MU(gid, i, j);
                 
-                #if DEBUG_MODE == 0
                 #pragma omp atomic
-                #endif
                 count[gid] += mu_val;
             }
         }
