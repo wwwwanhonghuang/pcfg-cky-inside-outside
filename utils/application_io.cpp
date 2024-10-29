@@ -1,6 +1,6 @@
 #include "application_io.hpp"
 #include "utils/string_helper.hpp"
-
+#include <map>
 std::vector<std::vector<uint32_t>> parse_input_file(const std::string& file_path, pcfg* grammar){
     std::vector<std::vector<uint32_t>> sentences;
     std::string line;
@@ -19,13 +19,19 @@ std::vector<std::vector<uint32_t>> parse_input_file(const std::string& file_path
         std::string word;
         std::stringstream line_string_stream(line);
         while (getline(line_string_stream, word, ' ')) {
-            input_words.push_back(grammar->terminate_map.find(std::string("\'") + word + std::string("\'"))->second + N);
+            std::string key = std::string("\'") + std::to_string(std::stoi(word) + 1) + std::string("\'");
+            auto result_pt = grammar->terminate_map.find(key);
+            if(result_pt == grammar->terminate_map.end()){
+                std::cerr << "Error: cannot find corresponding word for " << key << "." << std::endl;
+                abort();
+            }
+            uint32_t word_id = grammar->terminate_map.find(key)->second + N;
+            input_words.push_back(word_id);
         }
         sentences.push_back(input_words);
     }
     return sentences;
 }
-
 
 void save_data_set_to_file(std::string file_path, std::vector<std::vector<uint32_t>> sentences, pcfg* grammar){
     std::ofstream output_file(file_path);

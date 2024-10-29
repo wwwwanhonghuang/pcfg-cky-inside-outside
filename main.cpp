@@ -1,6 +1,5 @@
 #ifdef USE_CUDA
 #include <cuda_runtime.h>
-// #include <cutensor.h>
 #endif
 
 #include <stdlib.h>
@@ -104,14 +103,11 @@ float* inside_algorithm(uint32_t* sequence, uint32_t* pretermination_lookuptable
     return alpha;
 };
 
-
-
-
 int main(int argc, char* argv[])
 {
     std::string grammar_filename = argc > 1 ? std::string(argv[1]) : "grammar.pcfg";
-    std::string input_filename = argc > 2 ? std::string(argv[2]) : "eeg_sentences.txt";
-    uint32_t log_itervals = argc > 3 ?  std::atoi(std::string(argv[3]).c_str()) : 100000; // 0xFFFFFFFF;
+    std::string input_filename = argc > 2 ? std::string(argv[2]) : "sentences_converted.txt";
+    uint32_t log_itervals = argc > 3 ?  std::atoi(std::string(argv[3]).c_str()) : 10; // 0xFFFFFFFF;
     
     pcfg* grammar = prepare_grammar(grammar_filename);
     auto inside_order_1_rule_iteration_path = generate_inside_perterminate_iteration_paths(grammar);
@@ -152,7 +148,8 @@ int main(int argc, char* argv[])
             progress_bar(i + 1, n_sequences_train);
             
             #if PRINT_GRAMMAR_EACH_UPDATION_BEFORE == 1
-                std::cout << "grammar before iteration: " << sentence_id << " :" << std::endl;
+                std::cout << "grammar before iteration: " 
+                        << sentence_id << " :" << std::endl;
                 print_grammar(grammar);
             #endif
             int N = grammar->N();
@@ -169,7 +166,8 @@ int main(int argc, char* argv[])
                 (uint32_t*)(grammar->grammar_index),
                 (uint32_t*)(grammar->grammar_table),
                 alpha,
-                sequence_length, grammar->n_syms(), grammar->N(), grammar->T(), MAX_SEQUENCE_LENGTH, grammar->cnt_grammar,
+                sequence_length, grammar->n_syms(), grammar->N(), 
+                grammar->T(), MAX_SEQUENCE_LENGTH, grammar->cnt_grammar,
                 inside_order_1_rule_iteration_path
                 #ifdef DEBUG_INSIDE_ALGORITHM
                     , grammar
