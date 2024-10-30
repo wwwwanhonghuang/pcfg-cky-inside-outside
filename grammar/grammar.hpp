@@ -7,6 +7,7 @@
 #include <cassert>
 #include "data_structure.hpp"
 #include "macros.def"
+
 struct pcfg_grammar_item{
 public:
     std::string left;
@@ -19,16 +20,22 @@ public:
 
 struct pcfg{
 public:
+    // low-level grammar storage
     common_32bit* grammar_index;
     common_32bit* grammar_table;
     common_32bit* preterminate_rule_lookup_table;
+
+    // high-level grammar storage
     std::map<std::string, std::vector<pcfg_grammar_item>> grammar_items_map {};
 
+    // symbol maps
     std::map<std::string, int> nonterminate_map{};
     std::map<std::string, int> terminate_map{};
     std::map<int, std::string> reversed_nonterminate_map{};
     std::map<int, std::string> reversed_terminate_map{};
+    
     int cnt_grammar = 0;
+
     int N(){
         return this->nonterminate_map.size();
     }

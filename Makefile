@@ -22,8 +22,8 @@ else
 endif
 
 # Source files
-SRC_FILES := ./utils/tensor.cpp ./utils/data_structure.cpp ./utils/printer.cpp ./utils/data_encoding.cpp ./grammar/grammar.cpp ./grammar/grammar_parser.cpp utils/data_accessing.cpp utils/application_io.cpp dataset/dataset_helper.cpp utils/string_helper.cpp
-HEADER_FILES := ./utils/tensor.hpp ./utils/data_structure.hpp ./utils/printer.hpp ./utils/data_encoding.h ./grammar/grammar.hpp ./grammar/grammar_parser.hpp utils/data_accessing.hpp utils/application_io.hpp dataset/dataset_helper.hpp utils/string_helper.hpp
+SRC_FILES := ./utils/tensor.cpp ./utils/data_structure.cpp ./utils/printer.cpp ./utils/data_encoding.cpp ./grammar/grammar.cpp ./grammar/grammar_parser.cpp utils/data_accessing.cpp utils/application_io.cpp dataset/dataset_helper.cpp utils/string_helper.cpp alg_inside_outside_main.cpp
+HEADER_FILES := ./utils/tensor.hpp ./utils/data_structure.hpp ./utils/printer.hpp ./utils/data_encoding.h ./grammar/grammar.hpp ./grammar/grammar_parser.hpp utils/data_accessing.hpp utils/application_io.hpp dataset/dataset_helper.hpp utils/string_helper.hpp alg_inside_outside_main.hpp
 MAIN_FILE = main.cpp
 OBJ_FILES := $(SRC_FILES:.cpp=.o)
 TEST_SRCS = ./unit_test/hashtable_test.cpp # $(wildcard ./unit_test/*.cpp)
