@@ -107,7 +107,7 @@ int main(int argc, char* argv[])
 {
     std::string grammar_filename = argc > 1 ? std::string(argv[1]) : "grammar.pcfg";
     std::string input_filename = argc > 2 ? std::string(argv[2]) : "sentences_converted.txt";
-    uint32_t log_itervals = argc > 3 ?  std::atoi(std::string(argv[3]).c_str()) : 10; // 0xFFFFFFFF;
+    uint32_t log_itervals = argc > 3 ?  std::atoi(std::string(argv[3]).c_str()) : 100000; // 0xFFFFFFFF;
     
     pcfg* grammar = prepare_grammar(grammar_filename);
     auto inside_order_1_rule_iteration_path = generate_inside_perterminate_iteration_paths(grammar);

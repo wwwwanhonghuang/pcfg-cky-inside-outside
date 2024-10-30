@@ -8,13 +8,38 @@
 #include "grammar/grammar_parser.hpp"
 
 
+std::vector<std::vector<uint32_t>> read_input_file(const std::string& file_path){
+    std::vector<std::vector<uint32_t>> sentences;
+    std::string line;
+	std::ifstream file(file_path);
+    if (!file.is_open()) {
+        std::cerr << "Error: Could not open the input file at path: " << file_path << std::endl;
+        return sentences;
+    }
+
+    while (std::getline(file, line)) {
+        if(line == "")
+            continue;
+        std::vector<uint32_t> input_words;
+
+        std::string word;
+        std::stringstream line_string_stream(line);
+        while (getline(line_string_stream, word, ' ')) {
+            uint32_t word_id = std::stoi(word);            
+            input_words.push_back(word_id);
+        }
+        sentences.push_back(input_words);
+    }
+    return sentences;
+}
+
 int main(int argc, char* argv[]){
     std::string grammar_filename = argc > 1 ? std::string(argv[1]) : "grammar.pcfg";
-    std::string input_filename = argc > 2 ? std::string(argv[2]) : "eeg_sentences_test.txt";
+    std::string input_filename = argc > 2 ? std::string(argv[2]) : "eeg_sentences.txt";
     std::string output_filename = argc > 3 ? std::string(argv[3]) : "sentences_converted.txt";
     int delay = 2;    
     pcfg* grammar = prepare_grammar(grammar_filename);
-    std::vector<std::vector<uint32_t>> sentences = parse_input_file(input_filename, grammar);
+    std::vector<std::vector<uint32_t>> sentences = read_input_file(input_filename);
     int N = grammar->N();
     for(auto& sentence : sentences){
         size_t sentence_length = sentence.size();
@@ -23,7 +48,7 @@ int main(int argc, char* argv[]){
             uint32_t s = 0;
             for(int j = 0; j < delay; j++){
                 s *= 4;
-                s += sentence[begin - j] - N;
+                s += (sentence[begin - j] - 1);
             }
             phase_array.emplace_back(s + 1);
         }

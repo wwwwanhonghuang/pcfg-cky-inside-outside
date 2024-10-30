@@ -43,7 +43,7 @@ all: $(TARGET)
 
 # Clean up build files
 clean:
-	rm -f $(TARGET) $(OBJ_FILES) $(TEST_TARGET)
+	rm -f $(TARGET) $(OBJ_FILES) $(TEST_TARGET) phase_convert
 
 phase_convert: $(MAIN_FILE) $(OBJ_FILES) $(HEADER_FILES)
 	LD_LIBRARY_PATH=${CUTENSOR_ROOT}/lib/12/:${LD_LIBRARY_PATH} $(TARGET_COMPILER) $(COMPILER_FLAGS) phase_convert.cpp $(OBJ_FILES) $(INCLUDES) -o phase_convert $(CUDA_LIBS) $(CUTENSOR_LIBS) 
