@@ -2,13 +2,48 @@
 #include "grammar.hpp"
 #include "alg_inside_outside_main.h"
 
-struct parse_tree{
-public:
-    parse_tree* left;
-    parse_tree* right;
-    std::tuple<uint32_t, uint32_t, uint32_t, int, float> sym_id;
-};
 
+void serialize_helper(parse_tree* root, std::ostringstream& oss) {
+    if (root == nullptr) {
+        oss << "# ";
+        return;
+    }
+
+    oss << std::get<0>(root->sym_id) << " "
+        << std::get<1>(root->sym_id) << " "
+        << std::get<2>(root->sym_id) << " "
+        << std::get<3>(root->sym_id) << " "
+        << std::get<4>(root->sym_id) << " ";
+
+    serialize_helper(root->left, oss);
+    serialize_helper(root->right, oss);
+}
+
+
+std::string serialize_tree(parse_tree* root){
+    std::ostringstream oss;
+    serialize_helper(root, oss);
+    return oss.str();
+}
+parse_tree* deserialize_tree(std::string tree){
+    std::string token;
+    if (!(iss >> token) || token == "#") { // Check for null pointer
+        return nullptr;
+    }
+
+    uint32_t id1 = std::stoul(token);
+    uint32_t id2, id3;
+    int id4;
+    float id5;
+
+    iss >> id2 >> id3 >> id4 >> id5;
+
+    parse_tree* node = new parse_tree(std::make_tuple(id1, id2, id3, id4, id5));
+
+    node->left = deserialize_helper(iss);
+    node->right = deserialize_helper(iss);
+    return node;
+}
 parse_tree* _parsing_helper(uint32_t symbol_id, int span_from, int span_to, pcfg* grammar){
     if(span_from > span_to){
         return nullptr;
