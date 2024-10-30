@@ -10,13 +10,32 @@
 #include "tree_parser.hpp"
 #include "macros.def"
 #include "grammar.hpp"
-// entropy
-void derivation_entropy(parse_tree* tree){
 
+template<typename T>
+double _sequence_entropy(std::vector<T> sequence){
+    std::map<uint32_t, uint32_t> counter;
+    for(auto&& derivation : derivations){
+        counter[derivation]++;
+    }
+    uint32_t Z = 0;
+
+    double entropy = 0.0;
+    for(auto& map_item : counter){
+        Z += map_item.second / Z;
+    }
+    for(auto& map_item : counter){
+        double v = map_item.second / Z;
+        entropy += (v == 0 ? 0 : -v * std::log(v)); 
+    }
+    return entropy;
+}
+// entropy
+double derivation_entropy(std::vector<uint32_t> derivations){  // vector of derivations (grammar IDs)
+    return _sequence_entropy(derivations);
 }
 
-void word_entropy(parse_tree* tree){
-
+double word_entropy(std::vector<uint32_t> words){
+    return _sequence_entropy(words);
 }
 
 void word_delay_L_mutual_entropy(parse_tree* tree, int L){
