@@ -1,6 +1,7 @@
 #include "application_io.hpp"
 #include "utils/string_helper.hpp"
 #include <map>
+
 std::vector<std::vector<uint32_t>> parse_input_file(const std::string& file_path, pcfg* grammar){
     std::vector<std::vector<uint32_t>> sentences;
     std::string line;
@@ -19,7 +20,7 @@ std::vector<std::vector<uint32_t>> parse_input_file(const std::string& file_path
         std::string word;
         std::stringstream line_string_stream(line);
         while (getline(line_string_stream, word, ' ')) {
-            std::string key = std::string("\'") + std::to_string(std::stoi(word) + 1) + std::string("\'");
+            std::string key = std::string("\'") + word + std::string("\'");
             auto result_pt = grammar->terminate_map.find(key);
             if(result_pt == grammar->terminate_map.end()){
                 std::cerr << "Error: cannot find corresponding word for " << key << "." << std::endl;
