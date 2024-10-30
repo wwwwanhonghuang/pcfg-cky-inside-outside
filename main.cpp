@@ -141,6 +141,7 @@ int main(int argc, char* argv[])
     int T = 0;
     int n_epochs = 5;
     cky_printer printer;
+
     for(int epoch = 0; epoch < n_epochs; epoch++){
         // trainning
         for(int i = 0; i < n_sequences_train; i++){
@@ -320,7 +321,6 @@ int main(int argc, char* argv[])
                 assert(alpha[0 + 0 + sequence_length - 1] <= 1);
             }
             
-            
             log_likelihood += std::log(alpha[0 + 0 + sequence_length - 1]);            
         }
         double average_likelihood = (double)log_likelihood / (double)n_sequences_val;
@@ -330,12 +330,12 @@ int main(int argc, char* argv[])
         
     }
     
-
     std::cout << std::endl << "All finished" << std::endl;
     print_grammar(grammar);
     
     std::ofstream logfile_ostream = std::ofstream("./logs/log_final_" + std::to_string(sentences.size()) + ".pcfg");
     print_grammar(grammar, logfile_ostream);
+
     delete[] alpha;
     delete[] beta;
     delete[] mu;
