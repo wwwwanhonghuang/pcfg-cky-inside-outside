@@ -143,7 +143,7 @@ double prefix_L_parse_entropy(pcfg* grammar, float* alpha, int sequence_length, 
     int N = grammar->N();
     int MS = MAX_SEQUENCE_LENGTH;
     for(std::tuple<uint32_t, uint32_t, uint32_t, float, uint32_t> item : 
-                PCFGItemIterator(N, grammar->grammar_index, grammar->grammar_table)){                    
+                PCFGItemIterator(N, (uint32_t*)grammar->grammar_index, (uint32_t*)grammar->grammar_table)){                    
         uint32_t sym_A = std::get<0>(item);
         uint32_t sym_B = std::get<1>(item);
         uint32_t sym_C = std::get<2>(item);
