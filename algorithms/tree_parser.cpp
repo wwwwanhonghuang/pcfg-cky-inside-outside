@@ -9,11 +9,12 @@ void serialize_helper(parse_tree* root, std::ostringstream& oss) {
         return;
     }
 
-    oss << std::get<0>(root->sym_id) << " "
-        << std::get<1>(root->sym_id) << " "
-        << std::get<2>(root->sym_id) << " "
-        << std::get<3>(root->sym_id) << " "
-        << std::get<4>(root->sym_id) << " ";
+    oss << std::get<0>(root->value) << " "
+        << std::get<1>(root->value) << " "
+        << std::get<2>(root->value) << " "
+        << std::get<3>(root->value) << " "
+        << std::get<4>(root->value) << " "
+        << std::get<5>(root->value) << " ";
 
     serialize_helper(root->left, oss);
     serialize_helper(root->right, oss);
@@ -35,10 +36,11 @@ parse_tree* deserialize_tree(std::string tree){
     uint32_t id2, id3;
     int id4;
     float id5;
+    int id6;
 
-    iss >> id2 >> id3 >> id4 >> id5;
+    iss >> id2 >> id3 >> id4 >> id5 >> id6;
 
-    parse_tree* node = new parse_tree(std::make_tuple(id1, id2, id3, id4, id5));
+    parse_tree* node = new parse_tree(std::make_tuple(id1, id2, id3, id4, id5, id6));
 
     node->left = deserialize_helper(iss);
     node->right = deserialize_helper(iss);
@@ -90,14 +92,14 @@ parse_tree* _parsing_helper(uint32_t symbol_id, int span_from, int span_to, pcfg
     
     parse_tree* tree_1 = _helper(best_symbol_B, span_from, best_k, grammar);
     parse_tree* tree_2 = _helper(best_symbol_C, best_k + 1, span_to, grammar);
-    parse_tree* merged_parse_tree = merge_trees(0, best_symbol_B, best_symbol_C, best_k, best_v, tree_1, tree_2);
+    parse_tree* merged_parse_tree = merge_trees(0, gid, best_symbol_B, best_symbol_C, best_k, best_v, tree_1, tree_2);
 
 }
-parse_tree merge_trees(uint32_t sym_A, uint32_t sym_B, uint32_t sym_C, int k, float p, parse_tree* left, parse_tree* right){
+parse_tree merge_trees(uint32_t sym_A, int gid, uint32_t sym_B, uint32_t sym_C, int k, float p, int gid, parse_tree* left, parse_tree* right){
     parse_tree* result = new parse_tree();
     result->left = left;
     result->right = right;
-    result->value = std::make_tuple(sym_A, sym_B, sym_C, k, p);
+    result->value = std::make_tuple(sym_A, sym_B, sym_C, k, p, gid);
     return result;
 }
 parse_tree* parse(pcfg* grammar, std::vector<uint32_t> sequence, float* alpha, 

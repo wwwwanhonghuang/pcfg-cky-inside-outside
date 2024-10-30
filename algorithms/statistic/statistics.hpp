@@ -15,13 +15,22 @@ void derivation_entropy(parse_tree* tree){
 void word_entropy(parse_tree* tree){
 }
 
+void word_delay_L_mutual_entropy(parse_tree* tree, int L){
+}
+void derivation_delay_L_mutual_entropy(parse_tree* tree, int L){
+}
+
 void D_word_transitional_entropy(parse_tree* tree, int D){
 }
 void D_derivation_transitional_entropy(parse_tree* tree, int D){
 }
-void L_layer_tree_transitional_entropy(parse_tree* tree, int L){
+
+void L_layer_symbol_tree_transitional_entropy(parse_tree* tree, int L){
+}
+void L_layer_derivation_tree_transitional_entropy(parse_tree* tree, int L){
 }
 
+// !important
 double prefix_L_parse_entropy(pcfg* grammar, float* alpha, int sequence_length, int end, int L){
     std::vector<float> p_s;
     int N = grammar->N();
@@ -62,5 +71,6 @@ double prefix_L_parse_entropy(pcfg* grammar, float* alpha, int sequence_length, 
 }
 
 void statistics_main(parse_tree* tree, std::vector<std::string> statistics_items){
+
 }
 #endif
