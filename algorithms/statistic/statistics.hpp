@@ -6,66 +6,66 @@
 #include <cmath>
 #include <queue>
 #include <functional>
-#include <algorithm> 
+#include <algorithm>
+#include <deque>
+#include <unordered_set>
 #include "tree_parser.hpp"
 #include "macros.def"
 #include "grammar.hpp"
 
+
+
+// TODO, mutual entropy in sliding window.
 template<typename T>
 double _sequence_entropy(std::vector<T> sequence){
     std::map<uint32_t, uint32_t> counter;
-    for(auto&& derivation : derivations){
-        counter[derivation]++;
+    for(auto&& element : sequence){
+        counter[element]++;
     }
     uint32_t Z = 0;
 
-    double entropy = 0.0;
+    
     for(auto& map_item : counter){
         Z += map_item.second / Z;
     }
+
+    double entropy = 0.0;
     for(auto& map_item : counter){
-        double v = map_item.second / Z;
+        double v = static_cast<double>(map_item.second) / Z;
         entropy += (v == 0 ? 0 : -v * std::log(v)); 
     }
     return entropy;
 }
+
+
 // entropy
-double derivation_entropy(std::vector<uint32_t> derivations){  // vector of derivations (grammar IDs)
-    return _sequence_entropy(derivations);
-}
+double derivation_entropy(std::vector<uint32_t> derivations);
 
-double word_entropy(std::vector<uint32_t> words){
-    return _sequence_entropy(words);
-}
+double word_entropy(std::vector<uint32_t> words);
 
-void word_delay_L_mutual_entropy(parse_tree* tree, int L){
+double _sequence_delay_L_mutual_entropy(std::vector<uint32_t> words, int L);
 
-}
-void derivation_delay_L_mutual_entropy(parse_tree* tree, int L){
+double word_delay_L_mutual_entropy(std::vector<uint32_t> words, int L);
 
-}
 
-void D_word_transitional_entropy(parse_tree* tree, int D){
+void derivation_delay_L_mutual_entropy(std::vector<uint32_t> derivations, int L);
 
-}
 
-void D_derivation_transitional_entropy(parse_tree* tree, int D){
-
-}
+std::vector<uint32_t> to_derivations_by_preorder_iteration(parse_tree* node);
 
 // Function to calculate mutual information with a delay of L layers
 template<typename T>
-double calculate_delay_L_layer_mutual_information(std::vector<std::vector<T>> layers, int L){
+double calculate_delay_L_layer_mutual_information(pcfg* grammar, std::vector<std::vector<T>> layers, int L){
     std::map<uint64_t, long> joint_counter;
     std::map<uint32_t, long> symbol_counter;
 
     // Counting occurances
-    for(int pre_layer_id = 0; pre_layer_id < layers.size() - L; pre_layer_id ++){
+    for(int pre_layer_id = 0; pre_layer_id < layers.size() - L; pre_layer_id++){
         int delay_L_layer_id = pre_layer_id + L;
         
         for(auto&& prelayer_element: layers[pre_layer_id]){
             // Count occurrences in the joint distribution
-            joint_counter[prelayer_element]++;
+            symbol_counter[prelayer_element]++;
 
             for(auto&& postlayer_element: layers[delay_L_layer_id]){
                 uint64_t key = ((prelayer_element << 16) & 0xFFFF0000) | (postlayer_element & 0xFFFF);
@@ -88,14 +88,14 @@ double calculate_delay_L_layer_mutual_information(std::vector<std::vector<T>> la
         Z += map_item.second;
     }
     for(auto& map_item : joint_counter){
-        joint_possibility[map_item.first] = map_item.second / Z;
+        joint_possibility[map_item.first] = static_cast<double>(map_item.second) / Z;
     }
     Z = 0.0;
     for(auto& map_item : symbol_counter){
         Z += map_item.second;
     }
     for(auto& map_item : symbol_counter){
-        symbol_possibility[map_item.first] = map_item.second / Z;
+        symbol_possibility[map_item.first] = static_cast<double>(map_item.second) / Z;
     }
 
     // mutual entropy
@@ -120,16 +120,20 @@ dfs_get_all_layers_value(pcfg* grammar, parse_tree* tree, std::function<T(const 
     std::vector<std::vector<T>> layers;
     std::queue<parse_tree*> node_queue;
     
-    // BFS get all layers' root symbols;
+    if (tree == nullptr) {
+        return layers;
+    }
+
+    // BFS to select all layers' root's values;
     node_queue.push(tree);
     while(!node_queue.empty()){
         std::vector<T> layer;
-
         int size = node_queue.size();
+        
         for(int i = 0; i < size; i++){
             parse_tree* first_node = node_queue.front();
             node_queue.pop();
-            layers.emplace_back(value_selector(tree->value)); // the A'id in A->BC/
+            layers.emplace_back(value_selector(first_node->value)); // the A'id in A->BC/
             if(first_node->left != nullptr){
                 node_queue.push(first_node->left);
             }else if(first_node->right != nullptr){
@@ -141,62 +145,11 @@ dfs_get_all_layers_value(pcfg* grammar, parse_tree* tree, std::function<T(const 
     return layers;
 }
 
-double L_layer_symbol_tree_transitional_entropy(pcfg* grammar, parse_tree* tree, int L){
-    std::vector<std::vector<int>> layers = dfs_get_all_layers_value<int>(grammar, tree, [](const std::tuple<uint32_t, uint32_t, uint32_t, int, float, int>& value){
-        return std::get<0>(value); 
-    });
-    return calculate_delay_L_layer_mutual_information(layers, L);
-}
+int tree_depth(parse_tree* node);
 
-double L_layer_derivation_tree_transitional_entropy(pcfg* grammar, parse_tree* tree, int L){
-    auto layers = dfs_get_all_layers_value<int>(grammar, tree, 
-            [](const std::tuple<uint32_t, uint32_t, uint32_t, int, float, int>& value) {
-        return std::get<5>(value);
-    });
-    return calculate_delay_L_layer_mutual_information(layers, L);
-}
+double L_layer_symbol_tree_transitional_entropy(pcfg* grammar, parse_tree* tree, int L);
+double L_layer_derivation_tree_transitional_entropy(pcfg* grammar, parse_tree* tree, int L);
 
 // !important
-double prefix_L_parse_entropy(pcfg* grammar, float* alpha, int sequence_length, int end, int L){
-    std::vector<float> p_s;
-    int N = grammar->N();
-    int MS = MAX_SEQUENCE_LENGTH;
-    for(std::tuple<uint32_t, uint32_t, uint32_t, float, uint32_t> item : 
-                PCFGItemIterator(N, (uint32_t*)grammar->grammar_index, (uint32_t*)grammar->grammar_table)){                    
-        uint32_t sym_A = std::get<0>(item);
-        uint32_t sym_B = std::get<1>(item);
-        uint32_t sym_C = std::get<2>(item);
-        float possibility = std::get<3>(item);
-        if(IS_EPSILON(sym_C)){
-            p_s.emplace_back(possibility * ALPHA(sym_B, std::max(end - L, 0), end));
-        }else{
-            for(int k = std::min(end - L, 0); k < end; k++){
-                p_s.emplace_back(possibility * ALPHA(sym_B, k + 1, end));
-            }
-        }
-    }
-    
-    // Normalize probabilities
-    double total_probability = 0.0;
-    for (auto&& p : p_s) {
-        total_probability += p;
-    }
-
-    // Calculate entropy
-    double entropy = 0.0;
-    if (total_probability > 0) {
-        for (auto&& p : p_s) {
-            if (p > 0) {
-                double normalized_p = p / total_probability; // Normalize p
-                entropy += normalized_p * std::log(normalized_p); // log(p)
-            }
-        }
-        entropy = -entropy; // Final entropy calculation
-    }
-    return entropy;
-}
-
-void statistics_main(parse_tree* tree, std::vector<std::string> statistics_items){
-    
-}
+double prefix_L_parse_entropy(pcfg* grammar, float* alpha, int sequence_length, int end, int L);
 #endif
