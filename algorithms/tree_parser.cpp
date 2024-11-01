@@ -26,6 +26,19 @@ std::string serialize_tree(parse_tree* root){
     serialize_helper(root, oss);
     return oss.str();
 }
+parse_tree* deserialize_tree_from_file(std::string filepath){
+    std::ifstream infile(filepath);
+    if (!infile.is_open()) {
+        throw std::runtime_error("Could not open file: " + filepath);
+    }
+
+    std::ostringstream oss;
+    oss << infile.rdbuf();
+    infile.close();
+
+    return deserialize_tree(oss.str());
+}
+
 parse_tree* deserialize_tree(std::string tree){
     std::string token;
     if (!(iss >> token) || token == "#") { // Check for null pointer
@@ -46,6 +59,7 @@ parse_tree* deserialize_tree(std::string tree){
     node->right = deserialize_helper(iss);
     return node;
 }
+
 parse_tree* _parsing_helper(uint32_t symbol_id, int span_from, int span_to, pcfg* grammar){
     if(span_from > span_to){
         return nullptr;
