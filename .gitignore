@@ -1,0 +1,5 @@
+data/logs
+.vs
+.vscode
+build
+data/**/**.txt
