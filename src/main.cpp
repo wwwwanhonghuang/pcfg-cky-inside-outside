@@ -31,14 +31,12 @@ int main(int argc, char* argv[])
         std::cout << "Error: config.yaml could not be loaded!" << std::endl;
         return 1;
     }
-     // Example: Check if specific keys exist in the file
    
     std::string grammar_filename = config["main"]["grammar_file"].as<std::string>();
     std::string input_filename = config["main"]["input"].as<std::string>();
     uint32_t log_itervals = config["main"]["log_itervals"].as<int>();
     std::string log_path = config["main"]["log_path"].as<std::string>();
 
-    
     pcfg* grammar = prepare_grammar(grammar_filename);
     auto inside_order_1_rule_iteration_path = generate_inside_perterminate_iteration_paths(grammar);
 
@@ -52,12 +50,27 @@ int main(int argc, char* argv[])
     std::vector<std::vector<uint32_t>> sentences = parse_input_file(input_filename, grammar);
     std::cout << "Load sentences finished. Total instances:" << sentences.size() << std::endl;
 
-    std::vector<std::vector<uint32_t>> train_set;
-    std::vector<std::vector<uint32_t>> valid_set;
-    double train_fraction = 0.8;
-    split_dataset(sentences, train_set, valid_set, train_fraction);
-    save_data_set_to_file("./data/train_sentences.txt", train_set, grammar);
-    save_data_set_to_file("./data/validate_sentences.txt", valid_set, grammar);
+    std::vector<std::vector<uint32_t>>* train_set_pt;
+    std::vector<std::vector<uint32_t>>* valid_set_pt;
+
+    if(config["main"]["split_data"]['enabled'].as<bool>()){
+        double train_fraction = 0.8;
+        std::string train_set_file_save_path = config["main"]["split_data"]['enabled']['train_dataset_path'].as<std::string>();
+        std::string val_set_file_save_path = config["main"]["split_data"]['enabled']['val_dataset_path'].as<std::string>();
+
+        std::vector<std::vector<uint32_t>> train_set;
+        std::vector<std::vector<uint32_t>> valid_set;
+        split_dataset(sentences, train_set, valid_set, train_fraction);
+        save_data_set_to_file(train_dataset_path, train_set, grammar);
+        save_data_set_to_file(val_set_file_save_path, valid_set, grammar);
+        train_set_pt = &train_set;
+        valid_set_pt = &valid_set;
+    }else{
+        train_set_pt = &sentences;
+        static std::vector<std::vector<uint32_t>> empty_valid_set;
+        valid_set_pt = &empty_valid_set;
+    }
+    
 
     if(sentences.empty()) return 0;
     
@@ -72,10 +85,10 @@ int main(int argc, char* argv[])
     int n_epochs = 5;
     cky_printer printer;
 
+    // Trainning loop
     for(int epoch = 0; epoch < n_epochs; epoch++){
-        // trainning
         for(int i = 0; i < n_sequences_train; i++){
-            auto& sentence = train_set[i];
+            auto& sentence = (*train_set_pt)[i];
             progress_bar(i + 1, n_sequences_train);
             
             #if PRINT_GRAMMAR_EACH_UPDATION_BEFORE == 1
@@ -204,7 +217,7 @@ int main(int argc, char* argv[])
         // validation
         double log_likelihood = 0.0;
         for(int i = 0; i < n_sequences_val; i++){
-            auto& sentence = valid_set[i];
+            auto& sentence = (*valid_set)[i];
             progress_bar(i + 1, n_sequences_val);
             
             int N = grammar->N();
