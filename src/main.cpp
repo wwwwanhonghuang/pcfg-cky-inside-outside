@@ -9,6 +9,8 @@
 #include <bits/stdc++.h>
 #include <vector>
 #include <iostream>
+#include <yaml-cpp/yaml.h>
+
 
 #include "macros.def"
 #include "utils/tensor.hpp"
@@ -21,14 +23,21 @@
 #include "utils/application_io.hpp"
 #include "dataset/dataset_helper.hpp"
 
-// #include <yaml-cpp/yaml.h>
-
 
 int main(int argc, char* argv[])
 {
-    std::string grammar_filename = argc > 1 ? std::string(argv[1]) : "./data/grammar.pcfg";
-    std::string input_filename = argc > 2 ? std::string(argv[2]) : "./data/sentences_converted.txt";
-    uint32_t log_itervals = argc > 3 ?  std::atoi(std::string(argv[3]).c_str()) : 100000; // 0xFFFFFFFF;
+    YAML::Node config = YAML::LoadFile("config.yaml");
+    if (!config.IsDefined()) {
+        std::cout << "Error: config.yaml could not be loaded!" << std::endl;
+        return 1;
+    }
+     // Example: Check if specific keys exist in the file
+   
+    std::string grammar_filename = config["main"]["grammar_file"].as<std::string>();
+    std::string input_filename = config["main"]["input"].as<std::string>();
+    uint32_t log_itervals = config["main"]["log_itervals"].as<int>();
+    std::string log_path = config["main"]["log_path"].as<std::string>();
+
     
     pcfg* grammar = prepare_grammar(grammar_filename);
     auto inside_order_1_rule_iteration_path = generate_inside_perterminate_iteration_paths(grammar);
@@ -103,6 +112,8 @@ int main(int argc, char* argv[])
             #if PRINT_INSIDE == 1
                 printer.print_inside_outside_table(alpha,  grammar->N(), grammar->T(), sequence_length, MAX_SEQUENCE_LENGTH, grammar);
             #endif
+                            printer.print_inside_outside_table(alpha,  grammar->N(), grammar->T(), sequence_length, MAX_SEQUENCE_LENGTH, grammar);
+
 
             #if PRINT_STEPS == 1
                 std::cout << "2. Proceeding Outside Algorithm..." << std::endl;
@@ -174,7 +185,7 @@ int main(int argc, char* argv[])
             #endif
             sentence_id++;
             if((i + 1) % log_itervals == 0){
-                std::ofstream logfile_ostream = std::ofstream("./logs/log_" + std::to_string(i + 1) + "_epoch_id_" + std::to_string(epoch) + ".pcfg");
+                std::ofstream logfile_ostream = std::ofstream(log_path + "/log_" + std::to_string(i + 1) + "_epoch_id_" + std::to_string(epoch) + ".pcfg");
                 if(!logfile_ostream){
                     std::cerr << "Error: Could not open log file for writing.\n";
                 }
@@ -185,7 +196,7 @@ int main(int argc, char* argv[])
 
         // clear memory f at the end of an epoch.
         memset(f, 0, grammar->cnt_grammar * sizeof(double));
-        std::ofstream logfile_ostream = std::ofstream("./logs/log_epoch_id_" + std::to_string(epoch) + ".pcfg");
+        std::ofstream logfile_ostream = std::ofstream(log_path + "/log_epoch_id_" + std::to_string(epoch) + ".pcfg");
         if(!logfile_ostream){
             std::cerr << "Error: Could not open log file for writing.\n";
         }

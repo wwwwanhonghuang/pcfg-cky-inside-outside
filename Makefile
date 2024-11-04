@@ -61,8 +61,10 @@ $(LIB_DIR):
 # Build main executable
 main: $(TARGET_MAIN)
 
+TARGET_MAIN_LD = -lyaml-cpp $(CUDA_LIBS) $(CUTENSOR_LIBS)
+
 $(TARGET_MAIN): $(SRC_DIR)/main.cpp $(SHARED_LIB) | $(BIN_DIR)
-	$(TARGET_COMPILER) $(COMPILER_FLAGS) $(INCLUDES) -o $@ $(SRC_DIR)/main.cpp $(SHARED_LIB) $(CUDA_LIBS) $(CUTENSOR_LIBS)
+	$(TARGET_COMPILER) $(COMPILER_FLAGS) $(INCLUDES) -o $@ $(SRC_DIR)/main.cpp $(SHARED_LIB) $(TARGET_MAIN_LD)
 
 # Build phase_convert executable
 phase_convert: $(TARGET_PHASE_CONVERT)
