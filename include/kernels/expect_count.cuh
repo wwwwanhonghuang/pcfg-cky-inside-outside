@@ -10,8 +10,6 @@
 #include "grammar/grammar.hpp"
 #include "macros.def"
 
-
-
 #if DEBUG_MODE == 0
 #define EXPERCT_COUNT_DEBUG_OUTPUT(CONDITION)
 #else

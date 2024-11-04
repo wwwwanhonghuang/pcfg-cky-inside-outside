@@ -112,8 +112,6 @@ int main(int argc, char* argv[])
             #if PRINT_INSIDE == 1
                 printer.print_inside_outside_table(alpha,  grammar->N(), grammar->T(), sequence_length, MAX_SEQUENCE_LENGTH, grammar);
             #endif
-                            printer.print_inside_outside_table(alpha,  grammar->N(), grammar->T(), sequence_length, MAX_SEQUENCE_LENGTH, grammar);
-
 
             #if PRINT_STEPS == 1
                 std::cout << "2. Proceeding Outside Algorithm..." << std::endl;
