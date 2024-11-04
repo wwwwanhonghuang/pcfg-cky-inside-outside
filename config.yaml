@@ -3,3 +3,7 @@ main:
   input: "data/sequence.txt"
   log_itervals: 100000
   log_path: "data/logs/"
+  split_data:
+    enabled: true
+    val_dataset_path: "data/validate_sentences.txt" 
+    train_dataset_pat: "data/train_sentences.txt"
