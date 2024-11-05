@@ -81,12 +81,16 @@ int main(int argc, char* argv[])
     int n_epochs = 5;
     cky_printer printer;
 
-    // Trainning loop
+#define LIMIT 10000
+    // Training loop
     for(int epoch = 0; epoch < n_epochs; epoch++){
         for(int i = 0; i < n_sequences_train; i++){
+            
             const std::vector<uint32_t>& sentence = train_set[i]; // or use reference if copying is an issue
             progress_bar(i + 1, n_sequences_train);
-            
+            #ifdef LIMIT
+                if(i >= LIMIT) break;
+            #endif
             #if PRINT_GRAMMAR_EACH_UPDATION_BEFORE == 1
                 std::cout << "grammar before iteration: " 
                         << sentence_id << " :" << std::endl;

@@ -62,6 +62,7 @@ $(LIB_DIR):
 main: $(TARGET_MAIN)
 
 TARGET_MAIN_LD = -lyaml-cpp $(CUDA_LIBS) $(CUTENSOR_LIBS)
+TARGET_PHASE_CONVERT_LD = -lyaml-cpp 
 
 $(TARGET_MAIN): $(SRC_DIR)/main.cpp $(SHARED_LIB) | $(BIN_DIR)
 	$(TARGET_COMPILER) $(COMPILER_FLAGS) $(INCLUDES) -o $@ $(SRC_DIR)/main.cpp $(SHARED_LIB) $(TARGET_MAIN_LD)
@@ -70,7 +71,7 @@ $(TARGET_MAIN): $(SRC_DIR)/main.cpp $(SHARED_LIB) | $(BIN_DIR)
 phase_convert: $(TARGET_PHASE_CONVERT)
 
 $(TARGET_PHASE_CONVERT): $(SRC_DIR)/phase_convert.cpp $(SHARED_LIB) | $(BIN_DIR)
-	$(TARGET_COMPILER) $(COMPILER_FLAGS) $(INCLUDES) -o $@ $(SRC_DIR)/phase_convert.cpp $(SHARED_LIB) $(CUDA_LIBS) $(CUTENSOR_LIBS)
+	$(TARGET_COMPILER) $(COMPILER_FLAGS) $(INCLUDES) -o $@ $(SRC_DIR)/phase_convert.cpp $(SHARED_LIB) $(TARGET_PHASE_CONVERT_LD)
 
 # Build unit tests executable
 $(TEST_EXE): $(OBJ_FILES) $(TEST_OBJS) | $(BIN_DIR)

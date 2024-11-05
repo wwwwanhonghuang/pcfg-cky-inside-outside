@@ -4,6 +4,8 @@
 #include <string>
 #include <bits/stdc++.h>
 #include <map>
+#include <yaml-cpp/yaml.h>
+
 #include "utils/application_io.hpp"
 #include "grammar/grammar_parser.hpp"
 
@@ -34,10 +36,17 @@ std::vector<std::vector<uint32_t>> read_input_file(const std::string& file_path)
 }
 
 int main(int argc, char* argv[]){
-    std::string grammar_filename = argc > 1 ? std::string(argv[1]) : "grammar.pcfg";
-    std::string input_filename = argc > 2 ? std::string(argv[2]) : "eeg_sentences.txt";
-    std::string output_filename = argc > 3 ? std::string(argv[3]) : "sentences_converted.txt";
-    int delay = 2;    
+    YAML::Node config = YAML::LoadFile("config.yaml");
+    if (!config.IsDefined()) {
+        std::cout << "Error: config.yaml could not be loaded!" << std::endl;
+        return 1;
+    }
+
+    std::string grammar_filename = config["phase_convert"]["grammar_file"].as<std::string>();
+    std::string input_filename =  config["phase_convert"]["input"].as<std::string>();
+    std::string output_filename =  config["phase_convert"]["output"].as<std::string>();
+
+    int delay = 2;
     pcfg* grammar = prepare_grammar(grammar_filename);
     std::vector<std::vector<uint32_t>> sentences = read_input_file(input_filename);
     int N = grammar->N();

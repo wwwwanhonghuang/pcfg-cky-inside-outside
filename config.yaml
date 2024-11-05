@@ -1,9 +1,14 @@
 main:
-  grammar_file: "data/grammar_demo_2.pcfg"
-  input: "data/sequence.txt"
+  grammar_file: "data/grammar.pcfg"
+  input: "data/eeg_sentences.txt"
   log_itervals: 100000
   log_path: "data/logs/"
   split_data:
     enabled: true
     val_dataset_path: "data/validate_sentences.txt" 
     train_dataset_path: "data/train_sentences.txt"
+
+phase_convert:
+  grammar_file: "data/grammar.pcfg"
+  input: "data/eeg_sentences.txt"
+  output: "data/sentences_converted.txt"
