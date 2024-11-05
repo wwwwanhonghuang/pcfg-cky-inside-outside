@@ -4,3 +4,6 @@ data/logs
 build
 data/**/**.txt
 *.log
+*.txt
+logs
+**/**.bk
