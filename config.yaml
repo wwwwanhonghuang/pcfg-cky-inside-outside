@@ -6,4 +6,4 @@ main:
   split_data:
     enabled: true
     val_dataset_path: "data/validate_sentences.txt" 
-    train_dataset_pat: "data/train_sentences.txt"
+    train_dataset_path: "data/train_sentences.txt"

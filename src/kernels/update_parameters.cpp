@@ -11,7 +11,7 @@ inline float _calculate_new_possibility(float S, float f_gid) {
     return f_gid / S;
 }
 
-void kernel_update_parameters(double* f, float* count, float* mu, float* beta, uint32_t* sequence, 
+void kernel_update_parameters(double* f, float* count, float* mu, float* beta, const uint32_t* sequence, 
         uint32_t* pretermination_lookuptable, 
         uint32_t* grammar_index, 
     #ifdef USE_CUDA

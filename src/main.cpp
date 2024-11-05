@@ -50,28 +50,24 @@ int main(int argc, char* argv[])
     std::vector<std::vector<uint32_t>> sentences = parse_input_file(input_filename, grammar);
     std::cout << "Load sentences finished. Total instances:" << sentences.size() << std::endl;
 
-    std::vector<std::vector<uint32_t>>* train_set_pt;
-    std::vector<std::vector<uint32_t>>* valid_set_pt;
+    bool is_split_dataset = config["main"]["split_data"]["enabled"].as<bool>();
 
-    if(config["main"]["split_data"]['enabled'].as<bool>()){
+    std::vector<std::vector<uint32_t>> train_set;
+    std::vector<std::vector<uint32_t>> valid_set;
+
+    if(is_split_dataset){
         double train_fraction = 0.8;
-        std::string train_set_file_save_path = config["main"]["split_data"]['enabled']['train_dataset_path'].as<std::string>();
-        std::string val_set_file_save_path = config["main"]["split_data"]['enabled']['val_dataset_path'].as<std::string>();
+        std::string train_set_file_save_path = config["main"]["split_data"]["train_dataset_path"].as<std::string>();
+        std::string val_set_file_save_path = config["main"]["split_data"]["val_dataset_path"].as<std::string>();
 
-        std::vector<std::vector<uint32_t>> train_set;
-        std::vector<std::vector<uint32_t>> valid_set;
         split_dataset(sentences, train_set, valid_set, train_fraction);
-        save_data_set_to_file(train_dataset_path, train_set, grammar);
+        save_data_set_to_file(train_set_file_save_path, train_set, grammar);
         save_data_set_to_file(val_set_file_save_path, valid_set, grammar);
-        train_set_pt = &train_set;
-        valid_set_pt = &valid_set;
+        
     }else{
-        train_set_pt = &sentences;
-        static std::vector<std::vector<uint32_t>> empty_valid_set;
-        valid_set_pt = &empty_valid_set;
+        train_set = std::move(sentences);
     }
     
-
     if(sentences.empty()) return 0;
     
     int sentence_id = 0;
@@ -88,7 +84,7 @@ int main(int argc, char* argv[])
     // Trainning loop
     for(int epoch = 0; epoch < n_epochs; epoch++){
         for(int i = 0; i < n_sequences_train; i++){
-            auto& sentence = (*train_set_pt)[i];
+            const std::vector<uint32_t>& sentence = train_set[i]; // or use reference if copying is an issue
             progress_bar(i + 1, n_sequences_train);
             
             #if PRINT_GRAMMAR_EACH_UPDATION_BEFORE == 1
@@ -98,7 +94,9 @@ int main(int argc, char* argv[])
             #endif
             int N = grammar->N();
             
-            uint32_t* sequence = sentence.data();
+
+            const uint32_t* sequence = sentence.data();
+
             int sequence_length = sentence.size();
 
             #if PRINT_STEPS == 1
@@ -217,7 +215,8 @@ int main(int argc, char* argv[])
         // validation
         double log_likelihood = 0.0;
         for(int i = 0; i < n_sequences_val; i++){
-            auto& sentence = (*valid_set)[i];
+
+            auto& sentence = valid_set[i];
             progress_bar(i + 1, n_sequences_val);
             
             int N = grammar->N();
