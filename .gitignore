@@ -3,3 +3,7 @@ data/logs
 .vscode
 build
 data/**/**.txt
+*.log
+*.txt
+logs
+**/**.bk
