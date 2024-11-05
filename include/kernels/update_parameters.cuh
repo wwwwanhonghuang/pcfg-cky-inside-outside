@@ -29,5 +29,6 @@ void kernel_update_parameters(long double* f, long double* count, long double* m
         #ifdef DEBUG_INSIDE_ALGORITHM
             , pcfg* grammar
         #endif
+        , bool do_update
 );
 #endif

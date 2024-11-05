@@ -39,6 +39,7 @@ int main(int argc, char* argv[])
     std::string log_path = config["main"]["log_path"].as<std::string>();
     int n_epochs = config["main"]["n_epochs"].as<int>();
     pcfg* grammar = prepare_grammar(grammar_filename);
+    int batch_size_for_parameter_update = config["main"]["batch_size_for_parameter_update"].as<int>();
     auto inside_order_1_rule_iteration_path = generate_inside_perterminate_iteration_paths(grammar);
 
     long double* alpha = new long double[grammar->N() * MAX_SEQUENCE_LENGTH * MAX_SEQUENCE_LENGTH]();
@@ -124,7 +125,7 @@ int main(int argc, char* argv[])
                     , grammar
                 #endif
             );
-            if(std::abs(ALPHA(0, 0, sequence_length - 1)) < 1e-36){
+            if((ALPHA(0, 0, sequence_length - 1)) == 0){
                 std::cout << "Warning: at sentence " << (i + 1) << 
                 " Symbol S's inside possibility may be 0." <<
                 " This could indicate that there" << 
@@ -213,6 +214,7 @@ int main(int argc, char* argv[])
                 #ifdef DEBUG_INSIDE_ALGORITHM
                     , grammar
                 #endif
+                , (i % batch_size_for_parameter_update) == 0 ? true : false
             );
 
             #if PRINT_STEPS == 1
