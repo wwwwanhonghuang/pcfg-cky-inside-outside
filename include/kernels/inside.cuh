@@ -30,7 +30,7 @@ void kernel_inside_alpha_zerolization(float* alpha, int N, int MS);
 __global__ 
 #endif
 void kernel_inside_base_fill_alpha(  
-        uint32_t* sequence, uint32_t* pretermination_lookuptable, 
+        const uint32_t* sequence, uint32_t* pretermination_lookuptable, 
         uint32_t* grammar_index, uint32_t* grammar_table, float* alpha, 
         int sequence_length, int n_syms, int N, int T, int MS, int n_grammars
         #ifdef DEBUG_INSIDE_ALGORITHM
@@ -41,7 +41,7 @@ void kernel_inside_base_fill_alpha(
 #ifdef USE_CUDA
 __global__ 
 #endif
-void kernel_inside_computeSpanKernel(uint32_t* sequence, uint32_t* pretermination_lookuptable, 
+void kernel_inside_computeSpanKernel(const uint32_t* sequence, uint32_t* pretermination_lookuptable, 
         uint32_t* grammar_index, uint32_t* grammar_table, float* alpha, 
         int sequence_length, int n_syms, int N, int T, int MS, int n_grammars,
         std::vector<std::tuple<uint32_t, uint32_t>> inside_order_1_rule_iteration_path

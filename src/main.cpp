@@ -9,6 +9,8 @@
 #include <bits/stdc++.h>
 #include <vector>
 #include <iostream>
+#include <yaml-cpp/yaml.h>
+
 
 #include "macros.def"
 #include "utils/tensor.hpp"
@@ -21,15 +23,20 @@
 #include "utils/application_io.hpp"
 #include "dataset/dataset_helper.hpp"
 
-// #include <yaml-cpp/yaml.h>
-
 
 int main(int argc, char* argv[])
 {
-    std::string grammar_filename = argc > 1 ? std::string(argv[1]) : "./data/grammar.pcfg";
-    std::string input_filename = argc > 2 ? std::string(argv[2]) : "./data/sentences_converted.txt";
-    uint32_t log_itervals = argc > 3 ?  std::atoi(std::string(argv[3]).c_str()) : 100000; // 0xFFFFFFFF;
-    
+    YAML::Node config = YAML::LoadFile("config.yaml");
+    if (!config.IsDefined()) {
+        std::cout << "Error: config.yaml could not be loaded!" << std::endl;
+        return 1;
+    }
+   
+    std::string grammar_filename = config["main"]["grammar_file"].as<std::string>();
+    std::string input_filename = config["main"]["input"].as<std::string>();
+    uint32_t log_itervals = config["main"]["log_itervals"].as<int>();
+    std::string log_path = config["main"]["log_path"].as<std::string>();
+
     pcfg* grammar = prepare_grammar(grammar_filename);
     auto inside_order_1_rule_iteration_path = generate_inside_perterminate_iteration_paths(grammar);
 
@@ -42,14 +49,24 @@ int main(int argc, char* argv[])
     std::cout << "Load sentences..." << std::endl;
     std::vector<std::vector<uint32_t>> sentences = parse_input_file(input_filename, grammar);
     std::cout << "Load sentences finished. Total instances:" << sentences.size() << std::endl;
+    bool is_split_dataset = config["main"]["split_data"]["enabled"].as<bool>();
 
     std::vector<std::vector<uint32_t>> train_set;
     std::vector<std::vector<uint32_t>> valid_set;
-    double train_fraction = 0.8;
-    split_dataset(sentences, train_set, valid_set, train_fraction);
-    save_data_set_to_file("./data/train_sentences.txt", train_set, grammar);
-    save_data_set_to_file("./data/validate_sentences.txt", valid_set, grammar);
 
+    if(is_split_dataset){
+        double train_fraction = 0.8;
+        std::string train_set_file_save_path = config["main"]["split_data"]["train_dataset_path"].as<std::string>();
+        std::string val_set_file_save_path = config["main"]["split_data"]["val_dataset_path"].as<std::string>();
+
+        split_dataset(sentences, train_set, valid_set, train_fraction);
+        save_data_set_to_file(train_set_file_save_path, train_set, grammar);
+        save_data_set_to_file(val_set_file_save_path, valid_set, grammar);
+        
+    }else{
+        train_set = std::move(sentences);
+    }
+    
     if(sentences.empty()) return 0;
     
     int sentence_id = 0;
@@ -63,10 +80,11 @@ int main(int argc, char* argv[])
     int n_epochs = 5;
     cky_printer printer;
 
+    // Trainning loop
     for(int epoch = 0; epoch < n_epochs; epoch++){
-        // trainning
         for(int i = 0; i < n_sequences_train; i++){
-            auto& sentence = train_set[i];
+            const std::vector<uint32_t>& sentence = train_set[i]; // or use reference if copying is an issue
+    
             progress_bar(i + 1, n_sequences_train);
             
             #if PRINT_GRAMMAR_EACH_UPDATION_BEFORE == 1
@@ -76,7 +94,7 @@ int main(int argc, char* argv[])
             #endif
             int N = grammar->N();
             
-            uint32_t* sequence = sentence.data();
+            const uint32_t* sequence = sentence.data();
             int sequence_length = sentence.size();
 
             #if PRINT_STEPS == 1
@@ -174,7 +192,7 @@ int main(int argc, char* argv[])
             #endif
             sentence_id++;
             if((i + 1) % log_itervals == 0){
-                std::ofstream logfile_ostream = std::ofstream("./logs/log_" + std::to_string(i + 1) + "_epoch_id_" + std::to_string(epoch) + ".pcfg");
+                std::ofstream logfile_ostream = std::ofstream(log_path + "/log_" + std::to_string(i + 1) + "_epoch_id_" + std::to_string(epoch) + ".pcfg");
                 if(!logfile_ostream){
                     std::cerr << "Error: Could not open log file for writing.\n";
                 }
@@ -185,7 +203,7 @@ int main(int argc, char* argv[])
 
         // clear memory f at the end of an epoch.
         memset(f, 0, grammar->cnt_grammar * sizeof(double));
-        std::ofstream logfile_ostream = std::ofstream("./logs/log_epoch_id_" + std::to_string(epoch) + ".pcfg");
+        std::ofstream logfile_ostream = std::ofstream(log_path + "/log_epoch_id_" + std::to_string(epoch) + ".pcfg");
         if(!logfile_ostream){
             std::cerr << "Error: Could not open log file for writing.\n";
         }

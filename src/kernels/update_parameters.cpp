@@ -6,12 +6,12 @@ __global__
 #endif
 
 inline float _calculate_new_possibility(float S, float f_gid) {
-    if(abs(f_gid) < epsilon)
+    if(std::abs(f_gid) < epsilon)
         f_gid = epsilon;
     return f_gid / S;
 }
 
-void kernel_update_parameters(double* f, float* count, float* mu, float* beta, uint32_t* sequence, 
+void kernel_update_parameters(double* f, float* count, float* mu, float* beta, const uint32_t* sequence, 
         uint32_t* pretermination_lookuptable, 
         uint32_t* grammar_index, 
     #ifdef USE_CUDA
@@ -38,6 +38,7 @@ void kernel_update_parameters(double* f, float* count, float* mu, float* beta, u
                 uint32_t sym_C = symbols & 0xFFFF;
                 
                 f[gid] += count[gid];
+
                 gid++;
             }
         }
@@ -54,7 +55,7 @@ void kernel_update_parameters(double* f, float* count, float* mu, float* beta, u
                     uint32_t sym_B = (symbols >> 16) & 0xFFFF;
                     uint32_t sym_C = symbols & 0xFFFF;
                     float f_gid = f[gid];
-                    S += abs(f_gid - 0) < epsilon ? epsilon : f_gid;
+                    S += std::abs(f_gid - 0) < epsilon ? epsilon : f_gid;
                     gid ++;
                 }
 
@@ -75,8 +76,9 @@ void kernel_update_parameters(double* f, float* count, float* mu, float* beta, u
                         << std::endl;
                         assert(false);
                     }
+
                     *(float*)(grammar_table + pt + 1) = new_possibility;
-                    
+                 
                     if(IS_EPSILON(sym_C) && IS_TERMINATE(sym_B)){
                         uint64_t key = encode_key(sym_A, sym_B);
                         reverse_grammar_hashtable_set_value(
