@@ -1,12 +1,14 @@
 main:
-  grammar_file: "data/grammar.pcfg"
-  input: "data/eeg_sentences.txt"
-  log_itervals: 100000
+  grammar_file: "data/grammar_demo_2.pcfg"
+  input: "data/sequence.txt"
+  log_itervals: 1
   log_path: "data/logs/"
+  batch_size_for_parameter_update: 1
   split_data:
     enabled: true
     val_dataset_path: "data/validate_sentences.txt" 
     train_dataset_path: "data/train_sentences.txt"
+  n_epochs: 5
 
 phase_convert:
   grammar_file: "data/grammar.pcfg"

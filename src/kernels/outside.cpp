@@ -5,8 +5,9 @@
 #ifdef USE_CUDA
 __global__
 #endif
-void kernel_outside_main(float* mu, float* beta, const uint32_t* sequence, uint32_t* pretermination_lookuptable, 
-                        uint32_t* grammar_index, uint32_t* grammar_table, float* alpha, 
+void kernel_outside_main(long double* mu, long double* beta, const uint32_t* sequence, 
+                        uint32_t* pretermination_lookuptable, 
+                        uint32_t* grammar_index, uint32_t* grammar_table, long double* alpha, 
                         int sequence_length, int n_syms, int N, int T, int MS, int n_grammars,
                         std::vector<std::tuple<uint32_t, uint32_t>> inside_order_1_rule_iteration_path
                         #ifdef DEBUG_INSIDE_ALGORITHM
@@ -14,8 +15,8 @@ void kernel_outside_main(float* mu, float* beta, const uint32_t* sequence, uint3
                         #endif
 ){
     #ifndef USE_CUDA
-    memset(mu, 0, n_grammars * MS * MS * sizeof(float));
-    memset(beta, 0, n_syms * MS * MS * sizeof(float));
+    memset(mu, 0, n_grammars * MS * MS * sizeof(long double));
+    memset(beta, 0, n_syms * MS * MS * sizeof(long double));
 
     /* base case: S is the root of the whole sequence with possibility 1.0. */
     BETA(0, 0, sequence_length - 1) = 1.0;
@@ -46,20 +47,20 @@ void kernel_outside_main(float* mu, float* beta, const uint32_t* sequence, uint3
         for(int i = 0; i < sequence_length - span_length + 1; i++){
             int j = i + span_length - 1;
             // 1. 2. 6. 7.
-            for(std::tuple<uint32_t, uint32_t, uint32_t, float, uint32_t> item : 
+            for(std::tuple<uint32_t, uint32_t, uint32_t, long double, uint32_t> item : 
                 PCFGItemIterator(N, grammar_index, grammar_table)){                    
                 for(int k = 0; k < i; k++){       
                     uint32_t sym_B = std::get<0>(item);
                     uint32_t sym_C = std::get<1>(item);
                     uint32_t sym_A = std::get<2>(item);
-                    float possibility = std::get<3>(item);
+                    long double possibility = std::get<3>(item);
                     
                     // 1. 7. (A is nonterminate, and C is terminate or nonterminate. A at right side.)
                     if(IS_NONTERMINATE(sym_A) && !IS_EPSILON(sym_C)){
                         // C: [k, i - 1] part
-                        float alpha_C = ALPHA_GET(sym_C, k, i - 1);
+                        long double alpha_C = ALPHA_GET(sym_C, k, i - 1);
                         // B: [k, j] part
-                        float beta_B = BETA(sym_B, k, j);
+                        long double beta_B = BETA(sym_B, k, j);
 
                         #pragma omp atomic
                         // A: [i, j] part
@@ -71,14 +72,14 @@ void kernel_outside_main(float* mu, float* beta, const uint32_t* sequence, uint3
                     uint32_t sym_B = std::get<0>(item);
                     uint32_t sym_A = std::get<1>(item);
                     uint32_t sym_C = std::get<2>(item);
-                    float possibility = std::get<3>(item);
+                    long double possibility = std::get<3>(item);
 
                     // 2. 6. (A is nonterminate, and C is terminate or nonterminate. A at left side.)
                     if(IS_NONTERMINATE(sym_A) && !IS_EPSILON(sym_C)){
                         // C: [k, i - 1] part
-                        float alpha_C = ALPHA_GET(sym_C, j + 1, k);
+                        long double alpha_C = ALPHA_GET(sym_C, j + 1, k);
                         // B: [k, j] part
-                        float beta_B = BETA(sym_B, i, k);
+                        long double beta_B = BETA(sym_B, i, k);
 
                         #pragma omp atomic
                         // A: [i, j] part
@@ -94,10 +95,10 @@ void kernel_outside_main(float* mu, float* beta, const uint32_t* sequence, uint3
                 std::tuple<uint32_t, uint32_t> rule_id = *it;
                 uint32_t gid = std::get<0>(rule_id);
                 uint32_t sym_B = std::get<1>(rule_id);
-                uint32_t* addr = (grammar_table + gid * 2);
+                uint32_t* addr = (grammar_table + gid * BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS);
                 uint32_t sym_A = ((*addr) >> 16) & 0xFFFF;
-                float alpha_B = ALPHA_GET(sym_B, i, j);
-                float possibility = *(float*)(addr + 1);
+                long double alpha_B = ALPHA_GET(sym_B, i, j);
+                long double possibility = *(long double*)(addr + 1);
                 
                 if(IS_TERMINATE(sym_A)) continue; 
                 /* grammar become B -> A. In this condition, B -> A contributes possibility * beta_B
@@ -111,11 +112,11 @@ void kernel_outside_main(float* mu, float* beta, const uint32_t* sequence, uint3
 
             // 5. 8. 9. 10.
             // Case 2: A is terminate 
-            for(std::tuple<uint32_t, uint32_t, uint32_t, float, uint32_t> item : 
+            for(std::tuple<uint32_t, uint32_t, uint32_t, long double, uint32_t> item : 
                                                         PCFGItemIterator(N, grammar_index, grammar_table)){                    
                     
                 uint32_t sym_B = std::get<0>(item);
-                float possibility = std::get<3>(item);
+                long double possibility = std::get<3>(item);
                 
                 uint32_t sym_A = std::get<1>(item);
                 uint32_t sym_C = std::get<2>(item);
@@ -164,10 +165,10 @@ void kernel_outside_main(float* mu, float* beta, const uint32_t* sequence, uint3
                 std::tuple<uint32_t, uint32_t> rule_id = *it;
                 uint32_t gid = std::get<0>(rule_id);
                 uint32_t sym_B = std::get<1>(rule_id);
-                uint32_t* addr = (grammar_table + gid * 2);
+                uint32_t* addr = (grammar_table + gid * BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS);
                 uint32_t sym_A = ((*addr) >> 16) & 0xFFFF;
-                float alpha_B = ALPHA_GET(sym_B, i, j);
-                float possibility = *(float*)(addr + 1);
+                long double alpha_B = ALPHA_GET(sym_B, i, j);
+                long double possibility = *(long double*)(addr + 1);
                 if(i != j) break;
                 if(IS_NONTERMINATE(sym_A)) continue; 
                 // B->w_A
@@ -186,17 +187,17 @@ void kernel_outside_main(float* mu, float* beta, const uint32_t* sequence, uint3
         for (int i = 0; i <= sequence_length - span_length; i++) {
             int j = i + span_length - 1; // Ending index of the spanx`
             for (int k = i; k <= j; k++) { // TODO: k < j? k == j?
-                for(std::tuple<uint32_t, uint32_t, uint32_t, float, uint32_t> item : PCFGItemIterator(N, grammar_index, grammar_table)){
+                for(std::tuple<uint32_t, uint32_t, uint32_t, long double, uint32_t> item : PCFGItemIterator(N, grammar_index, grammar_table)){
                     uint32_t sym_A = std::get<0>(item);
                     uint32_t sym_B = std::get<1>(item);
                     uint32_t sym_C = std::get<2>(item);
-                    float possibility = std::get<3>(item);
+                    long double possibility = std::get<3>(item);
                     uint32_t gid = std::get<4>(item);
                     if(k == j && !IS_EPSILON(sym_C)) continue;
 
-                    float beta_A_i_j = BETA(sym_A, i, j);
-                    float alpha_B_i_k = ALPHA_GET(sym_B, i, k);
-                    float alpha_C_k_p1_j = ALPHA_GET(sym_C, k + 1, j);
+                    long double beta_A_i_j = BETA(sym_A, i, j);
+                    long double alpha_B_i_k = ALPHA_GET(sym_B, i, k);
+                    long double alpha_C_k_p1_j = ALPHA_GET(sym_C, k + 1, j);
                     // if(i == 2 && j == 4 && gid == 5){
                     //     std::cout << "mu::increase::: " <<
                     //         possibility * beta_A_i_j * alpha_B_i_k * alpha_C_k_p1_j 

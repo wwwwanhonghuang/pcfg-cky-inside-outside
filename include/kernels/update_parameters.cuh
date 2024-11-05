@@ -12,18 +12,19 @@ __global__
 #include <cstdint>
 #include "grammar/grammar.hpp"
 
-const float epsilon = 1e-12f;
-inline float _calculate_new_possibility(float S, float f_gid);
 
-void kernel_update_parameters(double* f, float* count, float* mu, float* beta, const uint32_t* sequence, 
+inline long double _calculate_new_possibility(long double S, long double f_gid);
+
+void kernel_update_parameters(long double* f, long double* count, long double* mu, long double* beta, const uint32_t* sequence, 
         uint32_t* pretermination_lookuptable, 
         uint32_t* grammar_index, 
+    
     #ifdef USE_CUDA
         uint32_t* 
     #else
-        common_32bit*
+        uint32_t*
     #endif
-        grammar_table, float* alpha, 
+        grammar_table, long double* alpha, 
         int sequence_length, int n_syms, int N, int T, int MS, int n_grammars
         #ifdef DEBUG_INSIDE_ALGORITHM
             , pcfg* grammar
