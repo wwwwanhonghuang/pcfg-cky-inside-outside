@@ -26,6 +26,7 @@ __global__
 #endif
 
 void kernel_expect_count(float* count, float* mu, float* beta, const uint32_t* sequence, uint32_t* pretermination_lookuptable, 
+
                         uint32_t* grammar_index, uint32_t* grammar_table, float* alpha, 
                         int sequence_length, int n_syms, int N, int T, int MS, int n_grammars
                         #ifdef DEBUG_INSIDE_ALGORITHM
