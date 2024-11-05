@@ -49,6 +49,7 @@ int main(int argc, char* argv[])
     std::cout << "Load sentences..." << std::endl;
     std::vector<std::vector<uint32_t>> sentences = parse_input_file(input_filename, grammar);
     std::cout << "Load sentences finished. Total instances:" << sentences.size() << std::endl;
+
     bool is_split_dataset = config["main"]["split_data"]["enabled"].as<bool>();
 
     std::vector<std::vector<uint32_t>> train_set;
@@ -84,7 +85,6 @@ int main(int argc, char* argv[])
     for(int epoch = 0; epoch < n_epochs; epoch++){
         for(int i = 0; i < n_sequences_train; i++){
             const std::vector<uint32_t>& sentence = train_set[i]; // or use reference if copying is an issue
-    
             progress_bar(i + 1, n_sequences_train);
             
             #if PRINT_GRAMMAR_EACH_UPDATION_BEFORE == 1
@@ -94,7 +94,9 @@ int main(int argc, char* argv[])
             #endif
             int N = grammar->N();
             
+
             const uint32_t* sequence = sentence.data();
+
             int sequence_length = sentence.size();
 
             #if PRINT_STEPS == 1
@@ -213,6 +215,7 @@ int main(int argc, char* argv[])
         // validation
         double log_likelihood = 0.0;
         for(int i = 0; i < n_sequences_val; i++){
+
             auto& sentence = valid_set[i];
             progress_bar(i + 1, n_sequences_val);
             
