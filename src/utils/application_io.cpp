@@ -1,8 +1,7 @@
 #include "utils/application_io.hpp"
 #include "utils/string_helper.hpp"
 #include <map>
-
-std::vector<std::vector<uint32_t>> parse_input_file(const std::string& file_path, pcfg* grammar){
+std::vector<std::vector<uint32_t>> parse_input_file(const std::string& file_path, pcfg* grammar, int limit){
     std::vector<std::vector<uint32_t>> sentences;
     std::string line;
 	std::ifstream file(file_path);
@@ -11,8 +10,9 @@ std::vector<std::vector<uint32_t>> parse_input_file(const std::string& file_path
         return sentences;
     }
     int N = grammar->N();
-
+    int parsed_sentences = 0;
     while (std::getline(file, line)) {
+        if(limit >= 0 && parsed_sentences >= limit) break;
         if(line == "")
             continue;
         std::vector<uint32_t> input_words;
@@ -30,6 +30,7 @@ std::vector<std::vector<uint32_t>> parse_input_file(const std::string& file_path
             input_words.push_back(word_id);
         }
         sentences.push_back(input_words);
+        parsed_sentences++;
     }
     return sentences;
 }

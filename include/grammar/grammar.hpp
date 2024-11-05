@@ -13,17 +13,18 @@ public:
     std::string left;
     std::string right1;
     std::string right2;
-    float possibility;
+    long double possibility;
     
-    pcfg_grammar_item(std::string left, std::string right1, std::string right2, float possibility): left(left), right1(right1), right2(right2), possibility(possibility){};
+    pcfg_grammar_item(std::string left, std::string right1, std::string right2, long double possibility): 
+        left(left), right1(right1), right2(right2), possibility(possibility){};
 };
 
 struct pcfg{
 public:
     // low-level grammar storage
-    common_32bit* grammar_index;
-    common_32bit* grammar_table;
-    common_32bit* preterminate_rule_lookup_table;
+    uint32_t* grammar_index;
+    uint32_t* grammar_table;
+    uint32_t* preterminate_rule_lookup_table;
 
     // high-level grammar storage
     std::map<std::string, std::vector<pcfg_grammar_item>> grammar_items_map {};
@@ -62,7 +63,7 @@ public:
         this->_current_gid = 0;
     }
 
-    std::tuple<uint32_t, uint32_t, uint32_t, float, uint32_t> operator*() const;
+    std::tuple<uint32_t, uint32_t, uint32_t, long double, uint32_t> operator*() const;
 
     PCFGItemIterator& operator++();
 

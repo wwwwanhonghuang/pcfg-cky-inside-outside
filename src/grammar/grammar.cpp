@@ -77,18 +77,18 @@ int pcfg::get_sym_id(const std::string& symbol){
     return -1;
 }
 
-std::tuple<uint32_t, uint32_t, uint32_t, float, uint32_t> PCFGItemIterator::operator*() const {
+std::tuple<uint32_t, uint32_t, uint32_t, long double, uint32_t> PCFGItemIterator::operator*() const {
         uint32_t sym_A = this->_current_left_symbol_id;
         uint32_t symbols = *(this->_grammar_table + this->pt);
-        float possibility = *(float*)(this->_grammar_table + this->pt + 1);
+        long double possibility = *(long double*)(this->_grammar_table + this->pt + 1);
         uint32_t sym_B = (symbols >> 16) & 0xFFFF;
         uint32_t sym_C = symbols & 0xFFFF;
-        return std::tuple<uint32_t, uint32_t, uint32_t, float, uint32_t>(sym_A, sym_B, sym_C, possibility, this->_current_gid);
+        return std::tuple<uint32_t, uint32_t, uint32_t, long double, uint32_t>(sym_A, sym_B, sym_C, possibility, this->_current_gid);
 }
 
 PCFGItemIterator& PCFGItemIterator::operator++() {
-        if(this->pt + 2 < this->_grammar_pointer_next){
-            this->pt += 2;
+        if(this->pt + BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS < this->_grammar_pointer_next){
+            this->pt += BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS;
             this->_current_gid++;
         }else{
             this->_current_left_symbol_id++; 
@@ -116,7 +116,7 @@ PCFGItemIterator PCFGItemIterator::end() const{
         iterator._grammar_pointer_next = iterator._grammar_pointer_current;
         iterator.pt = this->_grammar_pointer_current;
         iterator._current_left_symbol_id = this->_N;
-        iterator._current_gid =  *(this->_grammar_index + this->_N) / 2;
+        iterator._current_gid =  *(this->_grammar_index + this->_N) / BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS;
         return iterator;
 }
 
@@ -130,12 +130,12 @@ std::vector<std::tuple<uint32_t, uint32_t>> generate_inside_perterminate_iterati
     std::vector<std::tuple<uint32_t, uint32_t>> results;
     std::map<uint32_t, uint32_t> gid_map = {};
 
-    for(std::tuple<uint32_t, uint32_t, uint32_t, float, uint32_t> item : 
+    for(std::tuple<uint32_t, uint32_t, uint32_t, long double, uint32_t> item : 
                                 PCFGItemIterator(N, (uint32_t*) grammar->grammar_index, (uint32_t*)grammar->grammar_table)){
         uint32_t sym_A = std::get<0>(item);
         uint32_t sym_B = std::get<1>(item);
         uint32_t sym_C = std::get<2>(item);
-        float possibility = std::get<3>(item);
+        long double possibility = std::get<3>(item);
         uint32_t gid = std::get<4>(item);
         if(!IS_EPSILON(sym_C)) continue;
         dependency_graph[sym_A * n_syms + sym_B] = 1;
@@ -186,7 +186,7 @@ std::vector<std::tuple<uint32_t, uint32_t>> generate_inside_perterminate_iterati
     }
 
     for(auto&& gid : results){
-        uint32_t* addr = ((uint32_t*)grammar->grammar_table + std::get<0>(gid) * 2);
+        uint32_t* addr = ((uint32_t*)grammar->grammar_table + std::get<0>(gid) * BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS);
         uint32_t syms = *addr;
         uint32_t sym_A = (syms >> 16) & 0xFFFF;
         assert(IS_EPSILON(syms & (0xFFFF)));

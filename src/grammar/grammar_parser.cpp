@@ -112,8 +112,8 @@ pcfg* _parse_grammar_file(const std::string& path){
     return grammar;
 }
 
-pcfg* _build_grammar_table(pcfg* grammar, common_32bit* non_terminate_grammars, common_32bit* grammar_vector){
-    common_32bit offset;
+pcfg* _build_grammar_table(pcfg* grammar, uint32_t* non_terminate_grammars, uint32_t* grammar_vector){
+    uint32_t offset = 0;
     #ifdef VERBOSE_GRAMMAR_STRUCTURE_BUILDING
         std::cout << "non_terminate_grammars, addr: " << reinterpret_cast<uintptr_t>(non_terminate_grammars) << std::endl;
         std::cout << "grammar_vector, addr: " << reinterpret_cast<uintptr_t>(grammar_vector) << std::endl;
@@ -133,7 +133,8 @@ pcfg* _build_grammar_table(pcfg* grammar, common_32bit* non_terminate_grammars, 
         }
 
         if(!map_contains(grammar->grammar_items_map, grammar->reversed_nonterminate_map[i])){
-            std::cout << "no rules for this non-terminate. non_terminate_grammars[" << i << "]=" << non_terminate_grammars[i].int32_value << std::endl;
+            std::cout << "no rules for this non-terminate. non_terminate_grammars[" << i << "]=" 
+                << (uint32_t) non_terminate_grammars[i] << std::endl;
             non_terminate_grammars[i] = offset;
         }else{
             auto& rules = grammar->grammar_items_map.at(grammar->reversed_nonterminate_map[i]);
@@ -152,21 +153,20 @@ pcfg* _build_grammar_table(pcfg* grammar, common_32bit* non_terminate_grammars, 
                     return nullptr;
                 }
                 
-                (*(grammar_vector + offset.int32_value)).int32_value =
+                (*(uint32_t*)(grammar_vector + offset)) =
                         ((right1_id << 16) & (0xFFFF0000) | right2_id & (0x0000FFFF));
 
-                (*(grammar_vector + offset.int32_value + 1)).float32_value = 
-                        item.possibility; 
+                *(long double*)(grammar_vector + offset + 1) = item.possibility; 
 
-                offset.int32_value += 2;
+                offset += BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS;
             }
         }
 
         if(i >= 1){
-            long addr_diff = non_terminate_grammars[i].int32_value - non_terminate_grammars[i - 1].int32_value;
+            uint32_t addr_diff = non_terminate_grammars[i] - non_terminate_grammars[i - 1];
             // std::cout << "addr diff = " << addr_diff << std::endl;
             #ifdef _STRICK_CHECK
-                if(addr_diff != 2 * grammar->grammar_items_map.at(grammar->reversed_nonterminate_map[i - 1]).size()){
+                if(addr_diff != BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS * grammar->grammar_items_map.at(grammar->reversed_nonterminate_map[i - 1]).size()){
                     std::cout << "check grammar item memory arrangement failed." << std::endl;
                     delete[] non_terminate_grammars;
                     delete[] grammar_vector;
@@ -175,15 +175,15 @@ pcfg* _build_grammar_table(pcfg* grammar, common_32bit* non_terminate_grammars, 
             #endif
         }
     }
-    non_terminate_grammars[grammar->N()].int32_value = offset.int32_value;
-    grammar_vector[grammar->cnt_grammar * 2].int32_value = 0xFFFFFFFF; // End Marker
+    non_terminate_grammars[grammar->N()] = offset;
+    grammar_vector[grammar->cnt_grammar * BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS] = 0xFFFFFFFF; // End Marker
 
     
     #ifdef _STRICK_CHECK
         int processed_rule_count = 0;
         for(int nonterminate_id = 0; nonterminate_id < grammar->N(); nonterminate_id++) {
-            int offset = non_terminate_grammars[nonterminate_id].int32_value;
-            int next_offset = non_terminate_grammars[nonterminate_id + 1].int32_value;
+            uint32_t offset = non_terminate_grammars[nonterminate_id];
+            uint32_t next_offset = non_terminate_grammars[nonterminate_id + 1];
 
             auto it = grammar->grammar_items_map.find(grammar->reversed_nonterminate_map[nonterminate_id]);
             if (it == grammar->grammar_items_map.end()) {
@@ -194,15 +194,15 @@ pcfg* _build_grammar_table(pcfg* grammar, common_32bit* non_terminate_grammars, 
 
             int rule_index_inner = 0;
             while (offset < next_offset) {
-                int encoded_symbols = (grammar_vector + offset)->int32_value;
+                int encoded_symbols = *(uint32_t*)(grammar_vector + offset);
                 int symbol_id_right_1 = (encoded_symbols >> 16) & 0xFFFF;
                 int symbol_id_right_2 = (encoded_symbols) & 0xFFFF;
-                float possibility = (grammar_vector + offset + 1)->float32_value;
-                offset += 2;
+                long double possibility = *(long double*)(grammar_vector + offset + 1);
+                offset += BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS;
 
                 // Decode the value
                 pcfg_grammar_item rule = rules[rule_index_inner];
-                int32_t decoded_value = (grammar->get_sym_id(rule.right1) << 16) & 0xFFFF0000 | 
+                uint32_t decoded_value = (grammar->get_sym_id(rule.right1) << 16) & 0xFFFF0000 | 
                                         (grammar->get_sym_id(rule.right2)) & 0x0000FFFF;
 
                 if (decoded_value != encoded_symbols) {
@@ -230,16 +230,16 @@ pcfg* _build_grammar_table(pcfg* grammar, common_32bit* non_terminate_grammars, 
 }
 
 
-pcfg* _build_preterminate_grammar_lookup_table(pcfg* grammar, common_32bit* non_terminate_grammars, 
-                common_32bit* grammar_vector){
+pcfg* _build_preterminate_grammar_lookup_table(pcfg* grammar, uint32_t* non_terminate_grammars, 
+                uint32_t* grammar_vector){
     int cnt_grammar = grammar->cnt_grammar;
-    int hashtable_length = cnt_grammar * 2;
+    int hashtable_length = cnt_grammar * BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS;
     int cnt_hashtable_items = cnt_grammar;
     auto& grammar_items_map = grammar->grammar_items_map;
-    common_32bit* hashtable = new common_32bit[hashtable_length]();
+    uint32_t* hashtable = new uint32_t[hashtable_length]();
     for(int nonterminate_id = 0; nonterminate_id < grammar->N(); nonterminate_id++) {
-        int offset = non_terminate_grammars[nonterminate_id].int32_value;
-        int next_offset = non_terminate_grammars[nonterminate_id + 1].int32_value;
+        int offset = non_terminate_grammars[nonterminate_id];
+        int next_offset = non_terminate_grammars[nonterminate_id + 1];
 
         auto it = grammar_items_map.find(grammar->reversed_nonterminate_map[nonterminate_id]);
         if (it == grammar_items_map.end()) {
@@ -250,9 +250,9 @@ pcfg* _build_preterminate_grammar_lookup_table(pcfg* grammar, common_32bit* non_
 
         int rule_index_inner = 0;
         while (offset < next_offset) {
-                int encoded_symbols = (grammar_vector + offset)->int32_value;
-                int symbol_id_right_1 = (encoded_symbols >> 16) & 0xFFFF;
-                int symbol_id_right_2 = (encoded_symbols) & 0xFFFF;
+                uint32_t encoded_symbols = *(grammar_vector + offset);
+                uint32_t symbol_id_right_1 = (encoded_symbols >> 16) & 0xFFFF;
+                uint32_t symbol_id_right_2 = (encoded_symbols) & 0xFFFF;
                 pcfg_grammar_item rule = rules[rule_index_inner];
 
                 if(symbol_id_right_1 >= grammar->N() && symbol_id_right_2 == 0xFFFF){
@@ -262,21 +262,21 @@ pcfg* _build_preterminate_grammar_lookup_table(pcfg* grammar, common_32bit* non_
                           << symbol_id_right_2 << " (" << rule.right2 << ")" << std::endl;
                     #endif
                     int key = ((nonterminate_id << 16) & (0xFFFF0000)) | ((symbol_id_right_1) & (0x0000FFFF));
-                    int position = (key % cnt_hashtable_items) * 2;
+                    int position = (key % cnt_hashtable_items) * BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS;
                     int trail_count = 0;
                   
-                    while (hashtable[position].int32_value != 0 && hashtable[position].int32_value != key) {
-                        position = (position + 2) % hashtable_length;
-                        if (++trail_count >= hashtable_length / 2) {
+                    while (hashtable[position] != 0 && hashtable[position] != key) {
+                        position = (position + BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS) % hashtable_length;
+                        if (++trail_count >= hashtable_length / BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS) {
                             std::cout << "Error: Key cannot be found, and there is no available space for inserting a new element in the hash table." << std::endl; 
                             delete[] hashtable;
                             return nullptr;
                         }
                     }
-                    hashtable[position].int32_value = key;
-                    hashtable[position + 1].float32_value = rule.possibility;
+                    hashtable[position] = key;
+                    *(long double*)(hashtable + position + 1) = rule.possibility;
                 }
-                offset += 2;
+                offset += BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS;
                 rule_index_inner++;
         }
     }
@@ -285,8 +285,8 @@ pcfg* _build_preterminate_grammar_lookup_table(pcfg* grammar, common_32bit* non_
 
         // Iterate over the grammar rules
         for (int nonterminate_id = 0; nonterminate_id < grammar->N(); nonterminate_id++) {
-            int offset = non_terminate_grammars[nonterminate_id].int32_value;
-            int next_offset = non_terminate_grammars[nonterminate_id + 1].int32_value;
+            uint32_t offset = non_terminate_grammars[nonterminate_id];
+            uint32_t next_offset = non_terminate_grammars[nonterminate_id + 1];
 
             auto it = grammar_items_map.find(grammar->reversed_nonterminate_map[nonterminate_id]);
             if (it == grammar_items_map.end()) {
@@ -297,19 +297,19 @@ pcfg* _build_preterminate_grammar_lookup_table(pcfg* grammar, common_32bit* non_
 
             int rule_index_inner = 0;
             while (offset < next_offset) {
-                int encoded_symbols = (grammar_vector + offset)->int32_value;
-                int symbol_id_right_1 = (encoded_symbols >> 16) & 0xFFFF;
-                int symbol_id_right_2 = (encoded_symbols) & 0xFFFF;
+                uint32_t encoded_symbols = *(int*)(grammar_vector + offset);
+                uint32_t symbol_id_right_1 = (encoded_symbols >> 16) & 0xFFFF;
+                uint32_t symbol_id_right_2 = (encoded_symbols) & 0xFFFF;
                 pcfg_grammar_item rule = rules[rule_index_inner];
                 // Check if the rule is in the form A -> w_i
                 if(symbol_id_right_1 >= grammar->N() && symbol_id_right_2 == 0xFFFF){
-                    int key = ((nonterminate_id << 16) & (0xFFFF0000)) | ((symbol_id_right_1) & (0x0000FFFF));
-                    int position = (key % cnt_hashtable_items) * 2;
+                    uint32_t key = ((nonterminate_id << 16) & (0xFFFF0000)) | ((symbol_id_right_1) & (0x0000FFFF));
+                    int position = (key % cnt_hashtable_items) * BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS;
                     int trail_count = 0;
 
-                    while (hashtable[position].int32_value != 0 && hashtable[position].int32_value != key) {
-                        position = (position + 2) % hashtable_length;
-                        if (++trail_count >= hashtable_length / 2) {
+                    while (hashtable[position] != 0 && hashtable[position] != key) {
+                        position = (position + BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS) % hashtable_length;
+                        if (++trail_count >= hashtable_length / BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS) {
                             std::cerr << "Error: Key not found in hash table after full probing." << std::endl;
                             delete[] hashtable;
                             return nullptr;
@@ -319,7 +319,7 @@ pcfg* _build_preterminate_grammar_lookup_table(pcfg* grammar, common_32bit* non_
                     // hashtable[position + 1].float32_value << " in " << position << std::endl;
                 }
 
-                offset += 2; // Move to the next entry
+                offset += BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS; // Move to the next entry
                 rule_index_inner++;
             }
         }
@@ -335,8 +335,8 @@ pcfg* prepare_grammar(const std::string& path){
     auto& grammar_items_map = grammar->grammar_items_map;
     
     // build non_terminate_grammars
-    common_32bit* non_terminate_grammars = new common_32bit[grammar->N() + 1]();
-    common_32bit* grammar_vector = new common_32bit[cnt_grammar * 2 + 1]();
+    uint32_t* non_terminate_grammars = new uint32_t[grammar->N() + 1]();
+    uint32_t* grammar_vector = new uint32_t[cnt_grammar * BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS + 1]();
     
     if(_build_grammar_table(grammar, non_terminate_grammars, grammar_vector) == nullptr){
         delete[] non_terminate_grammars;

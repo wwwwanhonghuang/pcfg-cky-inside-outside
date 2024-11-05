@@ -98,7 +98,7 @@ double L_layer_symbol_tree_transitional_entropy(pcfg* grammar, parse_tree* tree,
     std::vector<std::vector<int>> layers = dfs_get_all_layers_value<int>(
         grammar, 
         tree, 
-        [](const std::tuple<uint32_t, uint32_t, uint32_t, int, float, int>& value){
+        [](const std::tuple<uint32_t, uint32_t, uint32_t, int, long double, int>& value){
             return std::get<0>(value); 
         }
     );
@@ -112,7 +112,7 @@ double L_layer_derivation_tree_transitional_entropy(pcfg* grammar, parse_tree* t
     auto layers = dfs_get_all_layers_value<int>(
         grammar, 
         tree, 
-        [](const std::tuple<uint32_t, uint32_t, uint32_t, int, float, int>& value) {
+        [](const std::tuple<uint32_t, uint32_t, uint32_t, int, long double, int>& value) {
             return std::get<5>(value);
         }
     );
@@ -120,21 +120,21 @@ double L_layer_derivation_tree_transitional_entropy(pcfg* grammar, parse_tree* t
 }
 
 // !important
-double prefix_L_parse_entropy(pcfg* grammar, float* alpha, int sequence_length, int end, int L){
+double prefix_L_parse_entropy(pcfg* grammar, long double* alpha, int sequence_length, int end, int L){
     if (end < 0 || L < 0) {
         throw std::invalid_argument("end and L must be non-negative");
     }
 
-    std::vector<float> p_s;
+    std::vector<long double> p_s;
     int N = grammar->N();
     int MS = MAX_SEQUENCE_LENGTH;
 
-    for(std::tuple<uint32_t, uint32_t, uint32_t, float, uint32_t> item : 
+    for(std::tuple<uint32_t, uint32_t, uint32_t, long double, uint32_t> item : 
                 PCFGItemIterator(N, (uint32_t*)grammar->grammar_index, (uint32_t*)grammar->grammar_table)){                    
         uint32_t sym_A = std::get<0>(item);
         uint32_t sym_B = std::get<1>(item);
         uint32_t sym_C = std::get<2>(item);
-        float possibility = std::get<3>(item);
+        long double possibility = std::get<3>(item);
 
         if(IS_EPSILON(sym_C)){
             p_s.emplace_back(possibility * ALPHA(sym_B, std::max(end - L, 0), end));

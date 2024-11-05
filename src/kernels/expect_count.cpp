@@ -18,31 +18,32 @@
 #ifdef USE_CUDA
 __global__
 #endif
-void kernel_expect_count(float* count, float* mu, float* beta, const uint32_t* sequence, uint32_t* pretermination_lookuptable, 
-                        uint32_t* grammar_index, uint32_t* grammar_table, float* alpha, 
+void kernel_expect_count(long double* count, long double* mu, long double* beta, const uint32_t* sequence, 
+                        uint32_t* pretermination_lookuptable, 
+                        uint32_t* grammar_index, uint32_t* grammar_table, long double* alpha, 
                         int sequence_length, int n_syms, int N, int T, int MS, int n_grammars
                         #ifdef DEBUG_INSIDE_ALGORITHM
                         , pcfg* grammar
                         #endif
 
     ){
-    memset(count, 0, n_grammars * sizeof(float));
+    memset(count, 0, n_grammars * sizeof(long double));
 
     /* 0 is the id of S symbol. This expression assign alpha['S', 0, sequence_length - 1] to Z */
-    float Z = ALPHA(0, 0, sequence_length - 1); 
+    long double Z = ALPHA(0, 0, sequence_length - 1); 
 
     for(int span_length = 1; span_length <= sequence_length; span_length++){
         
         #pragma omp parallel for
         for(int i = 0; i < sequence_length - span_length + 1; i++){
             int j = i + span_length - 1;
-            for(std::tuple<uint32_t, uint32_t, uint32_t, float, uint32_t> item : PCFGItemIterator(N, grammar_index, grammar_table)){
+            for(std::tuple<uint32_t, uint32_t, uint32_t, long double, uint32_t> item : PCFGItemIterator(N, grammar_index, grammar_table)){
                 uint32_t sym_A = std::get<0>(item);
                 uint32_t sym_B = std::get<1>(item);
                 uint32_t sym_C = std::get<2>(item);
-                float possibility = std::get<3>(item);
+                long double possibility = std::get<3>(item);
                 uint32_t gid = std::get<4>(item);
-                float mu_val = MU(gid, i, j);
+                long double mu_val = MU(gid, i, j);
                 
                 #pragma omp atomic
                 count[gid] += mu_val;

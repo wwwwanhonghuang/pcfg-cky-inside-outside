@@ -35,6 +35,8 @@
 };
 
 
+#define BYTES_GRAMMAR_TABLE_ITEMS 20
+#define BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS 5
 
 #define MAX_SEQUENCE_LENGTH 500
 #define _32bit_t int32_t

@@ -23,6 +23,8 @@
 #include "utils/application_io.hpp"
 #include "dataset/dataset_helper.hpp"
 
+#define LIMIT 6
+#define ABORT_WHEN_WARNING
 
 int main(int argc, char* argv[])
 {
@@ -31,24 +33,28 @@ int main(int argc, char* argv[])
         std::cout << "Error: config.yaml could not be loaded!" << std::endl;
         return 1;
     }
-   
     std::string grammar_filename = config["main"]["grammar_file"].as<std::string>();
     std::string input_filename = config["main"]["input"].as<std::string>();
     uint32_t log_itervals = config["main"]["log_itervals"].as<int>();
     std::string log_path = config["main"]["log_path"].as<std::string>();
-
+    int n_epochs = config["main"]["n_epochs"].as<int>();
     pcfg* grammar = prepare_grammar(grammar_filename);
     auto inside_order_1_rule_iteration_path = generate_inside_perterminate_iteration_paths(grammar);
 
-    float* alpha = new float[grammar->N() * MAX_SEQUENCE_LENGTH * MAX_SEQUENCE_LENGTH]();
-    float* beta = new float[(grammar->N() + grammar->T()) * MAX_SEQUENCE_LENGTH * MAX_SEQUENCE_LENGTH]();
-    float* mu = new float[grammar->cnt_grammar * MAX_SEQUENCE_LENGTH * MAX_SEQUENCE_LENGTH]();
-    float* count = new float[grammar->cnt_grammar]();
-    double* f = new double[grammar->cnt_grammar]();
+    long double* alpha = new long double[grammar->N() * MAX_SEQUENCE_LENGTH * MAX_SEQUENCE_LENGTH]();
+    long double* beta = new long double[(grammar->N() + grammar->T()) * MAX_SEQUENCE_LENGTH * MAX_SEQUENCE_LENGTH]();
+    long double* mu = new long double[grammar->cnt_grammar * MAX_SEQUENCE_LENGTH * MAX_SEQUENCE_LENGTH]();
+    long double* count = new long double[grammar->cnt_grammar]();
+    long double* f = new long double[grammar->cnt_grammar]();
 
     std::cout << "Load sentences..." << std::endl;
-    std::vector<std::vector<uint32_t>> sentences = parse_input_file(input_filename, grammar);
+    std::vector<std::vector<uint32_t>> sentences = parse_input_file(input_filename, grammar
+    #ifdef LIMIT
+    , LIMIT
+    #endif
+    );
     std::cout << "Load sentences finished. Total instances:" << sentences.size() << std::endl;
+    if(sentences.empty()) return 0;
 
     bool is_split_dataset = config["main"]["split_data"]["enabled"].as<bool>();
 
@@ -68,8 +74,6 @@ int main(int argc, char* argv[])
         train_set = std::move(sentences);
     }
     
-    if(sentences.empty()) return 0;
-    
     int sentence_id = 0;
     int n_sequences = sentences.size();
     int n_sequences_train = train_set.size();
@@ -78,19 +82,21 @@ int main(int argc, char* argv[])
     std::cout << "val set size = " << n_sequences_val << std::endl;
 
     int T = 0;
-    int n_epochs = 5;
+    int MS = MAX_SEQUENCE_LENGTH;
+
     cky_printer printer;
 
-#define LIMIT 10000
     // Training loop
     for(int epoch = 0; epoch < n_epochs; epoch++){
         for(int i = 0; i < n_sequences_train; i++){
-            
             const std::vector<uint32_t>& sentence = train_set[i]; // or use reference if copying is an issue
+            
             progress_bar(i + 1, n_sequences_train);
+            
             #ifdef LIMIT
                 if(i >= LIMIT) break;
             #endif
+
             #if PRINT_GRAMMAR_EACH_UPDATION_BEFORE == 1
                 std::cout << "grammar before iteration: " 
                         << sentence_id << " :" << std::endl;
@@ -98,7 +104,6 @@ int main(int argc, char* argv[])
             #endif
             int N = grammar->N();
             
-
             const uint32_t* sequence = sentence.data();
 
             int sequence_length = sentence.size();
@@ -113,12 +118,34 @@ int main(int argc, char* argv[])
                 (uint32_t*)(grammar->grammar_table),
                 alpha,
                 sequence_length, grammar->n_syms(), grammar->N(), 
-                grammar->T(), MAX_SEQUENCE_LENGTH, grammar->cnt_grammar,
+                grammar->T(), MS, grammar->cnt_grammar,
                 inside_order_1_rule_iteration_path
                 #ifdef DEBUG_INSIDE_ALGORITHM
                     , grammar
                 #endif
             );
+            if(std::abs(ALPHA(0, 0, sequence_length - 1)) < 1e-36){
+                std::cout << "Warning: at sentence " << (i + 1) << 
+                " Symbol S's inside possibility may be 0." <<
+                " This could indicate that there" << 
+                " some problems may have happened in the parsing process," << 
+                " or float-point number underflow in the computation." << std::endl;
+
+                std::cout << "=====================================" << std::endl;
+                std::cout << "sentence: ";
+                for(int i = 0; i < sentence.size(); i++){
+                    std::cout << "\'" << grammar->reversed_terminate_map[sequence[i] - N] << "\'" << " ";
+                }
+                std::cout << std::endl;
+                
+                printer.print_inside_outside_table(alpha,  grammar->N(), grammar->T(), sequence_length, MS, grammar);
+                std::cout << "=====================================" << std::endl;
+                print_grammar(grammar);
+                #ifdef ABORT_WHEN_WARNING
+                    abort();
+                #endif
+                
+            }
 
             #if PRINT_STEPS == 1
                 std::cout << "Inside Algorithm Finished." << std::endl;
@@ -137,7 +164,7 @@ int main(int argc, char* argv[])
                 (uint32_t*)(grammar->grammar_index),
                 (uint32_t*)(grammar->grammar_table),
                 alpha,
-                sequence_length, grammar->n_syms(), grammar->N(), grammar->T(), MAX_SEQUENCE_LENGTH, grammar->cnt_grammar,
+                sequence_length, grammar->n_syms(), grammar->N(), grammar->T(), MS, grammar->cnt_grammar,
                 inside_order_1_rule_iteration_path
                 #ifdef DEBUG_INSIDE_ALGORITHM
                     ,grammar
@@ -161,7 +188,7 @@ int main(int argc, char* argv[])
                 (uint32_t*)(grammar->grammar_index),
                 (uint32_t*)(grammar->grammar_table),
                 alpha,
-                sequence_length, grammar->n_syms(), grammar->N(), grammar->T(), MAX_SEQUENCE_LENGTH, 
+                sequence_length, grammar->n_syms(), grammar->N(), grammar->T(), MS, 
                 grammar->cnt_grammar
                 #ifdef DEBUG_INSIDE_ALGORITHM
                     , grammar
@@ -179,10 +206,10 @@ int main(int argc, char* argv[])
             kernel_update_parameters(f, count, mu, beta, sequence, 
                 (uint32_t*)(grammar->preterminate_rule_lookup_table),
                 (uint32_t*)(grammar->grammar_index),
-                (grammar->grammar_table),
+                (uint32_t*)(grammar->grammar_table),
                 alpha,
                 sequence_length, grammar->n_syms(), grammar->N(), grammar->T(),
-                MAX_SEQUENCE_LENGTH, grammar->cnt_grammar
+                MS, grammar->cnt_grammar
                 #ifdef DEBUG_INSIDE_ALGORITHM
                     , grammar
                 #endif
@@ -208,7 +235,7 @@ int main(int argc, char* argv[])
         }
 
         // clear memory f at the end of an epoch.
-        memset(f, 0, grammar->cnt_grammar * sizeof(double));
+        memset(f, 0, grammar->cnt_grammar * sizeof(long double));
         std::ofstream logfile_ostream = std::ofstream(log_path + "/log_epoch_id_" + std::to_string(epoch) + ".pcfg");
         if(!logfile_ostream){
             std::cerr << "Error: Could not open log file for writing.\n";
@@ -233,7 +260,7 @@ int main(int argc, char* argv[])
                 (uint32_t*)(grammar->grammar_index),
                 (uint32_t*)(grammar->grammar_table),
                 alpha,
-                sequence_length, grammar->n_syms(), grammar->N(), grammar->T(), MAX_SEQUENCE_LENGTH, grammar->cnt_grammar,
+                sequence_length, grammar->n_syms(), grammar->N(), grammar->T(), MS, grammar->cnt_grammar,
                 inside_order_1_rule_iteration_path
                 #ifdef DEBUG_INSIDE_ALGORITHM
                     , grammar
@@ -242,9 +269,9 @@ int main(int argc, char* argv[])
             if(alpha[0 + 0 + sequence_length - 1] >= 1){
                 std::cout << alpha[0 + 0 + sequence_length - 1] << std::endl;
                 print_grammar(grammar);
-                for(std::tuple<uint32_t, uint32_t, uint32_t, float, uint32_t> item : 
+                for(std::tuple<uint32_t, uint32_t, uint32_t, long double, uint32_t> item : 
                         PCFGItemIterator(grammar->N(), (uint32_t*)grammar->grammar_index, (uint32_t*)grammar->grammar_table)){
-                    float p = std::get<3>(item);
+                    long double p = std::get<3>(item);
                     assert(p <= 1);
                     std::cout << "gid: " << std::get<4>(item) << ":" << p << std::endl;
                 }
@@ -254,26 +281,25 @@ int main(int argc, char* argv[])
                     (uint32_t*)(grammar->grammar_index),
                     (uint32_t*)(grammar->grammar_table),
                     alpha,
-                    sequence_length, grammar->n_syms(), grammar->N(), grammar->T(), MAX_SEQUENCE_LENGTH, grammar->cnt_grammar,
+                    sequence_length, grammar->n_syms(), grammar->N(), grammar->T(), MS, grammar->cnt_grammar,
                     inside_order_1_rule_iteration_path
                     #ifdef DEBUG_INSIDE_ALGORITHM
                         , grammar
                     #endif
                 );
                     
-                printer.print_inside_outside_table(alpha,  grammar->N(), grammar->T(), sequence_length, MAX_SEQUENCE_LENGTH, grammar);
+                printer.print_inside_outside_table(alpha,  grammar->N(), grammar->T(), sequence_length, MS, grammar);
 
 
                 assert(alpha[0 + 0 + sequence_length - 1] <= 1);
             }
             
-            log_likelihood += std::log(alpha[0 + 0 + sequence_length - 1]);            
+            log_likelihood += std::log(alpha[0 + 0 + sequence_length - 1]); // warn: right side can be -inf if underflow.
         }
         double average_likelihood = (double)log_likelihood / (double)n_sequences_val;
         std::cout << "Average likelihood on validate set at epoch " << epoch << " = " ;
-        std::cout << std::fixed << std::setprecision(9) << (double)(average_likelihood);
-        std::cout << "  " << std::endl; 
-        
+        std::cout << std::fixed << std::setprecision(36) << (double)(average_likelihood);
+        std::cout << "  " << std::endl;
     }
     
     std::cout << std::endl << "All finished" << std::endl;
