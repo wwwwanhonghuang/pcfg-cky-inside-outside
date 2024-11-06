@@ -5,7 +5,7 @@
 #include <cstring>
 #include <cstdint>
 #endif
-
+#include <omp.h>
 #include "utils/data_accessing.hpp"
 #include "grammar/grammar.hpp"
 #include "macros.def"
@@ -25,9 +25,9 @@
 __global__
 #endif
 
-void kernel_expect_count(long double* count, long double* mu, long double* beta, 
+void kernel_expect_count(double* count, double* mu, double* beta, 
     const uint32_t* sequence, uint32_t* pretermination_lookuptable, 
-                        uint32_t* grammar_index, uint32_t* grammar_table, long double* alpha, 
+                        uint32_t* grammar_index, uint32_t* grammar_table, double* alpha, 
                         int sequence_length, int n_syms, int N, int T, int MS, int n_grammars
                         #ifdef DEBUG_INSIDE_ALGORITHM
                         , pcfg* grammar

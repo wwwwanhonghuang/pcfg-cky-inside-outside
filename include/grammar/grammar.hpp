@@ -13,9 +13,9 @@ public:
     std::string left;
     std::string right1;
     std::string right2;
-    long double possibility;
+    double possibility;
     
-    pcfg_grammar_item(std::string left, std::string right1, std::string right2, long double possibility): 
+    pcfg_grammar_item(std::string left, std::string right1, std::string right2, double possibility): 
         left(left), right1(right1), right2(right2), possibility(possibility){};
 };
 
@@ -63,7 +63,7 @@ public:
         this->_current_gid = 0;
     }
 
-    std::tuple<uint32_t, uint32_t, uint32_t, long double, uint32_t> operator*() const;
+    std::tuple<uint32_t, uint32_t, uint32_t, double, uint32_t> operator*() const;
 
     PCFGItemIterator& operator++();
 

@@ -35,8 +35,8 @@
 };
 
 
-#define BYTES_GRAMMAR_TABLE_ITEMS 20
-#define BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS 5
+#define BYTES_GRAMMAR_TABLE_ITEMS 12
+#define BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS 3
 
 #define MAX_SEQUENCE_LENGTH 500
 #define _32bit_t int32_t
@@ -48,6 +48,12 @@
 #define ALPHA_INCREASE(SYMBOL, I, J, VALUE) alpha[(SYMBOL) * MS * MS + (I) * MS + J] +=  VALUE;
 #define BETA_INCREASE(SYMBOL, I, J, VALUE) beta[(SYMBOL) * MS * MS + (I) * MS + J] +=  VALUE;
 #define MU_INCREASE(SYMBOL, I, J, VALUE) mu[(SYMBOL) * MS * MS + (I) * MS + J] +=  VALUE;
+
+#ifdef COMPUTING_IN_LOG_SPACE
+#define ALPHA_INCREASE_LOG_SPACE(SYMBOL, I, J, VALUE) alpha[(SYMBOL) * MS * MS + (I) * MS + J] =  log_sum_exp(alpha[(SYMBOL) * MS * MS + (I) * MS + J], VALUE);
+#define BETA_INCREASE_LOG_SPACE(SYMBOL, I, J, VALUE) beta[(SYMBOL) * MS * MS + (I) * MS + J] =  log_sum_exp(beta[(SYMBOL) * MS * MS + (I) * MS + J], VALUE);
+#define MU_INCREASE_LOG_SPACE(SYMBOL, I, J, VALUE) mu[(SYMBOL) * MS * MS + (I) * MS + J] =  log_sum_exp(mu[(SYMBOL) * MS * MS + (I) * MS + J], VALUE);
+#endif
 
 #define ALPHA(SYMBOL, I, J) alpha[(SYMBOL) * MS * MS + (I) * MS + J] 
 #define BETA(SYMBOL, I, J) beta[(SYMBOL) * MS * MS + (I) * MS + J]

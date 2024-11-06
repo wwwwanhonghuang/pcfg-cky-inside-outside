@@ -25,27 +25,27 @@ inline void _array_set_dim3(T* array, T value, int i0, int i1, int dim0, int dim
     *(array + i0 * dim1 + i1) = value;
 }
 
-inline long double alpha_get(long double* alpha, int sym_id, int span_from, int span_to, int MS){
+inline double alpha_get(double* alpha, int sym_id, int span_from, int span_to, int MS){
     return _array_at_dim3(alpha, sym_id, span_from, span_to, 0, MS, MS);
 }
 
-inline long double beta_get(long double* beta, int sym_id, int span_from, int span_to, int MS){
+inline double beta_get(double* beta, int sym_id, int span_from, int span_to, int MS){
     return _array_at_dim3(beta, sym_id, span_from, span_to, 0, MS, MS);
 }
 
-inline void alpha_set(long double* alpha, long double value, int sym_id, int span_from, int span_to, int MS){
+inline void alpha_set(double* alpha, double value, int sym_id, int span_from, int span_to, int MS){
     _array_set_dim3(alpha, value, sym_id, span_from, span_to, 0, MS, MS);
 }
 
-inline void beta_set(long double* beta, long double value, int sym_id, int span_from, int span_to, int MS){
+inline void beta_set(double* beta, double value, int sym_id, int span_from, int span_to, int MS){
     _array_set_dim3(beta, value, sym_id, span_from, span_to, 0, MS, MS);
 }
 
-inline void alpha_increase(long double* alpha, long double increase_value, int sym_id, int span_from, int span_to, int MS){
+inline void alpha_increase(double* alpha, double increase_value, int sym_id, int span_from, int span_to, int MS){
     alpha[sym_id * MS * MS + span_from * MS + span_to] += increase_value;
 }
 
-inline void beta_increase(long double* beta, long double increase_value, int sym_id, int span_from, int span_to, int MS){
+inline void beta_increase(double* beta, double increase_value, int sym_id, int span_from, int span_to, int MS){
     beta[sym_id * MS * MS + span_from * MS + span_to] += increase_value;
 }
 

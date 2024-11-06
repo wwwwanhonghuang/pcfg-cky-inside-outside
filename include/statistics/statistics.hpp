@@ -114,7 +114,7 @@ double calculate_delay_L_layer_mutual_information(pcfg* grammar, std::vector<std
 }
 
 template<typename T> std::vector<std::vector<T>> 
-dfs_get_all_layers_value(pcfg* grammar, parse_tree* tree, std::function<T(const std::tuple<uint32_t, uint32_t, uint32_t, int, long double, int>&)> value_selector){
+dfs_get_all_layers_value(pcfg* grammar, parse_tree* tree, std::function<T(const std::tuple<uint32_t, uint32_t, uint32_t, int, double, int>&)> value_selector){
     std::vector<std::vector<T>> layers;
     std::queue<parse_tree*> node_queue;
     
@@ -149,7 +149,7 @@ double L_layer_symbol_tree_transitional_entropy(pcfg* grammar, parse_tree* tree,
 double L_layer_derivation_tree_transitional_entropy(pcfg* grammar, parse_tree* tree, int L);
 
 // !important
-double prefix_L_parse_entropy(pcfg* grammar, long double* alpha, int sequence_length, int end, int L);
+double prefix_L_parse_entropy(pcfg* grammar, double* alpha, int sequence_length, int end, int L);
 double word_delay_L_mutual_entropy(std::vector<uint32_t> words, int L);
 
 

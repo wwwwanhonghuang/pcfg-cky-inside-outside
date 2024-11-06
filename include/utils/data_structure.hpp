@@ -25,7 +25,7 @@ bool map_contains(const std::map<TKey, TVal>& map, TKey key) {
 #ifdef USE_CUDA
 __device__ 
 #endif
-__inline__ long double reverse_grammar_hashtable_get_value(
+inline double reverse_grammar_hashtable_get_value(
     uint32_t* hashtable, int hashtable_size, uint64_t key){
     #ifndef USE_CUDA
         int left = (key >> 16) & 0xFFFF;
@@ -35,7 +35,7 @@ __inline__ long double reverse_grammar_hashtable_get_value(
         int cnt_trails = 0;
         for(int i = 0; i < cnt_hashtable_items; i++){
             if(hashtable[pos] == key){
-                return *((long double*)(hashtable + pos + 1));
+                return *((double*)(hashtable + pos + 1));
             }else{
                 pos = (pos + BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS) % hashtable_size;
             }
@@ -58,8 +58,8 @@ __inline__ long double reverse_grammar_hashtable_get_value(
 #ifdef USE_CUDA
 __device__ 
 #endif
-__inline__ void reverse_grammar_hashtable_set_value(
-    uint32_t* hashtable, int hashtable_size, uint64_t key, long double val){
+inline void reverse_grammar_hashtable_set_value(
+    uint32_t* hashtable, int hashtable_size, uint64_t key, double val){
     #ifndef USE_CUDA
         int left = (key >> 16) & 0xFFFF;
         int right1 = key & 0xFFFF;
@@ -68,7 +68,7 @@ __inline__ void reverse_grammar_hashtable_set_value(
         int cnt_trails = 0;
         for(int i = 0; i < cnt_hashtable_items; i++){
             if(hashtable[pos] == key){
-                *((long double*)(hashtable + pos + 1)) = val;
+                *((double*)(hashtable + pos + 1)) = val;
                 return;
             }else{
                 pos = (pos + BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS) % hashtable_size;

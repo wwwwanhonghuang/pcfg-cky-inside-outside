@@ -1,13 +1,13 @@
 
 #include "kernels/outside.cuh"
-
+#include "utils/math.hpp"
 
 #ifdef USE_CUDA
 __global__
 #endif
-void kernel_outside_main(long double* mu, long double* beta, const uint32_t* sequence, 
+void kernel_outside_main(double* mu, double* beta, const uint32_t* sequence, 
                         uint32_t* pretermination_lookuptable, 
-                        uint32_t* grammar_index, uint32_t* grammar_table, long double* alpha, 
+                        uint32_t* grammar_index, uint32_t* grammar_table, double* alpha, 
                         int sequence_length, int n_syms, int N, int T, int MS, int n_grammars,
                         std::vector<std::tuple<uint32_t, uint32_t>> inside_order_1_rule_iteration_path
                         #ifdef DEBUG_INSIDE_ALGORITHM
@@ -15,9 +15,19 @@ void kernel_outside_main(long double* mu, long double* beta, const uint32_t* seq
                         #endif
 ){
     #ifndef USE_CUDA
-    memset(mu, 0, n_grammars * MS * MS * sizeof(long double));
-    memset(beta, 0, n_syms * MS * MS * sizeof(long double));
 
+    memset(mu, 0, n_grammars * MS * MS * sizeof(double));
+    memset(beta, 0, n_syms * MS * MS * sizeof(double));
+
+    #ifdef COMPUTING_IN_LOG_SPACE
+    for (int i = 0; i < n_grammars * MS * MS; i++) {
+        mu[i] = -INFINITY;
+    }
+    for (int i = 0; i < n_syms * MS * MS; i++) {
+        beta[i] = -INFINITY;
+    }
+    #endif
+    
     /* base case: S is the root of the whole sequence with possibility 1.0. */
     BETA(0, 0, sequence_length - 1) = 1.0;
 
@@ -47,24 +57,30 @@ void kernel_outside_main(long double* mu, long double* beta, const uint32_t* seq
         for(int i = 0; i < sequence_length - span_length + 1; i++){
             int j = i + span_length - 1;
             // 1. 2. 6. 7.
-            for(std::tuple<uint32_t, uint32_t, uint32_t, long double, uint32_t> item : 
+            for(std::tuple<uint32_t, uint32_t, uint32_t, double, uint32_t> item : 
                 PCFGItemIterator(N, grammar_index, grammar_table)){                    
                 for(int k = 0; k < i; k++){       
                     uint32_t sym_B = std::get<0>(item);
                     uint32_t sym_C = std::get<1>(item);
                     uint32_t sym_A = std::get<2>(item);
-                    long double possibility = std::get<3>(item);
+                    double possibility = std::get<3>(item);
                     
                     // 1. 7. (A is nonterminate, and C is terminate or nonterminate. A at right side.)
                     if(IS_NONTERMINATE(sym_A) && !IS_EPSILON(sym_C)){
                         // C: [k, i - 1] part
-                        long double alpha_C = ALPHA_GET(sym_C, k, i - 1);
+                        double alpha_C = ALPHA_GET(sym_C, k, i - 1);
                         // B: [k, j] part
-                        long double beta_B = BETA(sym_B, k, j);
+                        double beta_B = BETA(sym_B, k, j);
 
+                        #ifdef COMPUTING_IN_LOG_SPACE
                         #pragma omp atomic
                         // A: [i, j] part
-                        BETA_INCREASE(sym_A, i, j, possibility * alpha_C * beta_B);   
+                        BETA_INCREASE_LOG_SPACE(sym_A, i, j, possibility + alpha_C + beta_B);
+                        #else
+                        #pragma omp atomic
+                        // A: [i, j] part
+                        BETA_INCREASE(sym_A, i, j, possibility * alpha_C * beta_B);
+                        #endif
                     }   
                 }
 
@@ -72,18 +88,23 @@ void kernel_outside_main(long double* mu, long double* beta, const uint32_t* seq
                     uint32_t sym_B = std::get<0>(item);
                     uint32_t sym_A = std::get<1>(item);
                     uint32_t sym_C = std::get<2>(item);
-                    long double possibility = std::get<3>(item);
+                    double possibility = std::get<3>(item);
 
                     // 2. 6. (A is nonterminate, and C is terminate or nonterminate. A at left side.)
                     if(IS_NONTERMINATE(sym_A) && !IS_EPSILON(sym_C)){
                         // C: [k, i - 1] part
-                        long double alpha_C = ALPHA_GET(sym_C, j + 1, k);
+                        double alpha_C = ALPHA_GET(sym_C, j + 1, k);
                         // B: [k, j] part
-                        long double beta_B = BETA(sym_B, i, k);
+                        double beta_B = BETA(sym_B, i, k);
 
+                        #ifdef COMPUTING_IN_LOG_SPACE
+                        #pragma omp atomic
+                        BETA_INCREASE_LOG_SPACE(sym_A, i, j, possibility + alpha_C + beta_B);
+                        #else
                         #pragma omp atomic
                         // A: [i, j] part
-                        BETA_INCREASE(sym_A, i, j, possibility * alpha_C * beta_B);   
+                        BETA_INCREASE(sym_A, i, j, possibility * alpha_C * beta_B);
+                        #endif
                     }   
                 }
             }
@@ -97,8 +118,8 @@ void kernel_outside_main(long double* mu, long double* beta, const uint32_t* seq
                 uint32_t sym_B = std::get<1>(rule_id);
                 uint32_t* addr = (grammar_table + gid * BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS);
                 uint32_t sym_A = ((*addr) >> 16) & 0xFFFF;
-                long double alpha_B = ALPHA_GET(sym_B, i, j);
-                long double possibility = *(long double*)(addr + 1);
+                double alpha_B = ALPHA_GET(sym_B, i, j);
+                double possibility = *(double*)(addr + 1);
                 
                 if(IS_TERMINATE(sym_A)) continue; 
                 /* grammar become B -> A. In this condition, B -> A contributes possibility * beta_B
@@ -106,17 +127,22 @@ void kernel_outside_main(long double* mu, long double* beta, const uint32_t* seq
                     We doesn't need to iterate split point k, as there only one symbol in the right side
                     of this rule. 'continue;' is uesed to skip k iterations. */
                 
+                #ifdef COMPUTING_IN_LOG_SPACE
+                #pragma omp atomic
+                BETA_INCREASE_LOG_SPACE(sym_A, i, j, possibility + BETA(sym_B, i, j));
+                #else
                 #pragma omp atomic
                 BETA_INCREASE(sym_A, i, j, possibility * BETA(sym_B, i, j));
+                #endif
             }
 
             // 5. 8. 9. 10.
             // Case 2: A is terminate 
-            for(std::tuple<uint32_t, uint32_t, uint32_t, long double, uint32_t> item : 
+            for(std::tuple<uint32_t, uint32_t, uint32_t, double, uint32_t> item : 
                                                         PCFGItemIterator(N, grammar_index, grammar_table)){                    
                     
                 uint32_t sym_B = std::get<0>(item);
-                long double possibility = std::get<3>(item);
+                double possibility = std::get<3>(item);
                 
                 uint32_t sym_A = std::get<1>(item);
                 uint32_t sym_C = std::get<2>(item);
@@ -126,14 +152,22 @@ void kernel_outside_main(long double* mu, long double* beta, const uint32_t* seq
                 // 5. B -> w_A C
                 if(IS_TERMINATE(sym_A) && IS_NONTERMINATE(sym_C) && (i == j)){
                     for(int k = j + 1; k < sequence_length; k++){
-                            BETA(sym_A, i, j) += BETA(sym_B, i, k) * ALPHA(sym_C, j + 1, k) * possibility;
+                        #ifdef COMPUTING_IN_LOG_SPACE
+                        BETA(sym_A, i, j) = log_sum_exp(BETA(sym_A, i, j), BETA(sym_B, i, k) + ALPHA(sym_C, j + 1, k) + possibility);
+                        #else
+                        BETA(sym_A, i, j) += BETA(sym_B, i, k) * ALPHA(sym_C, j + 1, k) * possibility;
+                        #endif
                     }
                 }
 
                 // 9. B->w_C w_A 
                 if(IS_TERMINATE(sym_A) && IS_TERMINATE(sym_C) && (i == j)){
                     if(j + 1 < sequence_length){
+                        #ifdef COMPUTING_IN_LOG_SPACE
+                        BETA(sym_A, i, j) = log_sum_exp(BETA(sym_A, i, j), ALPHA(sym_C, j + 1, j + 1) + BETA(sym_B, i, j + 1) + possibility);
+                        #else
                         BETA(sym_A, i, j) += ALPHA(sym_C, j + 1, j + 1) * BETA(sym_B, i, j + 1) * possibility;
+                        #endif
                     }
                 }
                 
@@ -143,14 +177,22 @@ void kernel_outside_main(long double* mu, long double* beta, const uint32_t* seq
                 // 8.
                 if(IS_NONTERMINATE(sym_C) && IS_TERMINATE(sym_A) && (i == j)){
                     for(int k = 0; k <= i - 1; k++){
+                        #ifdef COMPUTING_IN_LOG_SPACE
+                        BETA(sym_A, i, j) = log_sum_exp(BETA(sym_A, i, j), ALPHA(sym_C, k, i - 1) + BETA(sym_B, k, j) + possibility);
+                        #else
                         BETA(sym_A, i, j) += ALPHA(sym_C, k, i - 1) * BETA(sym_B, k, j) * possibility;
+                        #endif
                     }
                 }
 
                 // 10.
                 if(IS_TERMINATE(sym_C) && IS_TERMINATE(sym_A) && (i == j)){
                     if(i - 1 >= 0){
+                        #ifdef COMPUTING_IN_LOG_SPACE
+                        BETA(sym_A, i, j) = log_sum_exp(BETA(sym_A, i, j), ALPHA(sym_C, i - 1, i - 1) + BETA(sym_B, i - 1, j) + possibility);
+                        #else
                         BETA(sym_A, i, j) += ALPHA(sym_C, i - 1, i - 1) * BETA(sym_B, i - 1, j) * possibility;
+                        #endif
                     }                   
                 }
 
@@ -167,14 +209,19 @@ void kernel_outside_main(long double* mu, long double* beta, const uint32_t* seq
                 uint32_t sym_B = std::get<1>(rule_id);
                 uint32_t* addr = (grammar_table + gid * BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS);
                 uint32_t sym_A = ((*addr) >> 16) & 0xFFFF;
-                long double alpha_B = ALPHA_GET(sym_B, i, j);
-                long double possibility = *(long double*)(addr + 1);
+                double alpha_B = ALPHA_GET(sym_B, i, j);
+                double possibility = *(double*)(addr + 1);
                 if(i != j) break;
                 if(IS_NONTERMINATE(sym_A)) continue; 
                 // B->w_A
                 
+                #ifdef COMPUTING_IN_LOG_SPACE
+                #pragma omp atomic
+                BETA_INCREASE_LOG_SPACE(sym_A, i, j, possibility + BETA(sym_B, i, j));
+                #else
                 #pragma omp atomic
                 BETA_INCREASE(sym_A, i, j, possibility * BETA(sym_B, i, j));
+                #endif
             }
         }
     }
@@ -187,17 +234,17 @@ void kernel_outside_main(long double* mu, long double* beta, const uint32_t* seq
         for (int i = 0; i <= sequence_length - span_length; i++) {
             int j = i + span_length - 1; // Ending index of the spanx`
             for (int k = i; k <= j; k++) { // TODO: k < j? k == j?
-                for(std::tuple<uint32_t, uint32_t, uint32_t, long double, uint32_t> item : PCFGItemIterator(N, grammar_index, grammar_table)){
+                for(std::tuple<uint32_t, uint32_t, uint32_t, double, uint32_t> item : PCFGItemIterator(N, grammar_index, grammar_table)){
                     uint32_t sym_A = std::get<0>(item);
                     uint32_t sym_B = std::get<1>(item);
                     uint32_t sym_C = std::get<2>(item);
-                    long double possibility = std::get<3>(item);
+                    double possibility = std::get<3>(item);
                     uint32_t gid = std::get<4>(item);
                     if(k == j && !IS_EPSILON(sym_C)) continue;
 
-                    long double beta_A_i_j = BETA(sym_A, i, j);
-                    long double alpha_B_i_k = ALPHA_GET(sym_B, i, k);
-                    long double alpha_C_k_p1_j = ALPHA_GET(sym_C, k + 1, j);
+                    double beta_A_i_j = BETA(sym_A, i, j);
+                    double alpha_B_i_k = ALPHA_GET(sym_B, i, k);
+                    double alpha_C_k_p1_j = ALPHA_GET(sym_C, k + 1, j);
                     // if(i == 2 && j == 4 && gid == 5){
                     //     std::cout << "mu::increase::: " <<
                     //         possibility * beta_A_i_j * alpha_B_i_k * alpha_C_k_p1_j 
@@ -214,8 +261,13 @@ void kernel_outside_main(long double* mu, long double* beta, const uint32_t* seq
                     //         " sym_C = " << sym_C << " " << SYMBOL_STR(sym_C) <<
                     //          "]"<< std::endl;
                     // }
+                    #ifdef COMPUTING_IN_LOG_SPACE
+                    #pragma omp atomic
+                    MU_INCREASE_LOG_SPACE(gid, i, j, possibility + beta_A_i_j + alpha_B_i_k + alpha_C_k_p1_j);
+                    #else
                     #pragma omp atomic
                     MU_INCREASE(gid, i, j, possibility * beta_A_i_j * alpha_B_i_k * alpha_C_k_p1_j);
+                    #endif
                 }
             }
         }
