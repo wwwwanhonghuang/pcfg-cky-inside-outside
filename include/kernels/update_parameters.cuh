@@ -12,10 +12,9 @@ __global__
 #include <cstdint>
 #include "grammar/grammar.hpp"
 
+inline double _calculate_new_possibility(double S, double f_gid);
 
-inline long double _calculate_new_possibility(long double S, long double f_gid);
-
-void kernel_update_parameters(long double* f, long double* count, long double* mu, long double* beta, const uint32_t* sequence, 
+void kernel_update_parameters(double* f, double* count, double* mu, double* beta, const uint32_t* sequence, 
         uint32_t* pretermination_lookuptable, 
         uint32_t* grammar_index, 
     
@@ -24,10 +23,11 @@ void kernel_update_parameters(long double* f, long double* count, long double* m
     #else
         uint32_t*
     #endif
-        grammar_table, long double* alpha, 
+        grammar_table, double* alpha, 
         int sequence_length, int n_syms, int N, int T, int MS, int n_grammars
         #ifdef DEBUG_INSIDE_ALGORITHM
             , pcfg* grammar
         #endif
+        , bool do_update
 );
 #endif

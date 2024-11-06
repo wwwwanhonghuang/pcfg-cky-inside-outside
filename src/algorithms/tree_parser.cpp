@@ -54,7 +54,7 @@ parse_tree* deserialize_tree(std::istringstream& tree_iss){
     uint32_t id1 = std::stoul(token);
     uint32_t id2, id3;
     int id4;
-    long double id5;
+    double id5;
     int id6;
 
     tree_iss >> id2 >> id3 >> id4 >> id5 >> id6;
@@ -66,17 +66,17 @@ parse_tree* deserialize_tree(std::istringstream& tree_iss){
     return node;
 }
 
-parse_tree* _parsing_helper(long double* alpha, int MS, uint32_t symbol_id, int span_from, int span_to, pcfg* grammar){
+parse_tree* _parsing_helper(double* alpha, int MS, uint32_t symbol_id, int span_from, int span_to, pcfg* grammar){
     if(span_from > span_to){
         return nullptr;
     }
     
-    long double p = ALPHA(symbol_id, span_from, span_to);
+    double p = ALPHA(symbol_id, span_from, span_to);
     uint32_t best_symbol_B;
     uint32_t best_symbol_C;
     uint32_t best_k;
     uint32_t best_gid;
-    long double best_v = 0.0;
+    double best_v = 0.0;
     uint32_t sym_A = symbol_id;
 
     uint32_t current_offset = grammar->grammar_index[symbol_id];
@@ -85,11 +85,11 @@ parse_tree* _parsing_helper(long double* alpha, int MS, uint32_t symbol_id, int 
         uint32_t encode_symbol = (uint32_t)(*(grammar->grammar_table + current_offset));
         uint32_t sym_B = (encode_symbol >> 16) & 0xFFFF;
         uint32_t sym_C = encode_symbol & 0xFFFF;
-        long double possibility = *(long double*)(grammar->grammar_table + current_offset + 1);
+        double possibility = *(double*)(grammar->grammar_table + current_offset + 1);
         uint32_t gid = (int)(current_offset / BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS);
         if(!IS_EPSILON(sym_C)){
             for(int k = span_from; k < span_to; k++){
-                long double v = possibility * ALPHA(sym_B, span_from, k) * ALPHA(sym_C, k + 1, span_to);
+                double v = possibility * ALPHA(sym_B, span_from, k) * ALPHA(sym_C, k + 1, span_to);
                 if(v > best_v){
                     best_v = v;
                     best_symbol_B = sym_B;
@@ -99,7 +99,7 @@ parse_tree* _parsing_helper(long double* alpha, int MS, uint32_t symbol_id, int 
             }
             break;
         }else{
-            long double v = possibility * ALPHA(sym_B, span_from, span_to);
+            double v = possibility * ALPHA(sym_B, span_from, span_to);
             if(v > best_v){
                 best_v = v;
                 best_symbol_B = sym_B;
@@ -117,7 +117,7 @@ parse_tree* _parsing_helper(long double* alpha, int MS, uint32_t symbol_id, int 
     parse_tree* merged_parse_tree = merge_trees(0, best_gid, best_symbol_B, best_symbol_C, best_k, best_v, tree_1, tree_2);
     return merged_parse_tree;
 }
-parse_tree* merge_trees(uint32_t sym_A, int gid, uint32_t sym_B, uint32_t sym_C, int k, long double p, parse_tree* left, parse_tree* right){
+parse_tree* merge_trees(uint32_t sym_A, int gid, uint32_t sym_B, uint32_t sym_C, int k, double p, parse_tree* left, parse_tree* right){
     parse_tree* result = new parse_tree();
     result->left = left;
     result->right = right;
@@ -125,7 +125,7 @@ parse_tree* merge_trees(uint32_t sym_A, int gid, uint32_t sym_B, uint32_t sym_C,
     return result;
 }
 
-parse_tree* parse(pcfg* grammar, std::vector<uint32_t> sequence, long double* alpha, 
+parse_tree* parse(pcfg* grammar, std::vector<uint32_t> sequence, double* alpha, 
         std::vector<std::tuple<uint32_t, uint32_t>> inside_order_1_rule_iteration_path){
     int sequence_length = sequence.size();
     inside_algorithm(sequence.data(), 
@@ -142,7 +142,7 @@ parse_tree* parse(pcfg* grammar, std::vector<uint32_t> sequence, long double* al
     );
     int N = grammar->N();
     int argmax_nonterminate_id = 0;
-    long double max_inside_value = 0;
+    double max_inside_value = 0;
     
     return _parsing_helper(alpha, MAX_SEQUENCE_LENGTH, 0, 0, sequence.size() - 1, grammar);
 }

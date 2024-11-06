@@ -77,13 +77,13 @@ int pcfg::get_sym_id(const std::string& symbol){
     return -1;
 }
 
-std::tuple<uint32_t, uint32_t, uint32_t, long double, uint32_t> PCFGItemIterator::operator*() const {
+std::tuple<uint32_t, uint32_t, uint32_t, double, uint32_t> PCFGItemIterator::operator*() const {
         uint32_t sym_A = this->_current_left_symbol_id;
         uint32_t symbols = *(this->_grammar_table + this->pt);
-        long double possibility = *(long double*)(this->_grammar_table + this->pt + 1);
+        double possibility = *(double*)(this->_grammar_table + this->pt + 1);
         uint32_t sym_B = (symbols >> 16) & 0xFFFF;
         uint32_t sym_C = symbols & 0xFFFF;
-        return std::tuple<uint32_t, uint32_t, uint32_t, long double, uint32_t>(sym_A, sym_B, sym_C, possibility, this->_current_gid);
+        return std::tuple<uint32_t, uint32_t, uint32_t, double, uint32_t>(sym_A, sym_B, sym_C, possibility, this->_current_gid);
 }
 
 PCFGItemIterator& PCFGItemIterator::operator++() {
@@ -124,18 +124,20 @@ PCFGItemIterator PCFGItemIterator::end() const{
 std::vector<std::tuple<uint32_t, uint32_t>> generate_inside_perterminate_iteration_paths(pcfg* grammar){
     int n_syms = grammar->N() + grammar->T();
     int N = grammar->N();
-    bool dependency_graph[n_syms * n_syms]{0};
+    bool dependency_graph[n_syms * n_syms];
     int edges = 0;
+    std::fill(dependency_graph, dependency_graph + (n_syms * n_syms), false);
+    
     std::vector<std::tuple<uint32_t, uint32_t>> rules = std::vector<std::tuple<uint32_t, uint32_t>>();
     std::vector<std::tuple<uint32_t, uint32_t>> results;
     std::map<uint32_t, uint32_t> gid_map = {};
 
-    for(std::tuple<uint32_t, uint32_t, uint32_t, long double, uint32_t> item : 
+    for(std::tuple<uint32_t, uint32_t, uint32_t, double, uint32_t> item : 
                                 PCFGItemIterator(N, (uint32_t*) grammar->grammar_index, (uint32_t*)grammar->grammar_table)){
         uint32_t sym_A = std::get<0>(item);
         uint32_t sym_B = std::get<1>(item);
         uint32_t sym_C = std::get<2>(item);
-        long double possibility = std::get<3>(item);
+        double possibility = std::get<3>(item);
         uint32_t gid = std::get<4>(item);
         if(!IS_EPSILON(sym_C)) continue;
         dependency_graph[sym_A * n_syms + sym_B] = 1;
@@ -156,7 +158,6 @@ std::vector<std::tuple<uint32_t, uint32_t>> generate_inside_perterminate_iterati
             }
             if(!elimnatable) continue;
             
-
             for(int sym_A = 0; sym_A < n_syms; sym_A++){
                 if(dependency_graph[sym_A * n_syms + sym_B]){
                     dependency_graph[sym_A * n_syms + sym_B] = 0;

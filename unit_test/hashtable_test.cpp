@@ -1,7 +1,7 @@
 #define BOOST_TEST_MODULE GRAMMAR_TABLE_UNITEST_Module
 #include <boost/test/included/unit_test.hpp>
 #include "grammar.hpp"
-long double test_hashtable(pcfg* grammar) {
+double test_hashtable(pcfg* grammar) {
     return 0.0L;
 }
 

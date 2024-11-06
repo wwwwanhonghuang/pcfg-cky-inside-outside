@@ -2,10 +2,13 @@
 #include <fstream>
 #include <vector>
 #include <iostream>
-
+#ifdef COMPUTING_IN_LOG_SPACE
+#include <cmath>
+#endif
 #include "grammar/grammar_parser.hpp"
 #include "utils/printer.hpp"
 #include "utils/data_structure.hpp"
+
 
 #define _STRICK_CHECK
 // #define DEBUG_PRINT_GRAMMAR_PARSING
@@ -57,7 +60,9 @@ pcfg* _parse_grammar_file(const std::string& path){
         }
         pcfg_grammar_item rule = parse_grammar_single_line(line);
         std::cout << "[grammar: " << ++cnt_recognized_grammars << "] " << rule.left << "->" << rule.right1 << " " << rule.right2 << " " << rule.possibility << std::endl;
-        
+        #ifdef COMPUTING_IN_LOG_SPACE
+            rule.possibility = std::log(rule.possibility);
+        #endif
         _record_non_terminate_symbol(rule.left, grammar, rule, grammar_items_map);
         if(!map_contains(grammar_items_map, rule.left)){
             grammar_items_map.insert(std::make_pair(rule.left, std::vector<pcfg_grammar_item> {}));
@@ -156,7 +161,7 @@ pcfg* _build_grammar_table(pcfg* grammar, uint32_t* non_terminate_grammars, uint
                 (*(uint32_t*)(grammar_vector + offset)) =
                         ((right1_id << 16) & (0xFFFF0000) | right2_id & (0x0000FFFF));
 
-                *(long double*)(grammar_vector + offset + 1) = item.possibility; 
+                *(double*)(grammar_vector + offset + 1) = item.possibility; 
 
                 offset += BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS;
             }
@@ -197,7 +202,7 @@ pcfg* _build_grammar_table(pcfg* grammar, uint32_t* non_terminate_grammars, uint
                 int encoded_symbols = *(uint32_t*)(grammar_vector + offset);
                 int symbol_id_right_1 = (encoded_symbols >> 16) & 0xFFFF;
                 int symbol_id_right_2 = (encoded_symbols) & 0xFFFF;
-                long double possibility = *(long double*)(grammar_vector + offset + 1);
+                double possibility = *(double*)(grammar_vector + offset + 1);
                 offset += BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS;
 
                 // Decode the value
@@ -210,7 +215,7 @@ pcfg* _build_grammar_table(pcfg* grammar, uint32_t* non_terminate_grammars, uint
                             << " decoded value = " << decoded_value << std::endl;
                     return nullptr;
                 }
-                if(abs(possibility - rule.possibility) > 1e-5){
+                if(std::abs(possibility - rule.possibility) > 1e-5){
                     std::cout << "Error: check possibility failed." << std::endl;
                     return nullptr;
                 }
@@ -274,7 +279,7 @@ pcfg* _build_preterminate_grammar_lookup_table(pcfg* grammar, uint32_t* non_term
                         }
                     }
                     hashtable[position] = key;
-                    *(long double*)(hashtable + position + 1) = rule.possibility;
+                    *(double*)(hashtable + position + 1) = rule.possibility;
                 }
                 offset += BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS;
                 rule_index_inner++;

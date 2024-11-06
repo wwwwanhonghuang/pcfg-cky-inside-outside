@@ -1,26 +1,13 @@
-# Define paths and libraries
-USE_CUDA = 0
-CUTENSOR_ROOT = ~/libcutensor
-CUDA_INSTALL_PATH = /usr/local/cuda
-
 # Include directories
-INCLUDES = -Iinclude -I$(CUDA_INSTALL_PATH)/include -I${CUTENSOR_ROOT}/include
+INCLUDES = -Iinclude
 
 # Compiler flags and libraries
-FLAGS = -DDEBUG_INSIDE_ALGORITHM
 TEST_LDFLAGS = -L/path/to/boost/lib -lboost_unit_test_framework
 
-CXX = g++ -g -fopenmp $(FLAGS) -Werror
-NVCC = $(CUDA_INSTALL_PATH)/bin/nvcc -g -Xcompiler -fopenmp $(FLAGS)
+CXX = clang++ -DCOMPUTING_IN_LOG_SPACE
 
-ifeq ($(USE_CUDA), 1)
-    TARGET_COMPILER := $(NVCC)
-    CUDA_LIBS = -L$(CUDA_INSTALL_PATH)/lib64 -lcudart
-    CUTENSOR_LIBS = -L${CUTENSOR_ROOT}/lib/12/ -lcutensor
-else
-    TARGET_COMPILER := $(CXX)
-    COMPILER_FLAGS := -std=c++17 $(FLAGS)
-endif
+TARGET_COMPILER := $(CXX)
+COMPILER_FLAGS := -std=c++17 -O3 -g -fopenmp -Werror -DDEBUG_INSIDE_ALGORITHM -DCOMPUTING_IN_LOG_SPACE
 
 # Directories
 SRC_DIR := src
@@ -63,9 +50,10 @@ main: $(TARGET_MAIN)
 
 TARGET_MAIN_LD = -lyaml-cpp $(CUDA_LIBS) $(CUTENSOR_LIBS)
 TARGET_PHASE_CONVERT_LD = -lyaml-cpp 
+TARGET_MAIN_FLAGS = 
 
 $(TARGET_MAIN): $(SRC_DIR)/main.cpp $(SHARED_LIB) | $(BIN_DIR)
-	$(TARGET_COMPILER) $(COMPILER_FLAGS) $(INCLUDES) -o $@ $(SRC_DIR)/main.cpp $(SHARED_LIB) $(TARGET_MAIN_LD)
+	$(TARGET_COMPILER) $(COMPILER_FLAGS) $(TARGET_MAIN_FLAGS) $(INCLUDES) -o $@ $(SRC_DIR)/main.cpp $(SHARED_LIB) $(TARGET_MAIN_LD) -latomic
 
 # Build phase_convert executable
 phase_convert: $(TARGET_PHASE_CONVERT)

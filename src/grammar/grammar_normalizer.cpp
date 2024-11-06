@@ -9,7 +9,7 @@ void normalize_grammar(pcfg* grammar){
         const std::string& nonterminate = map_item.first;
         uint32_t left_id = grammar->nonterminate_map[nonterminate];
         std::vector<pcfg_grammar_item>& grammar_items = map_item.second;
-        long double Z = 0;
+        double Z = 0;
         
         for(auto& grammar_item : grammar_items){
             Z += grammar_item.possibility;
@@ -21,8 +21,8 @@ void normalize_grammar(pcfg* grammar){
         uint32_t end_offset = (uint32_t)(grammar->grammar_index[left_id + 1]);
 
         while(current_offset < end_offset){
-            long double possibility = *(long double*)(grammar->grammar_table + current_offset + 1);
-            (*(long double*)(grammar->grammar_table + current_offset + 1)) = possibility / Z;
+            double possibility = *(double*)(grammar->grammar_table + current_offset + 1);
+            (*(double*)(grammar->grammar_table + current_offset + 1)) = possibility / Z;
             uint32_t right_side_encode =  (uint32_t)(*(grammar->grammar_table + current_offset));
             uint32_t right_1 = (right_side_encode >> 16) & 0xFFFF;
             uint32_t right_2 = (right_side_encode) & 0xFFFF;

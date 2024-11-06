@@ -1,7 +1,6 @@
 #ifndef __MACRO_DEF__
 #define __MACRO_DEF__
 
-
 #define PRINT_INSIDE 0
 #define PRINT_OUTSIDE 0
 #define PRINT_STEPS 0
@@ -21,22 +20,8 @@
 #endif
 
 
-// Handle cuTENSOR errors
-#define HANDLE_ERROR(x)                                             \
-{ const auto err = x;                                               \
-    if( err != CUTENSOR_STATUS_SUCCESS )                              \
-    { printf("Error: %s\n", cutensorGetErrorString(err)); exit(-1); } \
-};
-
-#define HANDLE_CUDA_ERROR(x)                                      \
-{ const auto err = x;                                             \
-    if( err != cudaSuccess )                                        \
-    { printf("Error: %s\n", cudaGetErrorString(err)); exit(-1); } \
-};
-
-
-#define BYTES_GRAMMAR_TABLE_ITEMS 20
-#define BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS 5
+#define BYTES_GRAMMAR_TABLE_ITEMS 12
+#define BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS 3
 
 #define MAX_SEQUENCE_LENGTH 500
 #define _32bit_t int32_t
@@ -48,6 +33,10 @@
 #define ALPHA_INCREASE(SYMBOL, I, J, VALUE) alpha[(SYMBOL) * MS * MS + (I) * MS + J] +=  VALUE;
 #define BETA_INCREASE(SYMBOL, I, J, VALUE) beta[(SYMBOL) * MS * MS + (I) * MS + J] +=  VALUE;
 #define MU_INCREASE(SYMBOL, I, J, VALUE) mu[(SYMBOL) * MS * MS + (I) * MS + J] +=  VALUE;
+
+#ifdef COMPUTING_IN_LOG_SPACE
+#define LOG_SUM_EXP_SET(A, B) A = log_sum_exp(A, B);
+#endif
 
 #define ALPHA(SYMBOL, I, J) alpha[(SYMBOL) * MS * MS + (I) * MS + J] 
 #define BETA(SYMBOL, I, J) beta[(SYMBOL) * MS * MS + (I) * MS + J]
