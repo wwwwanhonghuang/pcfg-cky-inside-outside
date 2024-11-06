@@ -102,9 +102,9 @@ void kernel_inside_computeSpanKernel(const uint32_t* sequence, uint32_t* preterm
                 int j = i + span_length - 1; // Ending index of the span
                 std::vector<double> local_buffer(N, 
                     #ifdef COMPUTING_IN_LOG_SPACE
-                    -INFINITY
+                        -INFINITY
                     #else
-                    0.0
+                        0.0
                     #endif
                 );
                 for (int k = i; k < j; k++) {

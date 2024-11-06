@@ -46,6 +46,8 @@ void log_f(std::string file_path, double* f, pcfg* grammar){
         double possibility = std::get<3>(item);
         uint32_t gid = std::get<4>(item);
         stream << "[" << gid << "] " << SYMBOL_STR(sym_A) << " -> " << SYMBOL_STR(sym_B) << " " <<
-            SYMBOL_STR(sym_C)  << " [" << f[gid] << "]" << std::endl;
+            SYMBOL_STR(sym_C)  << " [" << 
+            std::fixed << std::setprecision(56) <<
+            f[gid] << "]" << std::endl;
     }
 }

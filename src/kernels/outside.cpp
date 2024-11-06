@@ -286,25 +286,21 @@ void kernel_outside_main(double* mu, double* beta, const uint32_t* sequence,
                         #endif
                     }
                 }
-            }
+                
+                    #ifdef COMPUTING_IN_LOG_SPACE
+                        for(int gid = 0; gid < n_grammars; gid++){
+                            LOG_SUM_EXP_SET(MU(gid, i, j), local_buffer_mu[gid * MS + i]);
+                        }
+                    #else
+                        for(int gid = 0; gid < n_grammars; gid++){
+                            MU_INCREASE(gid, i, j, local_buffer_mu[gid * MS + i]);
+                        }
+                    #endif
+                
+            } // end parallel for
         }
 
         
-        for(int i = 0; i <= sequence_length - span_length; i++){
-            int j = i + span_length - 1;
-        #ifdef COMPUTING_IN_LOG_SPACE
-            for(int gid = 0; gid < n_grammars; gid++){
-                #pragma omp critical
-                {
-                    LOG_SUM_EXP_SET(MU(gid, i, j), local_buffer_mu[gid * MS + i]);
-                }
-            }
-        #else
-            for(int gid = 0; gid < n_grammars; gid++){
-                #pragma omp atomic
-                MU_INCREASE(gid, i, j, local_buffer_mu[gid * MS + i]);
-            }
-        #endif
-        }
+        
     }
 }
