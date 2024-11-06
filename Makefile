@@ -4,10 +4,10 @@ INCLUDES = -Iinclude
 # Compiler flags and libraries
 TEST_LDFLAGS = -L/path/to/boost/lib -lboost_unit_test_framework
 
-CXX = clang++ 
+CXX = clang++ -DCOMPUTING_IN_LOG_SPACE
 
 TARGET_COMPILER := $(CXX)
-COMPILER_FLAGS := -std=c++17 -O3 -g -fopenmp -Werror -DDEBUG_INSIDE_ALGORITHM
+COMPILER_FLAGS := -std=c++17 -O3 -g -fopenmp -Werror -DDEBUG_INSIDE_ALGORITHM -DCOMPUTING_IN_LOG_SPACE
 
 # Directories
 SRC_DIR := src

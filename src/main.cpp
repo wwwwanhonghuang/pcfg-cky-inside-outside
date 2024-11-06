@@ -16,6 +16,8 @@
 #include "utils/printer.hpp"
 #include "utils/application_io.hpp"
 #include "dataset/dataset_helper.hpp"
+#include "constants.h"
+#include "utils/math.hpp"
 
 
 int main(int argc, char* argv[])
@@ -102,7 +104,6 @@ int main(int argc, char* argv[])
     cky_printer printer;
     for(int epoch = 0; epoch < n_epochs; epoch++){
         for(int i = 0; i < n_sequences_train; i++){
-            
             const std::vector<uint32_t>& sentence = train_set[i];
             
             progress_bar(i + 1, n_sequences_train);
@@ -158,9 +159,6 @@ int main(int argc, char* argv[])
                         abort();
                     #endif
                 }
-                
-                
-                
             }
             #endif
 
@@ -171,6 +169,7 @@ int main(int argc, char* argv[])
             #if PRINT_INSIDE == 1
                 printer.print_inside_outside_table(alpha,  grammar->N(), grammar->T(), sequence_length, MAX_SEQUENCE_LENGTH, grammar);
             #endif
+
 
             #if PRINT_STEPS == 1
                 std::cout << "2. Proceeding Outside Algorithm..." << std::endl;
@@ -272,17 +271,14 @@ int main(int argc, char* argv[])
             std::cerr << "Error: Could not open log file for writing.\n";
         }
         print_grammar(grammar, logfile_ostream);
-        
-        
-        // validation
-        double log_likelihood = 0.0;
+        // Validation
+        double log_likelihood = -INFINITY;
         for(int i = 0; i < n_sequences_val; i++){
-
             auto& sentence = valid_set[i];
             progress_bar(i + 1, n_sequences_val);
             
             int N = grammar->N();
-            
+
             uint32_t* sequence = sentence.data();
             int sequence_length = sentence.size();
             
@@ -297,34 +293,48 @@ int main(int argc, char* argv[])
                     , grammar
                 #endif
             );
-            
+
             #ifndef COMPUTING_IN_LOG_SPACE
-                if(alpha[0 + 0 + sequence_length - 1] > 1 + 1e-12){
-                    std::cout << "Warning: get possibility > 1 :" << alpha[0 + 0 + sequence_length - 1] << std::endl;
+                double likelihood_this_sentence = alpha[0 + 0 + sequence_length - 1];
+                if(likelihood_this_sentence > 1 + grammar_minimal_possibility){
+                    std::cout << "Warning: get possibility > 1 :" << likelihood_this_sentence << std::endl;
                     print_grammar(grammar);
-                    assert(alpha[0 + 0 + sequence_length - 1] <= 1 + 1e-12);
+                    assert(likelihood_this_sentence <= 1 + grammar_minimal_possibility);
                 }
-                if(alpha[0 + 0 + sequence_length - 1] <= 1 + 1e-12){
-                    log_likelihood += std::log(alpha[0 + 0 + sequence_length - 1]); // warn: right side can be -inf if underflow.
+                if(likelihood_this_sentence <= 1 + grammar_minimal_possibility && 
+                    likelihood_this_sentence > grammar_minimal_possibility){
+                    LOG_SUM_EXP_SET(log_likelihood, std::log(likelihood_this_sentence)); // warn: right side can be -inf if underflow.
                 }else{
                     #if SANITARY_OUTPUT == 0
-                    std::cout << "Warning: ignore -inf log likelihood (alpha = 0). Underflow may have happened.";
+                        std::cout << "Warning: ignore -inf log likelihood (alpha = 0). Underflow may have happened.";
                     #endif
                 }
-                #else
-                if (alpha[0 + 0 + sequence_length - 1] > -INFINITY) {
-                    log_likelihood += alpha[0 + 0 + sequence_length - 1];
+            #else
+                double log_likelihood_this_sentence = alpha[0 + 0 + sequence_length - 1];
+                if (log_likelihood_this_sentence > -INFINITY) {
+                    LOG_SUM_EXP_SET(log_likelihood, log_likelihood_this_sentence);
                 } else {
-                    std::cout << "Warning: ignore -inf log likelihood (alpha = -inf). Underflow may have happened.";
+                    #if SANITARY_OUTPUT == 0
+                        std::cout << "Warning: ignore -inf log likelihood (alpha = -inf). Underflow may have happened.";
+                    #endif
                 }
-            #endif            
+            #endif
         }
         
-
+        #ifdef COMPUTING_IN_LOG_SPACE
+        double average_likelihood = log_likelihood - std::log(n_sequences_val);
+        #else
         double average_likelihood = (double) log_likelihood / (double) n_sequences_val;
+        #endif
         std::cout << "Average log likelihood on validate set at epoch " << epoch << " = " ;
         std::cout << std::fixed << std::setprecision(56) << (double)(average_likelihood);
-        std::cout << " = " << log_likelihood << "/" << n_sequences_val << "  " << std::endl;
+        std::cout << " = " << log_likelihood << 
+        #ifdef COMPUTING_IN_LOG_SPACE
+            "-"
+        #else
+            "/"
+        #endif
+        << n_sequences_val << "  " << std::endl;
     }
     
     // 7. log results.

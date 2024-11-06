@@ -26,7 +26,11 @@ void _print_cell(double* alpha, int i, int j, int N, int T, int sequence_length,
     std::cout << "(" << i << "," << j << ")"<< "[";
     for(int sym_id = 0; sym_id < N; sym_id++){
         double p = alpha[sym_id * MS * MS + base];
-        if(std::abs(p - 0) <=  1e-36) continue;
+        #ifdef COMPUTING_IN_LOG_SPACE
+            if(p == -INFINITY) continue;
+        #else
+            if(std::abs(p - 0) <=  1e-36) continue;
+        #endif
         std::string item =  grammar->reversed_nonterminate_map[sym_id] + "[" + std::to_string(p) + "]";
         cell += item;
     }
@@ -39,7 +43,11 @@ void _pre_calculate_column_max_length(double* alpha, int i, int j, int N, int T,
     std::string cell = "";
     for(int sym_id = 0; sym_id < N; sym_id++){
         double p = alpha[sym_id * MS * MS + base];
-        if(std::abs(p - 0) <= 1e-36) continue;
+        #ifdef COMPUTING_IN_LOG_SPACE
+            if(p == -INFINITY) continue;
+        #else
+            if(std::abs(p - 0) <=  1e-36) continue;
+        #endif
         std::string item =  grammar->reversed_nonterminate_map[sym_id] + "[" + std::to_string(p) + "]";
         cell += item;
     }

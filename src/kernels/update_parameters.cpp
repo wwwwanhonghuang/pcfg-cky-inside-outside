@@ -46,9 +46,9 @@ void kernel_update_parameters(double* f, double* count, double* mu, double* beta
                 uint32_t sym_C = symbols & 0xFFFF;
                 
                 #ifdef COMPUTING_IN_LOG_SPACE
-                f[gid] = log_sum_exp(f[gid], count[gid]);
+                    LOG_SUM_EXP_SET(f[gid], count[gid]);
                 #else
-                f[gid] += count[gid];
+                    f[gid] += count[gid];
                 #endif
 
                 gid++;
@@ -59,7 +59,14 @@ void kernel_update_parameters(double* f, double* count, double* mu, double* beta
             std::cout << "STATUS: parameter update." << std::endl;
             gid = 0;
             for(int sym_A = 0; sym_A < N; sym_A++){
-                    double S = 0.0;
+                    double S = 
+                        #ifdef COMPUTING_IN_LOG_SPACE
+                        -INFINITY
+                        #else
+                        0.0
+                        #endif
+                    ;
+
                     uint32_t grammar_pointer_current = *(grammar_index + sym_A);
                     uint32_t grammar_pointer_next = *(grammar_index + sym_A + 1);
                     int gid_begin = gid;
@@ -70,10 +77,10 @@ void kernel_update_parameters(double* f, double* count, double* mu, double* beta
                         uint32_t sym_C = symbols & 0xFFFF;
                         double f_gid = f[gid];
                         #ifdef COMPUTING_IN_LOG_SPACE
-                        S = log_sum_exp(S, 
-                            (std::abs(f_gid - 0) < std::log(grammar_minimal_possibility) ? std::log(grammar_minimal_possibility) : f_gid));
+                            LOG_SUM_EXP_SET(S, 
+                                (std::abs(f_gid - 0) < std::log(grammar_minimal_possibility) ? std::log(grammar_minimal_possibility) : f_gid));
                         #else
-                        S += (std::abs(f_gid - 0) < grammar_minimal_possibility ? grammar_minimal_possibility : f_gid);
+                            S += (std::abs(f_gid - 0) < grammar_minimal_possibility ? grammar_minimal_possibility : f_gid);
                         #endif
                         gid ++;
                     }
@@ -90,18 +97,16 @@ void kernel_update_parameters(double* f, double* count, double* mu, double* beta
                         
                         double new_possibility = _calculate_new_possibility(S,  
                         #ifdef COMPUTING_IN_LOG_SPACE
-                            (std::abs(f_gid - 0) < std::log(grammar_minimal_possibility) ? std::log(grammar_minimal_possibility) : f_gid)
+                            (std::abs(f_gid - 0) < std::log(grammar_minimal_possibility) ? std::log(grammar_minimal_possibility) : f_gid));
                         #else
-                            (std::abs(f_gid - 0) < grammar_minimal_possibility ? grammar_minimal_possibility : f_gid)
+                            (std::abs(f_gid - 0) < grammar_minimal_possibility ? grammar_minimal_possibility : f_gid));
+                            if (new_possibility < -grammar_minimal_possibility || new_possibility > 1.0L + grammar_minimal_possibility) {
+                                std::cout << "Improper possibility updation, possibility = " << new_possibility 
+                                        << ", caused by " << f[gid] << "/" << S << std::endl;
+                                assert(false);
+                            }
                         #endif
-                        );
                         
-                        // if (new_possibility < -grammar_minimal_possibility || new_possibility > 1.0L + grammar_minimal_possibility) {
-                        //     std::cout << "Improper possibility updation, possibility = " << new_possibility 
-                        //             << ", caused by " << f[gid] << "/" << S << std::endl;
-                        //     assert(false);
-                        // }
-
                         *(double*)(grammar_table + pt + 1) = new_possibility;
                         
                         if(IS_EPSILON(sym_C) && IS_TERMINATE(sym_B)){
@@ -109,7 +114,6 @@ void kernel_update_parameters(double* f, double* count, double* mu, double* beta
                             reverse_grammar_hashtable_set_value(
                                 pretermination_lookuptable, n_grammars * BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS, key, new_possibility);
                         }
-                        
                         gid++;
                     }
             }    
