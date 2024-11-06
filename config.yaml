@@ -12,8 +12,9 @@ main:
     enabled: true
     val_dataset_path: "data/validate_sentences.txt" 
     train_dataset_path: "data/train_sentences.txt"
+    train_fraction: 0.8
   n_epochs: 10
-  limit_n_sentences: 100000
+  limit_n_sentences: 1000
 
 phase_convert:
   grammar_file: "data/grammar.pcfg"

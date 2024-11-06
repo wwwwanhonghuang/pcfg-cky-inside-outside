@@ -7,7 +7,7 @@ TEST_LDFLAGS = -L/path/to/boost/lib -lboost_unit_test_framework
 CXX = clang++ 
 
 TARGET_COMPILER := $(CXX)
-COMPILER_FLAGS := -std=c++17 -O3 -g -fopenmp -Werror 
+COMPILER_FLAGS := -std=c++17 -O3 -g -fopenmp -Werror -DDEBUG_INSIDE_ALGORITHM
 
 # Directories
 SRC_DIR := src
@@ -50,7 +50,7 @@ main: $(TARGET_MAIN)
 
 TARGET_MAIN_LD = -lyaml-cpp $(CUDA_LIBS) $(CUTENSOR_LIBS)
 TARGET_PHASE_CONVERT_LD = -lyaml-cpp 
-TARGET_MAIN_FLAGS = -DCOMPUTING_IN_LOG_SPACE -DDEBUG_INSIDE_ALGORITHM
+TARGET_MAIN_FLAGS = 
 
 $(TARGET_MAIN): $(SRC_DIR)/main.cpp $(SHARED_LIB) | $(BIN_DIR)
 	$(TARGET_COMPILER) $(COMPILER_FLAGS) $(TARGET_MAIN_FLAGS) $(INCLUDES) -o $@ $(SRC_DIR)/main.cpp $(SHARED_LIB) $(TARGET_MAIN_LD) -latomic

@@ -2,12 +2,11 @@
 #include "kernels/update_parameters.cuh"
 #include "utils/data_encoding.h"
 #include "constants.h"
-#ifdef USE_CUDA
-__global__
-#endif
+#include "utils/math.hpp"
+
 
 inline double _calculate_new_possibility(double S, double f_gid) {
-    #if COMPUTING_IN_LOG_SPACE
+    #ifdef COMPUTING_IN_LOG_SPACE
     if(std::abs(f_gid) < std::log(grammar_minimal_possibility))
         f_gid = std::log(grammar_minimal_possibility);
     return f_gid - S;
@@ -74,7 +73,7 @@ void kernel_update_parameters(double* f, double* count, double* mu, double* beta
                         S = log_sum_exp(S, 
                             (std::abs(f_gid - 0) < std::log(grammar_minimal_possibility) ? std::log(grammar_minimal_possibility) : f_gid));
                         #else
-                        S = (std::abs(f_gid - 0) < grammar_minimal_possibility ? grammar_minimal_possibility : f_gid);
+                        S += (std::abs(f_gid - 0) < grammar_minimal_possibility ? grammar_minimal_possibility : f_gid);
                         #endif
                         gid ++;
                     }

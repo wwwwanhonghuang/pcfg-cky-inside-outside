@@ -51,11 +51,13 @@ void kernel_expect_count(double* count, double* mu, double* beta, const uint32_t
                 double mu_val = MU(gid, i, j);
                 
                 #ifdef COMPUTING_IN_LOG_SPACE
-                #pragma omp atomic
-                count[gid] = log_sum_exp(count[gid], mu_val);
+                    #pragma omp critical
+                    {
+                        count[gid] = log_sum_exp(count[gid], mu_val);
+                    }
                 #else
                 #pragma omp atomic
-                count[gid] += mu_val;
+                    count[gid] += mu_val;
                 #endif
             }
         }

@@ -73,9 +73,11 @@ void kernel_outside_main(double* mu, double* beta, const uint32_t* sequence,
                         double beta_B = BETA(sym_B, k, j);
 
                         #ifdef COMPUTING_IN_LOG_SPACE
-                        #pragma omp atomic
                         // A: [i, j] part
-                        BETA_INCREASE_LOG_SPACE(sym_A, i, j, possibility + alpha_C + beta_B);
+                        #pragma omp critical
+                        {
+                            BETA_INCREASE_LOG_SPACE(sym_A, i, j, possibility + alpha_C + beta_B);
+                        }
                         #else
                         #pragma omp atomic
                         // A: [i, j] part
@@ -98,8 +100,10 @@ void kernel_outside_main(double* mu, double* beta, const uint32_t* sequence,
                         double beta_B = BETA(sym_B, i, k);
 
                         #ifdef COMPUTING_IN_LOG_SPACE
-                        #pragma omp atomic
-                        BETA_INCREASE_LOG_SPACE(sym_A, i, j, possibility + alpha_C + beta_B);
+                        #pragma omp critical
+                        {
+                            BETA_INCREASE_LOG_SPACE(sym_A, i, j, possibility + alpha_C + beta_B);
+                        }
                         #else
                         #pragma omp atomic
                         // A: [i, j] part
@@ -128,8 +132,10 @@ void kernel_outside_main(double* mu, double* beta, const uint32_t* sequence,
                     of this rule. 'continue;' is uesed to skip k iterations. */
                 
                 #ifdef COMPUTING_IN_LOG_SPACE
-                #pragma omp atomic
-                BETA_INCREASE_LOG_SPACE(sym_A, i, j, possibility + BETA(sym_B, i, j));
+                #pragma omp critical
+                {
+                    BETA_INCREASE_LOG_SPACE(sym_A, i, j, possibility + BETA(sym_B, i, j));
+                }
                 #else
                 #pragma omp atomic
                 BETA_INCREASE(sym_A, i, j, possibility * BETA(sym_B, i, j));
@@ -216,8 +222,10 @@ void kernel_outside_main(double* mu, double* beta, const uint32_t* sequence,
                 // B->w_A
                 
                 #ifdef COMPUTING_IN_LOG_SPACE
-                #pragma omp atomic
-                BETA_INCREASE_LOG_SPACE(sym_A, i, j, possibility + BETA(sym_B, i, j));
+                #pragma omp critical
+                {
+                    BETA_INCREASE_LOG_SPACE(sym_A, i, j, possibility + BETA(sym_B, i, j));
+                }
                 #else
                 #pragma omp atomic
                 BETA_INCREASE(sym_A, i, j, possibility * BETA(sym_B, i, j));
@@ -262,8 +270,10 @@ void kernel_outside_main(double* mu, double* beta, const uint32_t* sequence,
                     //          "]"<< std::endl;
                     // }
                     #ifdef COMPUTING_IN_LOG_SPACE
-                    #pragma omp atomic
-                    MU_INCREASE_LOG_SPACE(gid, i, j, possibility + beta_A_i_j + alpha_B_i_k + alpha_C_k_p1_j);
+                    #pragma omp critical
+                    {
+                        MU_INCREASE_LOG_SPACE(gid, i, j, possibility + beta_A_i_j + alpha_B_i_k + alpha_C_k_p1_j);
+                    }
                     #else
                     #pragma omp atomic
                     MU_INCREASE(gid, i, j, possibility * beta_A_i_j * alpha_B_i_k * alpha_C_k_p1_j);

@@ -131,9 +131,11 @@ void kernel_inside_computeSpanKernel(const uint32_t* sequence, uint32_t* preterm
         ) {
     #ifndef USE_CUDA                        
         for (int span_length = 2; span_length <= sequence_length; span_length++) {
+
             #pragma omp parallel for
             for (int i = 0; i <= sequence_length - span_length; i++) {
                 int j = i + span_length - 1; // Ending index of the span
+                double* local_buffer = new double[N]();
                 for (int k = i; k < j; k++) {
                     // iterate all grammars
                     for(std::tuple<uint32_t, uint32_t, uint32_t, double, uint32_t> item : PCFGItemIterator(N, grammar_index, grammar_table)){
@@ -150,11 +152,10 @@ void kernel_inside_computeSpanKernel(const uint32_t* sequence, uint32_t* preterm
                         double alpha_B = ALPHA_GET(sym_B, i, k);
                         double alpha_C = ALPHA_GET(sym_C, k + 1, j);
                         #ifdef COMPUTING_IN_LOG_SPACE
-                        #pragma omp atomic
-                        ALPHA_INCREASE_LOG_SPACE(sym_A, i, j, alpha_B + alpha_C + possibility); 
+                            local_buffer[sym_A] = log_sum_exp(local_buffer[sym_A], alpha_B + alpha_C + possibility);
                         #else
                         #pragma omp atomic
-                        ALPHA_INCREASE(sym_A, i, j, alpha_B * alpha_C * possibility); 
+                            ALPHA_INCREASE(sym_A, i, j, alpha_B * alpha_C * possibility); 
                         #endif                          
                     }
 
@@ -168,8 +169,10 @@ void kernel_inside_computeSpanKernel(const uint32_t* sequence, uint32_t* preterm
                         double possibility = *(double*)(addr + 1);
                         
                         #ifdef COMPUTING_IN_LOG_SPACE
-                        #pragma omp atomic
-                        ALPHA_INCREASE_LOG_SPACE(sym_A, i, j, alpha_B + possibility);
+                        #pragma omp critical
+                        {
+                            ALPHA_INCREASE_LOG_SPACE(sym_A, i, j, alpha_B + possibility);
+                        }
                         #else
                         #pragma omp atomic
                         ALPHA_INCREASE(sym_A, i, j, alpha_B * possibility);
@@ -177,6 +180,13 @@ void kernel_inside_computeSpanKernel(const uint32_t* sequence, uint32_t* preterm
                     }                        
                     
                 }
+                
+                for (int sym_A = 0; sym_A < N; sym_A++) {
+                    #pragma omp atomic
+                    ALPHA_INCREASE(sym_A, i, j, local_buffer[sym_A]);
+                }
+                
+                delete[] local_buffer;
             }
         }
     #else

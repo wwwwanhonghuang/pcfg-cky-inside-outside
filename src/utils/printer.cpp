@@ -10,7 +10,7 @@ void print_grammar(pcfg* grammar, std::ostream& stream){
         uint32_t sym_B = std::get<1>(item);
         uint32_t sym_C = std::get<2>(item);
         double possibility = std::get<3>(item);
-        #if COMPUTING_IN_LOG_SPACE
+        #ifdef COMPUTING_IN_LOG_SPACE
         possibility = std::exp(possibility);
         #endif
         uint32_t gid = std::get<4>(item);
