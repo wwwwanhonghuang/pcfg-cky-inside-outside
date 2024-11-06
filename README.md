@@ -23,8 +23,37 @@ Current implementation may contain errors.
 ### Make
 `$ make` 
 
+### Configuration
+You may need edit the `config.yaml` file at the root of this repository, to setup proper PCFG estimation 
+configurations.
+
+Example
+``` yaml
+main:
+  grammar_file: "data/grammar.pcfg"  # Path to the grammar file used for parsing sentences.
+  input: "data/sentences_converted.txt"  # Path to the file with sentences to be processed.
+  log_intervals: 20000  # Interval for logging rule probabilities during each epoch. Ignored if batch updates are disabled.
+  log_path: "data/logs/"  # Directory where log files will be saved.
+  
+  log_f:
+    enabled: true  # Toggle to enable logging of the 'f' variable in the inside-outside algorithm.
+    intervals: 20000  # Interval for logging the 'f' variable during training.
+
+  log_warning_in_training: false  # Enable/disable logging of warnings during training.
+
+  batch_size_for_parameter_update: -1  # If positive, updates grammar rule probabilities at this interval during each epoch. If set to -1, updates are performed only at the end of each epoch. Midway updates can impact convergence.
+
+  split_data:
+    enabled: true  # Enable/disable splitting data into training and validation sets.
+    val_dataset_path: "data/validate_sentences.txt"  # Path to the validation dataset.
+    train_dataset_path: "data/train_sentences.txt"  # Path to the training dataset.
+    train_fraction: 0.8  # Fraction of data used for training; the rest is used for validation.
+
+  n_epochs: 10  # Total number of epochs for training.
+  limit_n_sentences: -1  # Limits the number of sentences processed from the input file. If set to -1, all sentences are used.
+```
 ### Run
-`$ ./main <pcfg-grammar-file-path> <input-sequence-file-path>`
+`$ ./build/bin/main_executable`
 
 ## Reference
 [1] Itiroo Sakai, “Syntax in universal translation”. In Proceedings 1961 International Conference on Machine Translation of Languages and Applied Language Analysis, Her Majesty’s Stationery Office, London, p. 593-608, 1962.
