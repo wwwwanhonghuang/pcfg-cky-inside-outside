@@ -117,6 +117,7 @@ pcfg* _parse_grammar_file(const std::string& path){
     return grammar;
 }
 
+#ifndef ENABLE_GRAMMAR_VECTORIZATION_OPTIMIZATION
 pcfg* _build_grammar_table(pcfg* grammar, uint32_t* non_terminate_grammars, uint32_t* grammar_vector){
     uint32_t offset = 0;
     #ifdef VERBOSE_GRAMMAR_STRUCTURE_BUILDING
@@ -233,7 +234,88 @@ pcfg* _build_grammar_table(pcfg* grammar, uint32_t* non_terminate_grammars, uint
     grammar->grammar_table = grammar_vector;
     return grammar;
 }
+#else
+void _set_grammar_vector(uint32_t* grammar_vector, uint32_t idx, uint32_t sym_A, uint32_t sym_B, uint32_t sym_C, uint32_t gid, double possibility) {
+    (*(uint32_t*)(grammar_vector + 0 * (n_grammar + 1) + idx)) = sym_A;
+    (*(uint32_t*)(grammar_vector + 1 * (n_grammar + 1) + idx)) = sym_B;
+    (*(uint32_t*)(grammar_vector + 2 * (n_grammar + 1) + idx)) = sym_C;
+    (*(uint32_t*)(grammar_vector + 3 * (n_grammar + 1) + idx)) = gid;
+    (*(double*)(grammar_vector + 4 * (n_grammar + 1) + idx)) = possibility;
+}
 
+
+pcfg* _build_grammar_table(pcfg* grammar, uint32_t* non_terminate_grammars, uint32_t* grammar_vector){
+    uint32_t offset = 0;
+    uint32_t n_grammar = grammar->n_grammars;
+    #ifdef VERBOSE_GRAMMAR_STRUCTURE_BUILDING
+        std::cout << "non_terminate_grammars, addr: " << reinterpret_cast<uintptr_t>(non_terminate_grammars) << std::endl;
+        std::cout << "grammar_vector, addr: " << reinterpret_cast<uintptr_t>(grammar_vector) << std::endl;
+        std::cout << grammar->N() << std::endl;
+    #endif
+
+    int gid = 0;
+    for(int i = 0; i < grammar->N(); i++){
+        #ifdef VERBOSE_GRAMMAR_STRUCTURE_BUILDING
+            std::cout << "process non-terminate symbol id = " << i << "/" << grammar->N() << " symbol = " 
+            << (grammar->reversed_nonterminate_map.at(i))  << std::endl;
+        #endif
+
+        if(!map_contains(grammar->reversed_nonterminate_map, i)){
+            std::cerr << "Error: Non-terminal index " << i << " not found." << std::endl;
+            delete[] non_terminate_grammars; // Clean up allocated memory
+            delete[] grammar_vector;
+            return nullptr;
+        }
+
+        if(!map_contains(grammar->grammar_items_map, grammar->reversed_nonterminate_map[i])){
+            std::cout << "no rules for this non-terminate. non_terminate_grammars[" << i << "]=" 
+                << (uint32_t) non_terminate_grammars[i] << std::endl;
+            non_terminate_grammars[i] = offset;
+        }else{
+            auto& rules = grammar->grammar_items_map.at(grammar->reversed_nonterminate_map[i]);
+            int item_count = rules.size();
+            non_terminate_grammars[i] = offset;
+            #ifdef VERBOSE_GRAMMAR_STRUCTURE_BUILDING
+                std::cout << "non-terminate " << i << " item count = " << item_count << " non_terminate_grammars[" << i << "]=" << non_terminate_grammars[i].int32_value << std::endl;
+            #endif
+            for (int j = 0; j < item_count; j++) {
+                pcfg_grammar_item item = rules[j];
+                int right1_id = grammar->get_sym_id(item.right1);
+                int right2_id = grammar->get_sym_id(item.right2);
+
+                if(right1_id == -1){
+                    std::cout << "Error: unrecognized symbol: " << item.right1 << std::endl;
+                    return nullptr;
+                }
+                _set_grammar_vector(grammar_vector, gid, i, right1_id, right2_id, gid, item.possibility);
+                gid++;
+            }
+        }
+        offset++;
+        #ifdef _STRICK_CHECK
+        if(i >= 1){
+            uint32_t item_diff = non_terminate_grammars[i] - non_terminate_grammars[i - 1];
+            // std::cout << "addr diff = " << addr_diff << std::endl;
+                if(item_diff != grammar->grammar_items_map.at(grammar->reversed_nonterminate_map[i]).size()){
+                    std::cout << "check grammar item memory arrangement failed." << std::endl;
+                    delete[] non_terminate_grammars;
+                    delete[] grammar_vector;
+                    return nullptr;
+                }
+            
+        }
+        #endif
+
+    }
+    non_terminate_grammars[grammar->N()] = offset;
+    _set_grammar_vector(grammar_vector, n_grammar, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF);
+
+
+    grammar->grammar_index = non_terminate_grammars;
+    grammar->grammar_table = grammar_vector;
+    return grammar;
+}
+#endif
 
 pcfg* _build_preterminate_grammar_lookup_table(pcfg* grammar, uint32_t* non_terminate_grammars, 
                 uint32_t* grammar_vector){
@@ -341,8 +423,11 @@ pcfg* prepare_grammar(const std::string& path){
     
     // build non_terminate_grammars
     uint32_t* non_terminate_grammars = new uint32_t[grammar->N() + 1]();
+    #ifdef ENABLE_GRAMMAR_VECTORIZATION_OPTIMIZATION
+    uint32_t* grammar_vector = new uint32_t[(cnt_grammar + 1) * (BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS + 3)]();
+    #else
     uint32_t* grammar_vector = new uint32_t[cnt_grammar * BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS + 1]();
-    
+    #endif
     if(_build_grammar_table(grammar, non_terminate_grammars, grammar_vector) == nullptr){
         delete[] non_terminate_grammars;
         delete[] grammar_vector;

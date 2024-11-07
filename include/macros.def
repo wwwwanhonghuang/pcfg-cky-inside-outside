@@ -42,7 +42,6 @@
 #define BETA(SYMBOL, I, J) beta[(SYMBOL) * MS * MS + (I) * MS + J]
 #define MU(GID, I, J) mu[(GID) * MS * MS + (I) * MS + J]
 #define ALPHA_GET(SYMBOL, I, J) ((I) > (J) ? 1.0f : (SYMBOL) < N ? ALPHA(SYMBOL, I, J) : ((SYMBOL) == 0xFFFF ? 0.0f : ((I) == (J) && sequence[I] == (SYMBOL) ? 1.0f : 0.0f)))
-
 #define SYMBOL_STR(SYMBOL_ID) ((SYMBOL_ID) < N ? grammar->reversed_nonterminate_map[(SYMBOL_ID)]: grammar->reversed_terminate_map[(SYMBOL_ID) - N])
 
 #ifdef COMPUTING_IN_LOG_SPACE

@@ -21,11 +21,7 @@ void kernel_update_parameters(double* f, double* count, double* mu, double* beta
         const uint32_t* sequence, 
         uint32_t* pretermination_lookuptable, 
         uint32_t* grammar_index, 
-    #ifdef USE_CUDA
-        uint32_t* 
-    #else
         uint32_t*
-    #endif
         grammar_table, double* alpha, 
         int sequence_length, int n_syms, int N, int T, int MS, int n_grammars
         #ifdef DEBUG_INSIDE_ALGORITHM
@@ -39,12 +35,26 @@ void kernel_update_parameters(double* f, double* count, double* mu, double* beta
             uint32_t grammar_pointer_current = *(grammar_index + sym_A);
             uint32_t grammar_pointer_next = *(grammar_index + sym_A + 1);
             
-            for(uint32_t pt = grammar_pointer_current; pt < grammar_pointer_next; pt += BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS){
-                uint32_t symbols = grammar_table[pt];
-                double possibility = *(double*)(grammar_table + pt + 1);
-                uint32_t sym_B = (symbols >> 16) & 0xFFFF;
-                uint32_t sym_C = symbols & 0xFFFF;
-                
+            for(uint32_t pt = grammar_pointer_current; pt < grammar_pointer_next; 
+                #ifndef ENABLE_GRAMMAR_VECTORIZATION_OPTIMIZATION
+                pt += BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS
+                #else
+                pt++
+                #endif
+            ){
+                #ifndef ENABLE_GRAMMAR_VECTORIZATION_OPTIMIZATION
+                    uint32_t symbols = grammar_table[pt];
+                    double possibility = *(double*)(grammar_table + pt + 1);
+                    uint32_t sym_B = (symbols >> 16) & 0xFFFF;
+                    uint32_t sym_C = symbols & 0xFFFF;
+                #else
+                    uint32_t symbols = grammar_table[(n_grammars + 1) * 0 + pt];
+                    double possibility = *(double*)(grammar_table + (n_grammars + 1) * 4 + pt * 2);
+                    uint32_t sym_B = grammar_table[(n_grammars + 1) * 1 + pt];
+                    uint32_t sym_C = grammar_table[(n_grammars + 1) * 2 + pt];
+                #endif
+                    
+        
                 #ifdef COMPUTING_IN_LOG_SPACE
                     LOG_SUM_EXP_SET(f[gid], count[gid]);
                 #else
@@ -70,11 +80,25 @@ void kernel_update_parameters(double* f, double* count, double* mu, double* beta
                     uint32_t grammar_pointer_current = *(grammar_index + sym_A);
                     uint32_t grammar_pointer_next = *(grammar_index + sym_A + 1);
                     int gid_begin = gid;
-                    for(uint32_t pt = grammar_pointer_current; pt < grammar_pointer_next; pt += BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS){
-                        uint32_t symbols = grammar_table[pt];
-                        double possibility = *(double*)(grammar_table + pt + 1);
-                        uint32_t sym_B = (symbols >> 16) & 0xFFFF;
-                        uint32_t sym_C = symbols & 0xFFFF;
+                    for(uint32_t pt = grammar_pointer_current; pt < grammar_pointer_next; 
+                        #ifndef ENABLE_GRAMMAR_VECTORIZATION_OPTIMIZATION
+                        pt += BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS
+                        #else
+                        pt++
+                        #endif
+                    ){
+                        #ifndef ENABLE_GRAMMAR_VECTORIZATION_OPTIMIZATION
+                            uint32_t symbols = grammar_table[pt];
+                            double possibility = *(double*)(grammar_table + pt + 1);
+                            uint32_t sym_B = (symbols >> 16) & 0xFFFF;
+                            uint32_t sym_C = symbols & 0xFFFF;
+                        #else
+                            uint32_t symbols = grammar_table[(n_grammars + 1) * 0 + pt];
+                            double possibility = *(double*)(grammar_table + (n_grammars + 1) * 4 + pt * 2);
+                            uint32_t sym_B = grammar_table[(n_grammars + 1) * 1 + pt];
+                            uint32_t sym_C = grammar_table[(n_grammars + 1) * 2 + pt];
+                        #endif
+
                         double f_gid = f[gid];
                         #ifdef COMPUTING_IN_LOG_SPACE
                             LOG_SUM_EXP_SET(S, 
@@ -88,12 +112,26 @@ void kernel_update_parameters(double* f, double* count, double* mu, double* beta
                     grammar_pointer_current = *(grammar_index + sym_A);
                     grammar_pointer_next = *(grammar_index + sym_A + 1);
                     gid = gid_begin;
-                    for(uint32_t pt = grammar_pointer_current; pt < grammar_pointer_next; pt += BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS){
+                    for(uint32_t pt = grammar_pointer_current; pt < grammar_pointer_next; 
+                        #ifndef ENABLE_GRAMMAR_VECTORIZATION_OPTIMIZATION
+                        pt += BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS
+                        #else
+                        pt++
+                        #endif
+                    ){
+                        #ifndef ENABLE_GRAMMAR_VECTORIZATION_OPTIMIZATION
                         uint32_t symbols = grammar_table[pt];
                         double possibility = *(double*)(grammar_table + pt + 1);
                         uint32_t sym_B = (symbols >> 16) & 0xFFFF;
                         uint32_t sym_C = symbols & 0xFFFF;
                         double f_gid = f[gid];
+                        #else
+                        uint32_t symbols = grammar_table[(n_grammars + 1) * 0 + pt];
+                        double possibility = *(double*)(grammar_table + (n_grammars + 1) * 4 + pt * 2);
+                        uint32_t sym_B =  grammar_table[(n_grammars + 1) * 1 + pt];
+                        uint32_t sym_C =  grammar_table[(n_grammars + 1) * 2 + pt];
+                        double f_gid = f[gid];
+                        #endif
                         
                         double new_possibility = _calculate_new_possibility(S,  
                         #ifdef COMPUTING_IN_LOG_SPACE
@@ -107,8 +145,11 @@ void kernel_update_parameters(double* f, double* count, double* mu, double* beta
                             }
                         #endif
                         
+                        #ifndef ENABLE_GRAMMAR_VECTORIZATION_OPTIMIZATION
                         *(double*)(grammar_table + pt + 1) = new_possibility;
-                        
+                        #else
+                        *(double*)(grammar_table + (n_grammars + 1) * 4 + pt * 2) = new_possibility; 
+                        #endif
                         if(IS_EPSILON(sym_C) && IS_TERMINATE(sym_B)){
                             uint64_t key = encode_key(sym_A, sym_B);
                             reverse_grammar_hashtable_set_value(

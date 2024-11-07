@@ -42,13 +42,13 @@ double* em_algorithm_calculate_expection_count(double* count, double* mu, double
 }
 
 double* inside_algorithm(const uint32_t* sequence, 
-                        uint32_t* pretermination_lookuptable, 
-                        uint32_t* grammar_index, 
-                        uint32_t* grammar_table, 
-                        double* alpha, 
-                        int sequence_length, int n_syms, int N, int T, int MS, int n_grammars,
-                        std::vector<std::tuple<uint32_t, uint32_t>> inside_order_1_rule_iteration_path, pcfg* grammar = nullptr){
-    
+    uint32_t* pretermination_lookuptable, 
+    uint32_t* grammar_index, 
+    uint32_t* grammar_table, 
+    double* alpha, 
+    int sequence_length, int n_syms, int N, int T, int MS, int n_grammars,
+    std::vector<std::tuple<uint32_t, uint32_t>> inside_order_1_rule_iteration_path, pcfg* grammar = nullptr){
+
     if(n_syms >= 65536) return nullptr;
 
     // 1. zerolization alpha.

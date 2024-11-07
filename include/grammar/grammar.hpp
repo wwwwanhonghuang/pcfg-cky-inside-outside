@@ -52,6 +52,7 @@ public:
     int get_sym_id(const std::string& symbol);
 };
 
+
 class PCFGItemIterator {
 public:
     PCFGItemIterator(int N, uint32_t* grammar_index, uint32_t* grammar_table)
