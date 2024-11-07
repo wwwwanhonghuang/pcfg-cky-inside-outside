@@ -96,17 +96,33 @@ void kernel_inside_computeSpanKernel(const uint32_t* sequence, uint32_t* preterm
         , pcfg* grammar
         #endif
         ) {
+        std::vector<double> buffer(N * MS * MS, 
+            #ifdef COMPUTING_IN_LOG_SPACE
+                -INFINITY
+            #else
+                0.0
+            #endif
+        );
+        // reduce the buffer relocations.
         for (int span_length = 2; span_length <= sequence_length; span_length++) {
+            std::fill(buffer.begin(), buffer.end(),
+                #ifdef COMPUTING_IN_LOG_SPACE
+                    -INFINITY
+                #else
+                    0.0
+                #endif
+            );
+
             #pragma omp parallel for
             for (int i = 0; i <= sequence_length - span_length; i++) {
                 int j = i + span_length - 1; // Ending index of the span
-                std::vector<double> local_buffer(N, 
-                    #ifdef COMPUTING_IN_LOG_SPACE
-                        -INFINITY
-                    #else
-                        0.0
-                    #endif
-                );
+                // std::vector<double> local_buffer(N, 
+                //     #ifdef COMPUTING_IN_LOG_SPACE
+                //         -INFINITY
+                //     #else
+                //         0.0
+                //     #endif
+                // );
                 for (int k = i; k < j; k++) {
                     // iterate all grammars
                     for(std::tuple<uint32_t, uint32_t, uint32_t, double, uint32_t> item : 
@@ -123,9 +139,9 @@ void kernel_inside_computeSpanKernel(const uint32_t* sequence, uint32_t* preterm
                         double alpha_B = ALPHA_GET(sym_B, i, k);
                         double alpha_C = ALPHA_GET(sym_C, k + 1, j);
                         #ifdef COMPUTING_IN_LOG_SPACE
-                            LOG_SUM_EXP_SET(local_buffer[sym_A], alpha_B + alpha_C + possibility);
+                            LOG_SUM_EXP_SET(buffer[sym_A * MS + i], alpha_B + alpha_C + possibility);
                         #else
-                            local_buffer[sym_A] += alpha_B * alpha_C * possibility; 
+                            buffer[sym_A * MS + i] += alpha_B * alpha_C * possibility; 
                         #endif   
                     }
 
@@ -135,23 +151,23 @@ void kernel_inside_computeSpanKernel(const uint32_t* sequence, uint32_t* preterm
                         uint32_t sym_A = std::get<1>(rule_id);
                         uint32_t* addr = (grammar_table + gid * BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS);
                         uint32_t sym_B = ((*addr) >> 16) & 0xFFFF;
-                        double alpha_B = ALPHA_GET(sym_B, i, j);
-                        double possibility = *(double*)(addr + 1);
-                        
+                        double alpha_B = POSSIBILITY_ADD(buffer[sym_B * MS + i], ALPHA_GET(sym_B, i, j)); // Cell [i, j] is newly calculated and has not been written back. We need access the buffer, rather than ALPHA(..)
+                        double possibility = *(double*)(addr + 1);                        
+
                         #ifdef COMPUTING_IN_LOG_SPACE
-                            LOG_SUM_EXP_SET(local_buffer[sym_A], alpha_B + possibility);
+                            LOG_SUM_EXP_SET(buffer[sym_A * MS + i], alpha_B + possibility);
                         #else
-                            local_buffer[sym_A] += alpha_B * possibility;
+                            buffer[sym_A * MS + i] += alpha_B * possibility;
                         #endif
-                    }                        
-                    
+                    }
                 }
                 
+                // write back.
                 for (int sym_A = 0; sym_A < N; sym_A++) {
                     #ifdef COMPUTING_IN_LOG_SPACE
-                        LOG_SUM_EXP_SET(ALPHA(sym_A, i, j), local_buffer[sym_A]);
+                        LOG_SUM_EXP_SET(ALPHA(sym_A, i, j), buffer[sym_A * MS + i]);
                     #else
-                        ALPHA_INCREASE(sym_A, i, j, local_buffer[sym_A]);
+                        ALPHA_INCREASE(sym_A, i, j, buffer[sym_A * MS + i]);
                     #endif
                 }
             } // parallel for end.

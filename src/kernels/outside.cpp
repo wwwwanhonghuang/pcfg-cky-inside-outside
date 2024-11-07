@@ -42,13 +42,20 @@ void kernel_outside_main(double* mu, double* beta, const uint32_t* sequence,
         , where w_A w_C are terminates.
     */
 
-
+    std::vector<double> buffer_beta(n_syms * MS,
+            #ifdef COMPUTING_IN_LOG_SPACE
+            -INFINITY
+            #else
+            0.0
+            #endif
+        );
     // Case 1: A is non-terminate 
     // confirm these codes are correct.
     /* diagonal-order iteration */
     for(int span_length = sequence_length; span_length >= 1; span_length--){
         /* for one diagnal of the beta table, all cell can be parallelly computed. */
-        std::vector<double> local_buffer_beta(n_syms * MS,
+        
+        std::fill(buffer_beta.begin(), buffer_beta.end(),
             #ifdef COMPUTING_IN_LOG_SPACE
             -INFINITY
             #else
@@ -79,10 +86,10 @@ void kernel_outside_main(double* mu, double* beta, const uint32_t* sequence,
                             double beta_B = BETA(sym_B, k, j);
 
                             #ifdef COMPUTING_IN_LOG_SPACE
-                                LOG_SUM_EXP_SET(local_buffer_beta[sym_A * MS + i], possibility + alpha_C + beta_B);                    
+                                LOG_SUM_EXP_SET(buffer_beta[sym_A * MS + i], possibility + alpha_C + beta_B);                    
                             #else
                                 // A: [i, j] part
-                                local_buffer_beta[sym_A * MS + i] += possibility * alpha_C * beta_B;
+                                buffer_beta[sym_A * MS + i] += possibility * alpha_C * beta_B;
                             #endif
                         }   
                     }
@@ -99,12 +106,11 @@ void kernel_outside_main(double* mu, double* beta, const uint32_t* sequence,
                             double alpha_C = ALPHA_GET(sym_C, j + 1, k);
                             // B: [k, j] part
                             double beta_B = BETA(sym_B, i, k);
-
                             #ifdef COMPUTING_IN_LOG_SPACE
-                                LOG_SUM_EXP_SET(local_buffer_beta[sym_A * MS + i],  possibility + alpha_C + beta_B);
+                                LOG_SUM_EXP_SET(buffer_beta[sym_A * MS + i],  possibility + alpha_C + beta_B);
                             #else
                                 // A: [i, j] part
-                                local_buffer_beta[sym_A * MS + i] += possibility * alpha_C * beta_B;
+                                buffer_beta[sym_A * MS + i] += possibility * alpha_C * beta_B;
                             #endif
                         }   
                     }
@@ -120,6 +126,7 @@ void kernel_outside_main(double* mu, double* beta, const uint32_t* sequence,
                     uint32_t* addr = (grammar_table + gid * BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS);
                     uint32_t sym_A = ((*addr) >> 16) & 0xFFFF;
                     double alpha_B = ALPHA_GET(sym_B, i, j);
+                    double beta_B = POSSIBILITY_ADD(BETA(sym_B, i, j), buffer_beta[sym_B * MS + i]);
                     double possibility = *(double*)(addr + 1);
                     
                     if(IS_TERMINATE(sym_A)) continue; 
@@ -129,9 +136,9 @@ void kernel_outside_main(double* mu, double* beta, const uint32_t* sequence,
                         of this rule. 'continue;' is uesed to skip k iterations. */
                     
                     #ifdef COMPUTING_IN_LOG_SPACE
-                        LOG_SUM_EXP_SET(local_buffer_beta[sym_A * MS + i], possibility + BETA(sym_B, i, j));
+                        LOG_SUM_EXP_SET(buffer_beta[sym_A * MS + i], possibility + beta_B);
                     #else
-                        local_buffer_beta[sym_A * MS + i] += possibility * BETA(sym_B, i, j);
+                        buffer_beta[sym_A * MS + i] += possibility * beta_B;
                     #endif
                 }
 
@@ -152,9 +159,9 @@ void kernel_outside_main(double* mu, double* beta, const uint32_t* sequence,
                     if(IS_TERMINATE(sym_A) && IS_NONTERMINATE(sym_C) && (i == j)){
                         for(int k = j + 1; k < sequence_length; k++){
                             #ifdef COMPUTING_IN_LOG_SPACE
-                                LOG_SUM_EXP_SET(local_buffer_beta[sym_A * MS + i], BETA(sym_B, i, k) + ALPHA(sym_C, j + 1, k) + possibility);
+                                LOG_SUM_EXP_SET(buffer_beta[sym_A * MS + i], BETA(sym_B, i, k) + ALPHA(sym_C, j + 1, k) + possibility);
                             #else
-                                local_buffer_beta[sym_A * MS + i] += BETA(sym_B, i, k) * ALPHA(sym_C, j + 1, k) * possibility;
+                                buffer_beta[sym_A * MS + i] += BETA(sym_B, i, k) * ALPHA(sym_C, j + 1, k) * possibility;
                             #endif
                         }
                     }
@@ -163,9 +170,9 @@ void kernel_outside_main(double* mu, double* beta, const uint32_t* sequence,
                     if(IS_TERMINATE(sym_A) && IS_TERMINATE(sym_C) && (i == j)){
                         if(j + 1 < sequence_length){
                             #ifdef COMPUTING_IN_LOG_SPACE
-                                LOG_SUM_EXP_SET(local_buffer_beta[sym_A * MS + i], ALPHA(sym_C, j + 1, j + 1) + BETA(sym_B, i, j + 1) + possibility);
+                                LOG_SUM_EXP_SET(buffer_beta[sym_A * MS + i], ALPHA(sym_C, j + 1, j + 1) + BETA(sym_B, i, j + 1) + possibility);
                             #else
-                                local_buffer_beta[sym_A * MS + i] += ALPHA(sym_C, j + 1, j + 1) * BETA(sym_B, i, j + 1) * possibility;
+                                buffer_beta[sym_A * MS + i] += ALPHA(sym_C, j + 1, j + 1) * BETA(sym_B, i, j + 1) * possibility;
                             #endif
                         }
                     }
@@ -177,9 +184,9 @@ void kernel_outside_main(double* mu, double* beta, const uint32_t* sequence,
                     if(IS_NONTERMINATE(sym_C) && IS_TERMINATE(sym_A) && (i == j)){
                         for(int k = 0; k <= i - 1; k++){
                             #ifdef COMPUTING_IN_LOG_SPACE
-                                LOG_SUM_EXP_SET(local_buffer_beta[sym_A * MS + i], ALPHA(sym_C, k, i - 1) + BETA(sym_B, k, j) + possibility);
+                                LOG_SUM_EXP_SET(buffer_beta[sym_A * MS + i], ALPHA(sym_C, k, i - 1) + BETA(sym_B, k, j) + possibility);
                             #else
-                                local_buffer_beta[sym_A * MS + i] += ALPHA(sym_C, k, i - 1) * BETA(sym_B, k, j) * possibility;
+                                buffer_beta[sym_A * MS + i] += ALPHA(sym_C, k, i - 1) * BETA(sym_B, k, j) * possibility;
                             #endif
                         }
                     }
@@ -188,9 +195,9 @@ void kernel_outside_main(double* mu, double* beta, const uint32_t* sequence,
                     if(IS_TERMINATE(sym_C) && IS_TERMINATE(sym_A) && (i == j)){
                         if(i - 1 >= 0){
                             #ifdef COMPUTING_IN_LOG_SPACE
-                                LOG_SUM_EXP_SET(local_buffer_beta[sym_A * MS + i], ALPHA(sym_C, i - 1, i - 1) + BETA(sym_B, i - 1, j) + possibility);
+                                LOG_SUM_EXP_SET(buffer_beta[sym_A * MS + i], ALPHA(sym_C, i - 1, i - 1) + BETA(sym_B, i - 1, j) + possibility);
                             #else
-                                local_buffer_beta[sym_A * MS + i] += ALPHA(sym_C, i - 1, i - 1) * BETA(sym_B, i - 1, j) * possibility;
+                                buffer_beta[sym_A * MS + i] += ALPHA(sym_C, i - 1, i - 1) * BETA(sym_B, i - 1, j) * possibility;
                             #endif
                         }                   
                     }
@@ -209,23 +216,25 @@ void kernel_outside_main(double* mu, double* beta, const uint32_t* sequence,
                     uint32_t* addr = (grammar_table + gid * BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS);
                     uint32_t sym_A = ((*addr) >> 16) & 0xFFFF;
                     double alpha_B = ALPHA_GET(sym_B, i, j);
+                    double beta_B = POSSIBILITY_ADD(BETA(sym_B, i, j), buffer_beta[sym_B * MS + i]);
                     double possibility = *(double*)(addr + 1);
                     if(i != j) break;
                     if(IS_NONTERMINATE(sym_A)) continue; 
                     // B->w_A
                     
                     #ifdef COMPUTING_IN_LOG_SPACE
-                        LOG_SUM_EXP_SET(local_buffer_beta[sym_A * MS + i], BETA(sym_B, i, j));
+                        LOG_SUM_EXP_SET(buffer_beta[sym_A * MS + i],  possibility + beta_B);
                     #else
-                        local_buffer_beta[sym_A * MS + i] += possibility * BETA(sym_B, i, j);
+                        buffer_beta[sym_A * MS + i] += possibility * beta_B;
                     #endif
                 }
 
+                // write back
                 for(int sym_A = 0; sym_A < N; sym_A++){
                     #ifdef COMPUTING_IN_LOG_SPACE
-                        LOG_SUM_EXP_SET(BETA(sym_A, i, j), local_buffer_beta[sym_A * MS + i]);
+                        LOG_SUM_EXP_SET(BETA(sym_A, i, j), buffer_beta[sym_A * MS + i]);
                     #else
-                        BETA_INCREASE(sym_A, i, j, local_buffer_beta[sym_A * MS + i]);
+                        BETA_INCREASE(sym_A, i, j, buffer_beta[sym_A * MS + i]);
                     #endif
                 }
             } // parallel for end.
@@ -262,22 +271,7 @@ void kernel_outside_main(double* mu, double* beta, const uint32_t* sequence,
                         double beta_A_i_j = BETA(sym_A, i, j);
                         double alpha_B_i_k = ALPHA_GET(sym_B, i, k);
                         double alpha_C_k_p1_j = ALPHA_GET(sym_C, k + 1, j);
-                        // if(i == 2 && j == 4 && gid == 5){
-                        //     std::cout << "mu::increase::: " <<
-                        //         possibility * beta_A_i_j * alpha_B_i_k * alpha_C_k_p1_j 
-                        //         << "[" << 
-                        //         " possibility = " << possibility <<
-                        //         " beta_A_i_j = " << beta_A_i_j <<
-                        //         " alpha_B_i_k = " <<  alpha_B_i_k << 
-                        //         " alpha_C_k_p1_j = " << alpha_C_k_p1_j <<
-                        //         " i = " << i << 
-                        //         " j = " << j <<
-                        //         " k = " << k <<
-                        //         " sym_A = " << sym_A << " " << SYMBOL_STR(sym_A) <<
-                        //         " sym_B = " << sym_B << " " << SYMBOL_STR(sym_B) <<
-                        //         " sym_C = " << sym_C << " " << SYMBOL_STR(sym_C) <<
-                        //          "]"<< std::endl;
-                        // }
+                        
                         #ifdef COMPUTING_IN_LOG_SPACE
                             LOG_SUM_EXP_SET(local_buffer_mu[gid * MS + i], 
                                                 possibility + beta_A_i_j + alpha_B_i_k + alpha_C_k_p1_j);                        
@@ -287,16 +281,18 @@ void kernel_outside_main(double* mu, double* beta, const uint32_t* sequence,
                     }
                 }
                 
-                    #ifdef COMPUTING_IN_LOG_SPACE
-                        for(int gid = 0; gid < n_grammars; gid++){
-                            LOG_SUM_EXP_SET(MU(gid, i, j), local_buffer_mu[gid * MS + i]);
-                        }
-                    #else
-                        for(int gid = 0; gid < n_grammars; gid++){
-                            MU_INCREASE(gid, i, j, local_buffer_mu[gid * MS + i]);
-                        }
-                    #endif
-                
+
+                // write back.
+                #ifdef COMPUTING_IN_LOG_SPACE
+                    for(int gid = 0; gid < n_grammars; gid++){
+                        LOG_SUM_EXP_SET(MU(gid, i, j), local_buffer_mu[gid * MS + i]);
+                    }
+                #else
+                    for(int gid = 0; gid < n_grammars; gid++){
+                        MU_INCREASE(gid, i, j, local_buffer_mu[gid * MS + i]);
+                    }
+                #endif
+            
             } // end parallel for
         }
 

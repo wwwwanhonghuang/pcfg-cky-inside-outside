@@ -45,4 +45,10 @@
 
 #define SYMBOL_STR(SYMBOL_ID) ((SYMBOL_ID) < N ? grammar->reversed_nonterminate_map[(SYMBOL_ID)]: grammar->reversed_terminate_map[(SYMBOL_ID) - N])
 
+#ifdef COMPUTING_IN_LOG_SPACE
+    #define POSSIBILITY_ADD(P1, P2) log_sum_exp((P1), (P2))
+#else
+    #define POSSIBILITY_ADD(P1, P2) ((P1) + (P2))
+#endif
+
 #endif
