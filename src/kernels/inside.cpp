@@ -3,9 +3,6 @@
 #include "utils/math.hpp"
 #include "constants.h"
 
-#ifdef USE_CUDA
-__global__
-#endif
 void kernel_inside_alpha_zerolization(double* alpha, int N, int MS){
     #ifdef COMPUTING_IN_LOG_SPACE
         memset(alpha, 0, N * MS * MS * sizeof(double));
@@ -17,9 +14,6 @@ void kernel_inside_alpha_zerolization(double* alpha, int N, int MS){
     #endif
 }
 
-#ifdef USE_CUDA
-__global__ 
-#endif
 void kernel_inside_base_fill_alpha(  
         const uint32_t* sequence, uint32_t* pretermination_lookuptable, 
         uint32_t* grammar_index, uint32_t* grammar_table, double* alpha, 
@@ -186,12 +180,12 @@ void kernel_inside_computeSpanKernel(const uint32_t* sequence, uint32_t* preterm
                         uint32_t sym_A = std::get<1>(rule_id);
 
                         #ifndef ENABLE_GRAMMAR_VECTORIZATION_OPTIMIZATION
-                        uint32_t* addr = (grammar_table + gid * BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS);
-                        uint32_t sym_B = ((*addr) >> 16) & 0xFFFF;
-                        double possibility = *(double*)(addr + 1);
+                            uint32_t* addr = (grammar_table + gid * BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS);
+                            uint32_t sym_B = ((*addr) >> 16) & 0xFFFF;
+                            double possibility = *(double*)(addr + 1);
                         #else
-                        uint32_t sym_B = grammar_table[(n_grammars + 1) * 1 + gid];
-                        double possibility = *(double*)(grammar_table + (n_grammars + 1) * 4 + gid * 2);
+                            uint32_t sym_B = grammar_table[(n_grammars + 1) * 1 + gid];
+                            double possibility = *(double*)(grammar_table + (n_grammars + 1) * 4 + gid * 2);
                         #endif
                         
                         

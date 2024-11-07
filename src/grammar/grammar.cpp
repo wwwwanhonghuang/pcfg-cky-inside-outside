@@ -172,7 +172,7 @@ std::vector<std::tuple<uint32_t, uint32_t>> generate_inside_perterminate_iterati
     std::map<uint32_t, uint32_t> gid_map = {};
 
     for(std::tuple<uint32_t, uint32_t, uint32_t, double, uint32_t> item : 
-                                PCFGItemIterator(N, (uint32_t*) grammar->grammar_index, (uint32_t*)grammar->grammar_table)){
+            PCFGItemIterator(N, (uint32_t*) grammar->grammar_index, (uint32_t*)grammar->grammar_table)){
         uint32_t sym_A = std::get<0>(item);
         uint32_t sym_B = std::get<1>(item);
         uint32_t sym_C = std::get<2>(item);

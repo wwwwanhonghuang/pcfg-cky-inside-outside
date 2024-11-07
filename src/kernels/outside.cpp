@@ -125,12 +125,12 @@ void kernel_outside_main(double* mu, double* beta, const uint32_t* sequence,
                     uint32_t sym_B = std::get<1>(rule_id);
 
                     #ifndef ENABLE_GRAMMAR_VECTORIZATION_OPTIMIZATION
-                    uint32_t* addr = (grammar_table + gid * BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS);
-                    uint32_t sym_A = ((*addr) >> 16) & 0xFFFF;
-                    double possibility = *(double*)(addr + 1);
+                        uint32_t* addr = (grammar_table + gid * BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS);
+                        uint32_t sym_A = ((*addr) >> 16) & 0xFFFF;
+                        double possibility = *(double*)(addr + 1);
                     #else
-                    uint32_t sym_A = grammar_table[(n_grammars + 1) * 1 + gid];
-                    double possibility = *(double*)(grammar_table + (n_grammars + 1) * 4 + gid * 2);
+                        uint32_t sym_A = grammar_table[(n_grammars + 1) * 1 + gid];
+                        double possibility = *(double*)(grammar_table + (n_grammars + 1) * 4 + gid * 2);
                     #endif
 
                     double alpha_B = ALPHA_GET(sym_B, i, j);

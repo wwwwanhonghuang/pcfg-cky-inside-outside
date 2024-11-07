@@ -1,9 +1,8 @@
 #ifndef CUH_OUTSIDE
 #define CUH_OUTSIDE
 #include <omp.h>
-#ifndef USE_CUDA
 #include <cstring>
-#endif
+
 
 #include <cstdint>
 #include <vector>
@@ -13,9 +12,6 @@
 #include "macros.def"
 #define DEBUG_OUTSIDE_CELL(x, y, X) if(i == x && j == y) { X }
 
-#ifdef USE_CUDA
-__global__
-#endif
 void kernel_outside_main(double* mu, double* beta, 
                         const uint32_t* sequence, uint32_t* pretermination_lookuptable, 
                         uint32_t* grammar_index, uint32_t* grammar_table, double* alpha, 

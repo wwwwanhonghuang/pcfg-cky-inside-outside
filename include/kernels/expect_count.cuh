@@ -1,10 +1,8 @@
 #ifndef CUH_EXPECT_COUNT
 #define CUH_EXPECT_COUNT
 
-#ifndef USE_CUDA
 #include <cstring>
 #include <cstdint>
-#endif
 #include <omp.h>
 #include "utils/data_accessing.hpp"
 #include "grammar/grammar.hpp"
@@ -19,10 +17,6 @@
                                             "gid = " << gid << " " << SYMBOL_STR(sym_A) << "->" << SYMBOL_STR(sym_B) \
                                             << " " <<  SYMBOL_STR(sym_C) << \
                                             " expectation count += " <<  mu_val << "(MU[" << gid << "," << i << ", " << j << "]" << std::endl;
-#endif
-
-#ifdef USE_CUDA
-__global__
 #endif
 
 void kernel_expect_count(double* count, double* mu, double* beta, 
