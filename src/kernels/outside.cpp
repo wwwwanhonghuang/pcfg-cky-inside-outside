@@ -7,9 +7,7 @@ void kernel_outside_main(double* mu, double* beta, const uint32_t* sequence,
                         uint32_t* grammar_index, uint32_t* grammar_table, double* alpha, 
                         int sequence_length, int n_syms, int N, int T, int MS, int n_grammars,
                         std::vector<std::tuple<uint32_t, uint32_t>> inside_order_1_rule_iteration_path
-                        #ifdef DEBUG_INSIDE_ALGORITHM
                         , pcfg* grammar
-                        #endif
 ){
     memset(mu, 0, n_grammars * MS * MS * sizeof(double));
     memset(beta, 0, n_syms * MS * MS * sizeof(double));
@@ -70,13 +68,18 @@ void kernel_outside_main(double* mu, double* beta, const uint32_t* sequence,
                 int j = i + span_length - 1;
                 
                 // 1. 2. 6. 7.
-                for(std::tuple<uint32_t, uint32_t, uint32_t, double, uint32_t> item : 
-                    PCFGItemIterator(N, grammar_index, grammar_table)){                    
+                for(int gid = 0; gid < n_grammars; gid++){
+                    int j = i + span_length - 1; // Ending index of the span
+                    uint32_t _sym_A = grammar->symbol_A_vector[gid];
+                    uint32_t sym_BC = *(grammar_table + gid * BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS);
+                    uint32_t _sym_B = (sym_BC >> 16) & 0xFFFF;
+                    uint32_t _sym_C = (sym_BC) & 0xFFFF;
+                    double possibility = *(double*)(grammar_table + gid * BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS + 1);
+            
                     for(int k = 0; k < i; k++){       
-                        uint32_t sym_B = std::get<0>(item);
-                        uint32_t sym_C = std::get<1>(item);
-                        uint32_t sym_A = std::get<2>(item);
-                        double possibility = std::get<3>(item);
+                        uint32_t sym_B = _sym_A;
+                        uint32_t sym_C = _sym_B;
+                        uint32_t sym_A = _sym_C;
                         
                         // 1. 7. (A is nonterminate, and C is terminate or nonterminate. A at right side.)
                         if(IS_NONTERMINATE(sym_A) && !IS_EPSILON(sym_C)){
@@ -95,10 +98,9 @@ void kernel_outside_main(double* mu, double* beta, const uint32_t* sequence,
                     }
 
                     for(int k = j + 1; k < sequence_length; k++){       
-                        uint32_t sym_B = std::get<0>(item);
-                        uint32_t sym_A = std::get<1>(item);
-                        uint32_t sym_C = std::get<2>(item);
-                        double possibility = std::get<3>(item);
+                        uint32_t sym_B = _sym_A;
+                        uint32_t sym_A = _sym_B;
+                        uint32_t sym_C = _sym_C;
 
                         // 2. 6. (A is nonterminate, and C is terminate or nonterminate. A at left side.)
                         if(IS_NONTERMINATE(sym_A) && !IS_EPSILON(sym_C)){
@@ -151,14 +153,17 @@ void kernel_outside_main(double* mu, double* beta, const uint32_t* sequence,
 
                 // 5. 8. 9. 10.
                 // Case 2: A is terminate 
-                for(std::tuple<uint32_t, uint32_t, uint32_t, double, uint32_t> item : 
-                                                            PCFGItemIterator(N, grammar_index, grammar_table)){                    
-                        
-                    uint32_t sym_B = std::get<0>(item);
-                    double possibility = std::get<3>(item);
-                    
-                    uint32_t sym_A = std::get<1>(item);
-                    uint32_t sym_C = std::get<2>(item);
+                for(int gid = 0; gid < n_grammars; gid++){
+                    int j = i + span_length - 1; // Ending index of the span
+                    uint32_t _sym_A = grammar->symbol_A_vector[gid];
+                    uint32_t sym_BC = *(grammar_table + gid * BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS);
+                    uint32_t _sym_B = (sym_BC >> 16) & 0xFFFF;
+                    uint32_t _sym_C = (sym_BC) & 0xFFFF;
+                    double possibility = *(double*)(grammar_table + gid * BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS + 1);
+                
+                    uint32_t sym_B = _sym_A;
+                    uint32_t sym_A = _sym_B;
+                    uint32_t sym_C = _sym_C;
                     if(IS_NONTERMINATE(sym_A) || i != j) break;
                     if(IS_EPSILON(sym_C)) continue;
 
@@ -184,8 +189,8 @@ void kernel_outside_main(double* mu, double* beta, const uint32_t* sequence,
                         }
                     }
                     
-                    sym_C = std::get<1>(item);
-                    sym_A = std::get<2>(item);
+                    sym_C = _sym_B;
+                    sym_A = _sym_C;
 
                     // 8.
                     if(IS_NONTERMINATE(sym_C) && IS_TERMINATE(sym_A) && (i == j)){
@@ -271,14 +276,15 @@ void kernel_outside_main(double* mu, double* beta, const uint32_t* sequence,
             #pragma omp for
             for (int i = 0; i <= sequence_length - span_length; i++) {
                 int j = i + span_length - 1; // Ending index of the spanx`
-                
-                for (int k = i; k <= j; k++) { // TODO: k < j? k == j?
-                    for(std::tuple<uint32_t, uint32_t, uint32_t, double, uint32_t> item : PCFGItemIterator(N, grammar_index, grammar_table)){
-                        uint32_t sym_A = std::get<0>(item);
-                        uint32_t sym_B = std::get<1>(item);
-                        uint32_t sym_C = std::get<2>(item);
-                        double possibility = std::get<3>(item);
-                        uint32_t gid = std::get<4>(item);
+                for(int gid = 0; gid < n_grammars; gid++){
+                    uint32_t sym_A = grammar->symbol_A_vector[gid];
+                    uint32_t sym_BC = *(grammar_table + gid * BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS);
+                    uint32_t sym_B = (sym_BC >> 16) & 0xFFFF;
+                    uint32_t sym_C = (sym_BC) & 0xFFFF;
+                    for (int k = i; k <= j; k++) { // TODO: k < j? k == j?
+                    
+                        double possibility = *(double*)(grammar_table + gid * BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS + 1);
+
                         if(k == j && !IS_EPSILON(sym_C)) continue;
 
                         double beta_A_i_j = BETA(sym_A, i, j);
@@ -294,7 +300,6 @@ void kernel_outside_main(double* mu, double* beta, const uint32_t* sequence,
                     }
                 }
                 
-
                 // write back.
                 #ifdef COMPUTING_IN_LOG_SPACE
                     for(int gid = 0; gid < n_grammars; gid++){

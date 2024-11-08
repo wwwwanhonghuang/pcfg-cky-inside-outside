@@ -125,6 +125,9 @@ pcfg* _build_grammar_table(pcfg* grammar, uint32_t* non_terminate_grammars, uint
         std::cout << "grammar_vector, addr: " << reinterpret_cast<uintptr_t>(grammar_vector) << std::endl;
         std::cout << grammar->N() << std::endl;
     #endif
+    uint32_t* symbol_A_vector = new uint32_t[grammar->cnt_grammar + 1]();
+    uint32_t gid = 0;
+    
     for(int i = 0; i < grammar->N(); i++){
         #ifdef VERBOSE_GRAMMAR_STRUCTURE_BUILDING
             std::cout << "process non-terminate symbol id = " << i << "/" << grammar->N() << " symbol = " 
@@ -163,8 +166,9 @@ pcfg* _build_grammar_table(pcfg* grammar, uint32_t* non_terminate_grammars, uint
                         ((right1_id << 16) & (0xFFFF0000) | right2_id & (0x0000FFFF));
 
                 *(double*)(grammar_vector + offset + 1) = item.possibility; 
-
+                symbol_A_vector[gid++] = i;
                 offset += BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS;
+                
             }
         }
 
@@ -183,7 +187,7 @@ pcfg* _build_grammar_table(pcfg* grammar, uint32_t* non_terminate_grammars, uint
     }
     non_terminate_grammars[grammar->N()] = offset;
     grammar_vector[grammar->cnt_grammar * BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS] = 0xFFFFFFFF; // End Marker
-
+    symbol_A_vector[grammar->cnt_grammar] = 0xFFFF;
     
     #ifdef _STRICK_CHECK
         int processed_rule_count = 0;
@@ -232,6 +236,7 @@ pcfg* _build_grammar_table(pcfg* grammar, uint32_t* non_terminate_grammars, uint
     #endif
     grammar->grammar_index = non_terminate_grammars;
     grammar->grammar_table = grammar_vector;
+    grammar->symbol_A_vector = symbol_A_vector;
     return grammar;
 }
 #else

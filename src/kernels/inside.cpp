@@ -86,9 +86,7 @@ void kernel_inside_computeSpanKernel(const uint32_t* sequence, uint32_t* preterm
         uint32_t* grammar_index, uint32_t* grammar_table, double* alpha, 
         int sequence_length, int n_syms, int N, int T, int MS, int n_grammars,
         std::vector<std::tuple<uint32_t, uint32_t>> inside_order_1_rule_iteration_path
-        #ifdef DEBUG_INSIDE_ALGORITHM
         , pcfg* grammar
-        #endif
         ) {
         std::vector<double> buffer(N * MS * MS, 
             #ifdef COMPUTING_IN_LOG_SPACE
@@ -100,82 +98,37 @@ void kernel_inside_computeSpanKernel(const uint32_t* sequence, uint32_t* preterm
         // reduce the buffer relocations.
         for (int span_length = 2; span_length <= sequence_length; span_length++) {
 
-            #pragma omp parallel for
-            for (int i = 0; i <= sequence_length - span_length; i++) {
-                int j = i + span_length - 1; // Ending index of the span
-                // std::vector<double> local_buffer(N, 
-                //     #ifdef COMPUTING_IN_LOG_SPACE
-                //         -INFINITY
-                //     #else
-                //         0.0
-                //     #endif
-                // );
-                for (int k = i; k < j; k++) {
-                    // iterate all grammars
-                    auto& iterator = PCFGItemIterator(N, grammar_index, grammar_table);
-                    for(;iterator.current() < iterator.end();){
-                        // unrolling loops manually.
-                        uint32_t sym_A1 = std::get<0>(item);
-                        uint32_t sym_B1 = std::get<1>(item);
-                        uint32_t sym_C1 = std::get<2>(item);
-                        double possibility1 = std::get<3>(item);
-                        uint32_t gid1 = std::get<4>(item);
-                        iterator++;
-                        bool zero = iterator.current() == iterator.end();
-                        if(!zero) item = *iterator;
-                        uint32_t sym_A2 = zero ? 0 : std::get<0>(item);
-                        uint32_t sym_B2 = zero ? 0 : std::get<1>(item);
-                        uint32_t sym_C2 = zero ? 0 : std::get<2>(item);
-                        double possibility2 = zero ? 0 : std::get<3>(item);
-                        uint32_t gid2 = zero ? 0 : std::get<4>(item);
-                        iterator++;
-                        zero = iterator.current() == iterator.end();
-                        if(!zero) item = *iterator;
-                        uint32_t sym_A3 = zero ? 0 : std::get<0>(item);
-                        uint32_t sym_B3 = zero ? 0 : std::get<1>(item);
-                        uint32_t sym_C3 = zero ? 0 : std::get<2>(item);
-                        double possibility3 = zero ? 0 : std::get<3>(item);
-                        uint32_t gid3 = zero ? 0 : std::get<4>(item);
-                        iterator++;
-                        zero = iterator.current() == iterator.end();
-                        if(!zero) item = *iterator;
-                        uint32_t sym_A4 = zero ? 0 : std::get<0>(item);
-                        uint32_t sym_B4 = zero ? 0 : std::get<1>(item);
-                        uint32_t sym_C4 = zero ? 0 : std::get<2>(item);
-                        double possibility4 = zero ? 0 : std::get<3>(item);
-                        uint32_t gid4 = zero ? 0 : std::get<4>(item);
+            #pragma omp parallel
+            {
+                #pragma omp for
+                for (int i = 0; i <= sequence_length - span_length; i++) {
+                    for(int gid = 0; gid < n_grammars; gid++){
+                        int j = i + span_length - 1; // Ending index of the span
+                        uint32_t sym_A = grammar->symbol_A_vector[gid];
+                        uint32_t sym_BC = *(grammar_table + gid * BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS);
+                        uint32_t sym_B = (sym_BC >> 16) & 0xFFFF;
+                        uint32_t sym_C = (sym_BC) & 0xFFFF;
+                        double possibility = *(double*)(grammar_table + gid * BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS + 1);
 
-                        // vectorization
-                        __m256d vec_sym_A = _mm256_set_pd(sym_A4, sym_A3, sym_A2, sym_A1);  // Different values for sym_A
-                        __m256d vec_sym_B = _mm256_set_pd(sym_B4, sym_B3, sym_B2, sym_B1);  // Different values for sym_B
-                        __m256d vec_sym_C = _mm256_set_pd(sym_C4, sym_C3, sym_C2, sym_C1);  // Different values for sym_C
-                        __m256d vec_possibility = _mm256_set_pd(possibility4, possibility3, possibility2, possibility1); // Possibilities
+                        for (int k = i; k < j; k++) {
+                            if(IS_EPSILON(sym_C)) continue;
 
+                            // A->BC
+                            double alpha_B = ALPHA_GET(sym_B, i, k);
+                            double alpha_C = ALPHA_GET(sym_C, k + 1, j);
+                            #ifdef COMPUTING_IN_LOG_SPACE
+                                LOG_SUM_EXP_SET(buffer[sym_A * MS * MS + span_length * MS + i], alpha_B + alpha_C + possibility);
+                            #else
+                                buffer[sym_A * MS * MS + span_length * MS + i] += alpha_B * alpha_C * possibility; 
+                            #endif   
+                        }
                     }
 
-
-                    for(std::tuple<uint32_t, uint32_t, uint32_t, double, uint32_t> item : 
-                            PCFGItemIterator(N, grammar_index, grammar_table)){
-                        uint32_t sym_A = std::get<0>(item);
-                        uint32_t sym_B = std::get<1>(item);
-                        uint32_t sym_C = std::get<2>(item);
-                        double possibility = std::get<3>(item);
-                        uint32_t gid = std::get<4>(item);
-
-                        if(IS_EPSILON(sym_C)) continue;
-
-                        // A->BC
-                        double alpha_B = ALPHA_GET(sym_B, i, k);
-                        double alpha_C = ALPHA_GET(sym_C, k + 1, j);
-                        #ifdef COMPUTING_IN_LOG_SPACE
-                            LOG_SUM_EXP_SET(buffer[sym_A * MS * MS + span_length * MS + i], alpha_B + alpha_C + possibility);
-                        #else
-                            buffer[sym_A * MS * MS + span_length * MS + i] += alpha_B * alpha_C * possibility; 
-                        #endif   
-                    }
+                    //#pragma omp barrier
 
                     // A->B
                     for(std::tuple<uint32_t, uint32_t>& rule_id: inside_order_1_rule_iteration_path) {
+                        int j = i + span_length - 1; // Ending index of the span
                         uint32_t gid = std::get<0>(rule_id);
                         uint32_t sym_A = std::get<1>(rule_id);
 
@@ -190,7 +143,6 @@ void kernel_inside_computeSpanKernel(const uint32_t* sequence, uint32_t* preterm
                         
                         
                         double alpha_B = POSSIBILITY_ADD(buffer[sym_B * sequence_length * sequence_length + span_length * sequence_length + i], ALPHA_GET(sym_B, i, j)); // Cell [i, j] is newly calculated and has not been written back. We need access the buffer, rather than ALPHA(..)
-                        double possibility = *(double*)(addr + 1);                        
 
                         #ifdef COMPUTING_IN_LOG_SPACE
                             LOG_SUM_EXP_SET(buffer[sym_A * MS * MS + span_length * MS + i], alpha_B + possibility);
@@ -198,15 +150,19 @@ void kernel_inside_computeSpanKernel(const uint32_t* sequence, uint32_t* preterm
                             buffer[sym_A * MS * MS + span_length * MS + i] += alpha_B * possibility;
                         #endif
                     }
-                }
+                    
 
-                // write back.
-                for (int sym_A = 0; sym_A < N; sym_A++) {
-                    #ifdef COMPUTING_IN_LOG_SPACE
-                        LOG_SUM_EXP_SET(ALPHA(sym_A, i, j), buffer[sym_A * MS * MS + span_length * MS + i]);
-                    #else
-                        ALPHA_INCREASE(sym_A, i, j, buffer[sym_A * MS * MS + span_length * MS + i]);
-                    #endif
+                    //#pragma omp barrier
+
+                    // write back.
+                    for (int sym_A = 0; sym_A < N; sym_A++) {
+                        int j = i + span_length - 1; // Ending index of the span
+                        #ifdef COMPUTING_IN_LOG_SPACE
+                            LOG_SUM_EXP_SET(ALPHA(sym_A, i, j), buffer[sym_A * MS * MS + span_length * MS + i]);
+                        #else
+                            ALPHA_INCREASE(sym_A, i, j, buffer[sym_A * MS * MS + span_length * MS + i]);
+                        #endif
+                    }
                 }
             } // parallel for end.
         }
