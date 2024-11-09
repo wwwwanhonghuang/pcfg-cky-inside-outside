@@ -37,13 +37,8 @@ void kernel_expect_count(double* count, double* mu, double* beta, const uint32_t
         #pragma omp parallel for
         for(int i = 0; i < sequence_length - span_length + 1; i++){
             int j = i + span_length - 1;
-            std::vector<double> local_buffer_count(n_grammars,
-                #ifdef COMPUTING_IN_LOG_SPACE
-                -INFINITY
-                #else
-                0.0
-                #endif
-            );
+            std::vector<double> local_buffer_count(n_grammars, INIT_POSSIBILITY);
+
             for(std::tuple<uint32_t, uint32_t, uint32_t, double, uint32_t> item : PCFGItemIterator(N, grammar_index, grammar_table)){
                 uint32_t sym_A = std::get<0>(item);
                 uint32_t sym_B = std::get<1>(item);

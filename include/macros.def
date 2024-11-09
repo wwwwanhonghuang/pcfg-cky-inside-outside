@@ -50,4 +50,10 @@
     #define POSSIBILITY_ADD(P1, P2) ((P1) + (P2))
 #endif
 
+#ifdef COMPUTING_IN_LOG_SPACE
+#define INIT_POSSIBILITY -INFINITY
+#else
+#define INIT_POSSIBILITY 0.0
+#endif
+
 #endif

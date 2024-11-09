@@ -25,13 +25,7 @@ void kernel_inside_base_fill_alpha(
         #pragma omp parallel for
         for(int sym_A = 0; sym_A < N; sym_A ++){
             for(int i = 0; i < sequence_length; i++){
-                double p = 
-                    #ifdef COMPUTING_IN_LOG_SPACE
-                    -INFINITY
-                    #else
-                    0.0
-                    #endif
-                ;
+                double p = INIT_POSSIBILITY;
                 uint64_t key = encode_key(sym_A, sequence[i]);
                 p = reverse_grammar_hashtable_get_value(pretermination_lookuptable, n_grammars * BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS, key);
                 
@@ -88,13 +82,7 @@ void kernel_inside_computeSpanKernel(const uint32_t* sequence, uint32_t* preterm
         std::vector<std::tuple<uint32_t, uint32_t>> inside_order_1_rule_iteration_path
         , pcfg* grammar
         ) {
-        std::vector<double> buffer(N * MS * MS, 
-            #ifdef COMPUTING_IN_LOG_SPACE
-                -INFINITY
-            #else
-                0.0
-            #endif
-        );
+        std::vector<double> buffer(N * MS * MS, INIT_POSSIBILITY);
         // reduce the buffer relocations.
         for (int span_length = 2; span_length <= sequence_length; span_length++) {
 

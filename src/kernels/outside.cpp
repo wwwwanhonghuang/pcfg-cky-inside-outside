@@ -13,12 +13,12 @@ void kernel_outside_main(double* mu, double* beta, const uint32_t* sequence,
     memset(beta, 0, n_syms * MS * MS * sizeof(double));
 
     #ifdef COMPUTING_IN_LOG_SPACE
-    for (int i = 0; i < n_grammars * MS * MS; i++) {
-        mu[i] = -INFINITY;
-    }
-    for (int i = 0; i < n_syms * MS * MS; i++) {
-        beta[i] = -INFINITY;
-    }
+        for (int i = 0; i < n_grammars * MS * MS; i++) {
+            mu[i] = -INFINITY;
+        }
+        for (int i = 0; i < n_syms * MS * MS; i++) {
+            beta[i] = -INFINITY;
+        }
     #endif
     
     /* base case: S is the root of the whole sequence with possibility 1.0. */
@@ -40,26 +40,14 @@ void kernel_outside_main(double* mu, double* beta, const uint32_t* sequence,
         , where w_A w_C are terminates.
     */
 
-    std::vector<double> buffer_beta(n_syms * MS,
-            #ifdef COMPUTING_IN_LOG_SPACE
-            -INFINITY
-            #else
-            0.0
-            #endif
-        );
+    std::vector<double> buffer_beta(n_syms * MS, INIT_POSSIBILITY);
     // Case 1: A is non-terminate 
     // confirm these codes are correct.
     /* diagonal-order iteration */
     for(int span_length = sequence_length; span_length >= 1; span_length--){
         /* for one diagnal of the beta table, all cell can be parallelly computed. */
         
-        std::fill(buffer_beta.begin(), buffer_beta.end(),
-            #ifdef COMPUTING_IN_LOG_SPACE
-            -INFINITY
-            #else
-            0.0
-            #endif
-        );
+        std::fill(buffer_beta.begin(), buffer_beta.end(), INIT_POSSIBILITY);
         
         #pragma omp parallel
         {
@@ -213,9 +201,6 @@ void kernel_outside_main(double* mu, double* beta, const uint32_t* sequence,
                             #endif
                         }                   
                     }
-
-                    
-                
                 }
 
                 // 11.
@@ -226,12 +211,12 @@ void kernel_outside_main(double* mu, double* beta, const uint32_t* sequence,
                     uint32_t gid = std::get<0>(rule_id);
                     uint32_t sym_B = std::get<1>(rule_id);
                     #ifndef ENABLE_GRAMMAR_VECTORIZATION_OPTIMIZATION
-                    uint32_t* addr = (grammar_table + gid * BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS);
-                    uint32_t sym_A = ((*addr) >> 16) & 0xFFFF;
-                    double possibility = *(double*)(addr + 1);
+                        uint32_t* addr = (grammar_table + gid * BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS);
+                        uint32_t sym_A = ((*addr) >> 16) & 0xFFFF;
+                        double possibility = *(double*)(addr + 1);
                     #else
-                    uint32_t sym_A = grammar_table[(n_grammars + 1) * 1 + gid];
-                    double possibility = *(double*)(grammar_table + (n_grammars + 1) * 4 + gid * 2);
+                        uint32_t sym_A = grammar_table[(n_grammars + 1) * 1 + gid];
+                        double possibility = *(double*)(grammar_table + (n_grammars + 1) * 4 + gid * 2);
                     #endif
 
                     double alpha_B = ALPHA_GET(sym_B, i, j);
@@ -256,32 +241,24 @@ void kernel_outside_main(double* mu, double* beta, const uint32_t* sequence,
                     #endif
                 }
             } // parallel for end.
-
         }
     }
 
-    
     // fill mu[grammar_id, i, j]
     for (int span_length = 1; span_length < sequence_length + 1; span_length++) {
-        std::vector<double> local_buffer_mu(MS * n_grammars,
-            #ifdef COMPUTING_IN_LOG_SPACE
-                -INFINITY
-            #else
-                0.0
-            #endif
-        );
+        std::vector<double> local_buffer_mu(MS * n_grammars, INIT_POSSIBILITY);
 
         #pragma omp parallel
         {
             #pragma omp for
             for (int i = 0; i <= sequence_length - span_length; i++) {
-                int j = i + span_length - 1; // Ending index of the spanx`
+                int j = i + span_length - 1; // Ending index of the span
                 for(int gid = 0; gid < n_grammars; gid++){
                     uint32_t sym_A = grammar->symbol_A_vector[gid];
                     uint32_t sym_BC = *(grammar_table + gid * BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS);
                     uint32_t sym_B = (sym_BC >> 16) & 0xFFFF;
                     uint32_t sym_C = (sym_BC) & 0xFFFF;
-                    for (int k = i; k <= j; k++) { // TODO: k < j? k == j?
+                    for (int k = i; k <= j; k++) {
                     
                         double possibility = *(double*)(grammar_table + gid * BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS + 1);
 
@@ -310,11 +287,7 @@ void kernel_outside_main(double* mu, double* beta, const uint32_t* sequence,
                         MU_INCREASE(gid, i, j, local_buffer_mu[gid * MS + i]);
                     }
                 #endif
-            
             } // end parallel for
         }
-
-        
-        
     }
 }
