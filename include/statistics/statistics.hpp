@@ -1,3 +1,4 @@
+#ifndef USE_CUDA
 #ifndef H_STATISTICS
 #define H_STATISTICS
 
@@ -5,7 +6,7 @@
 #include <vector>
 #include <cmath>
 #include <queue>
-#include <functional>
+//#include <functional>
 #include <algorithm>
 #include <deque>
 #include <unordered_set>
@@ -154,4 +155,5 @@ double word_delay_L_mutual_entropy(std::vector<uint32_t> words, int L);
 
 
 double derivation_delay_L_mutual_entropy(std::vector<uint32_t> derivations, int L);
+#endif
 #endif

@@ -39,7 +39,7 @@ __global__ void kernel_expect_count(double* count, double* mu, double* beta, con
 
 
     __shared__ int lockFlag;  // Shared lock flag
-    double local_buffer_count[512]{0};
+    double local_buffer_count[MAX_SEQUENCE_LENGTH]{0};
     __shared__ double Z;
     Z = ALPHA(0, 0, sequence_length - 1); 
 

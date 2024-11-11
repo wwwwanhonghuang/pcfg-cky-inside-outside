@@ -25,7 +25,7 @@ __global__ void kernel_inside_base_fill_alpha(
         int thread_id = blockIdx.x * blockDim.x + threadIdx.x;
         int total_threads = blockDim.x * gridDim.x;
         bool changed = false;
-        uint32_t nonterminate_remains[256]{false};
+        uint32_t nonterminate_remains[MAX_NONTERMINATES]{false};
         __shared__ int size;
 
         size = 0; // nonterminate_remains.size();
@@ -95,7 +95,7 @@ __global__ void kernel_inside_computeSpanKernel(
 
         int thread_id_x = blockIdx.x * blockDim.x + threadIdx.x; // Thread ID for i
         int total_threads_x = blockDim.x * gridDim.x;
-        double buffer[256 * 512 * 512]; // record symbol. span length and i
+        double buffer[MAX_NONTERMINATES * MAX_SEQUENCE_LENGTH * MAX_SEQUENCE_LENGTH]; // record symbol. span length and i
 
         if (thread_id_x == 0) {
             for (int i = 0; i < N * MS * MS; ++i) {

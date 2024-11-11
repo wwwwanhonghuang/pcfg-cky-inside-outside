@@ -74,9 +74,9 @@ main: $(TARGET_MAIN)
 cuda_main: $(TARGET_CUDA_MAIN)
 
 TARGET_MAIN_LD = -lyaml-cpp
-TARGET_CUDA_MAIN_LD = 
+TARGET_CUDA_MAIN_LD =  -lyaml-cpp -lcuda -lcudart
 TARGET_PHASE_CONVERT_LD = -lyaml-cpp 
-TARGET_MAIN_FLAGS = -lyaml-cpp -lcuda -lcudart
+TARGET_MAIN_FLAGS = 
 
 $(TARGET_MAIN): $(SRC_DIR)/main.cpp $(SHARED_LIB) | $(BIN_DIR)
 	$(TARGET_COMPILER) $(COMPILER_FLAGS) $(TARGET_MAIN_FLAGS) $(INCLUDES) -o $@ $(SRC_DIR)/main.cpp $(SHARED_LIB) $(TARGET_MAIN_LD) -latomic
@@ -113,8 +113,6 @@ $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cu | $(OBJ_DIR)
 $(OBJ_DIR)/%.o: $(UNIT_TEST_DIR)/%.cpp | $(OBJ_DIR)
 	@mkdir -p $(@D)
 	$(TARGET_COMPILER) $(COMPILER_FLAGS) $(INCLUDES) -c $< -o $@
-
-
 
 $(OBJ_DIR):
 	@mkdir -p $@

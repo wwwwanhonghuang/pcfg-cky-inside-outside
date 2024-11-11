@@ -18,7 +18,7 @@ __global__ void kernel_outside_main(double* mu, double* beta, const uint32_t* se
 ){
     int thread_id = blockIdx.x * blockDim.x + threadIdx.x;
     int total_threads = blockDim.x * gridDim.x;
-    double buffer_beta[256 * 512];
+    double buffer_beta[MAX_NONTERMINATES * MAX_SEQUENCE_LENGTH];
     
     if(thread_id == 0){
         memset(mu, 0, n_grammars * MS * MS * sizeof(double));
@@ -218,7 +218,7 @@ __global__ void kernel_outside_main(double* mu, double* beta, const uint32_t* se
 
     // fill mu[grammar_id, i, j]
     for (int span_length = 1; span_length < sequence_length + 1; span_length++) {
-        double local_buffer_mu[512 * 256];
+        double local_buffer_mu[MAX_SEQUENCE_LENGTH * MAX_GRAMMAR_ITEMS];
 
         if(thread_id == 0){
             for(int i = 0; i < MS * n_grammars; i++){

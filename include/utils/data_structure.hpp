@@ -4,6 +4,9 @@
 #include <cstdint>
 #include <iostream>
 #include <bits/stdc++.h>
+#ifdef USE_CUDA
+#include <cuda_runtime.h>
+#endif
 #include "macros.def"
 template<typename TKey, typename TVal>
 void map_insert(std::map<TKey, TVal>& map, TKey key, TVal val) {
@@ -20,6 +23,9 @@ bool map_contains(const std::map<TKey, TVal>& map, TKey key) {
  * length: Current input sequence length
  * alpha: inside possibility with shape (N, S, S)
 **/
+#ifdef USE_CUDA
+__device__
+#endif
 inline double reverse_grammar_hashtable_get_value(uint32_t* hashtable, int hashtable_size, uint64_t key){
     
     int left = (key >> 16) & 0xFFFF;
@@ -43,6 +49,9 @@ inline double reverse_grammar_hashtable_get_value(uint32_t* hashtable, int hasht
     ;    
 };
 
+#ifdef USE_CUDA
+__device__ 
+#endif
 inline void reverse_grammar_hashtable_set_value(uint32_t* hashtable, int hashtable_size, uint64_t key, double val){
     int left = (key >> 16) & 0xFFFF;
     int right1 = key & 0xFFFF;
@@ -57,7 +66,9 @@ inline void reverse_grammar_hashtable_set_value(uint32_t* hashtable, int hashtab
             pos = (pos + BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS) % hashtable_size;
         }
     }
+    #ifndef USE_CUDA
     std::cerr << "cannot find key " << key << " in reversed_grammar_hashtable" << std::endl;
+    #endif
     return;
 };
 #endif
