@@ -1,5 +1,5 @@
 
-
+#ifndef USE_CUDA
 #include "kernels/expect_count.cuh"
 #include "utils/math.hpp"
 
@@ -86,3 +86,5 @@ void kernel_expect_count(double* count, double* mu, double* beta, const uint32_t
         }
     #endif
 }
+
+#endif

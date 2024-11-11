@@ -4,13 +4,13 @@
 #include "constants.h"
 #include "utils/math.hpp"
 
-inline __device__ double _calculate_new_possibility(double S, double f_gid) {
+__device__ double _calculate_new_possibility(double S, double f_gid) {
     if(std::abs(f_gid) < std::log(grammar_minimal_possibility))
         f_gid = std::log(grammar_minimal_possibility);
     return f_gid - S;
 }
 
-__device__ void kernel_update_parameters(double* f, double* count, double* mu, double* beta,
+__global__ void kernel_update_parameters(double* f, double* count, double* mu, double* beta,
         const uint32_t* sequence, 
         uint32_t* pretermination_lookuptable, 
         uint32_t* grammar_index, 
@@ -41,7 +41,6 @@ __device__ void kernel_update_parameters(double* f, double* count, double* mu, d
 
         __syncthreads();
         if(do_update){
-            std::cout << "STATUS: parameter update." << std::endl;
             for(int sym_A = thread_id_x; sym_A < N; sym_A += total_threads_x){
                     double S = -INFINITY;
                     uint32_t grammar_pointer_current = *(grammar_index + sym_A);

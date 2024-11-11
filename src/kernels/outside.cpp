@@ -1,4 +1,4 @@
-
+#ifndef USE_CUDA
 #include "kernels/outside.cuh"
 #include "utils/math.hpp"
 
@@ -291,3 +291,4 @@ void kernel_outside_main(double* mu, double* beta, const uint32_t* sequence,
         }
     }
 }
+#endif

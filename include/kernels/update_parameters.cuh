@@ -4,10 +4,25 @@
 #include "utils/data_structure.hpp"
 #include <cstring>
 #include <cstdint>
+#ifdef USE_CUDA
+#include <cuda_runtime.h>
+#endif
+
 #include "grammar/grammar.hpp"
 
-inline double _calculate_new_possibility(double S, double f_gid);
+extern "C" {
+#ifndef USE_CUDA
+inline 
+#endif
+#ifdef USE_CUDA
+__device__
+#endif
+double _calculate_new_possibility(double S, double f_gid);
 
+
+#ifdef USE_CUDA
+__global__ 
+#endif
 void kernel_update_parameters(double* f, double* count, double* mu, double* beta, const uint32_t* sequence, 
         uint32_t* pretermination_lookuptable, 
         uint32_t* grammar_index, 
@@ -19,4 +34,5 @@ void kernel_update_parameters(double* f, double* count, double* mu, double* beta
         #endif
         , bool do_update
 );
+}
 #endif

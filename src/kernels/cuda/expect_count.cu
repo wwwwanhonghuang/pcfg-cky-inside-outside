@@ -1,12 +1,11 @@
-
-
+#ifdef USE_CUDA
 #include "kernels/expect_count.cuh"
 #include "utils/math.hpp"
 
 #if DEBUG_MODE == 0
 #define EXPERCT_COUNT_DEBUG_OUTPUT(CONDITION)
 #else
-#define EXPERCT_COUNT_DEBUG_OUTPUT(CONDITION) if(CONDITION > 0) \
+#define EXPERCT_COUNT_DEBUG_OUTPUT(CONDITION) if(CONDITION) \
                                             std::cout << "(" << i << ", " << j << ")" << \
                                             "expectation_count::" << \
                                             "gid = " << gid << " " << SYMBOL_STR(sym_A) << "->" << SYMBOL_STR(sym_B) \
@@ -15,21 +14,21 @@
 #endif
 
 
-__device__ void lock(volatile int* lockFlag) {
+__device__ void lock(int* lockFlag) {
     while (atomicCAS(lockFlag, 0, 1) != 0) {
         // Spin-wait until the lock is acquired
     }
 }
 
-__device__ void unlock(volatile int* lockFlag) {
+__device__ void unlock(int* lockFlag) {
     atomicExch(lockFlag, 0);  // Release the lock
 }
 
 
-__device__ void kernel_expect_count(double* count, double* mu, double* beta, const uint32_t* sequence, 
+__global__ void kernel_expect_count(double* count, double* mu, double* beta, const uint32_t* sequence, 
                         uint32_t* pretermination_lookuptable, 
                         uint32_t* grammar_index, uint32_t* grammar_table, double* alpha, 
-                        int sequence_length, int n_syms, int N, int T, int MS, int n_grammars
+                        int sequence_length, int n_syms, int N, int T, int MS, int n_grammars, uint32_t* symbol_A_vector
     ){
     
     int thread_id_x = blockIdx.x * blockDim.x + threadIdx.x;
@@ -40,18 +39,15 @@ __device__ void kernel_expect_count(double* count, double* mu, double* beta, con
 
 
     __shared__ int lockFlag;  // Shared lock flag
-    __shared__ double local_buffer_count[n_grammars];
-    
-    __shared__ double Z = ALPHA(0, 0, sequence_length - 1); 
+    double local_buffer_count[512]{0};
+    __shared__ double Z;
+    Z = ALPHA(0, 0, sequence_length - 1); 
 
     if(thread_id_x == 0 && thread_id_y == 0){
-        memset(count, 0, n_grammars * sizeof(double));
-
         for (int i = 0; i < n_grammars; i++) {
             count[i] = -INFINITY;
         }
         /* 0 is the id of S symbol. This expression assign alpha['S', 0, sequence_length - 1] to Z */
-        
         lockFlag = 0;
     }
     
@@ -69,13 +65,13 @@ __device__ void kernel_expect_count(double* count, double* mu, double* beta, con
 
             __syncthreads();
             
-            for(std::tuple<uint32_t, uint32_t, uint32_t, double, uint32_t> item : 
-                        PCFGItemIterator(N, grammar_index, grammar_table)){
-                uint32_t sym_A = std::get<0>(item);
-                uint32_t sym_B = std::get<1>(item);
-                uint32_t sym_C = std::get<2>(item);
-                double possibility = std::get<3>(item);
-                uint32_t gid = std::get<4>(item);
+            for(int gid = 0; gid < n_grammars; gid++){
+                uint32_t sym_A = symbol_A_vector[gid];
+                uint32_t sym_BC = *(grammar_table + gid * BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS);
+                uint32_t sym_B = (sym_BC >> 16) & 0xFFFF;
+                uint32_t sym_C = (sym_BC) & 0xFFFF;
+                double possibility = *(double*)(grammar_table + gid * BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS + 1);
+
                 double mu_val = MU(gid, i, j);
                 LOG_SUM_EXP_SET(local_buffer_count[gid], mu_val);
             }
@@ -91,3 +87,4 @@ __device__ void kernel_expect_count(double* count, double* mu, double* beta, con
         } 
     }
 }
+#endif

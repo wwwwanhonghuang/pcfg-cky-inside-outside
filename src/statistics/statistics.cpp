@@ -1,3 +1,4 @@
+#ifndef USE_CUDA
 #include "statistics/statistics.hpp"
 
 double derivation_entropy(std::vector<uint32_t> derivations){  // vector of derivations (grammar IDs)
@@ -164,3 +165,4 @@ double prefix_L_parse_entropy(pcfg* grammar, double* alpha, int sequence_length,
     }
     return entropy;
 }
+#endif

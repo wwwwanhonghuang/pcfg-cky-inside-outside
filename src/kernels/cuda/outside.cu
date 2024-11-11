@@ -1,19 +1,24 @@
-
+#ifdef USE_CUDA
 #include "kernels/outside.cuh"
 #include "utils/math.hpp"
 
-__device__ void kernel_outside_main(double* mu, double* beta, const uint32_t* sequence, 
+__global__ void kernel_outside_main(double* mu, double* beta, const uint32_t* sequence, 
                         uint32_t* pretermination_lookuptable, 
                         uint32_t* grammar_index, uint32_t* grammar_table, double* alpha, 
                         int sequence_length, int n_syms, int N, int T, int MS, int n_grammars,
+                        #ifndef USE_CUDA
                         std::vector<std::tuple<uint32_t, uint32_t>> inside_order_1_rule_iteration_path
+                        #else
+                        uint32_t* inside_order_1_rule_iteration_path, uint32_t inside_order_1_rule_iteration_path_size
+                        #endif
+                        , uint32_t* symbol_A_vector
+                        #ifndef USE_CUDA
                         , pcfg* grammar
+                        #endif
 ){
     int thread_id = blockIdx.x * blockDim.x + threadIdx.x;
     int total_threads = blockDim.x * gridDim.x;
-    __shared__ double buffer_beta[n_syms * MS];
-
-
+    double buffer_beta[256 * 512];
     
     if(thread_id == 0){
         memset(mu, 0, n_grammars * MS * MS * sizeof(double));
@@ -33,8 +38,6 @@ __device__ void kernel_outside_main(double* mu, double* beta, const uint32_t* se
     __syncthreads();
     
     /* base case: S is the root of the whole sequence with possibility 1.0. */
-   
-
     /* all cases:
                     1. B->AC      <1>
                     2. B->CA      <1>
@@ -71,7 +74,7 @@ __device__ void kernel_outside_main(double* mu, double* beta, const uint32_t* se
             // 1. 2. 6. 7.
             for(int gid = 0; gid < n_grammars; gid++){
                 int j = i + span_length - 1; // Ending index of the span
-                uint32_t _sym_A = grammar->symbol_A_vector[gid];
+                uint32_t _sym_A = symbol_A_vector[gid];
                 uint32_t sym_BC = *(grammar_table + gid * BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS);
                 uint32_t _sym_B = (sym_BC >> 16) & 0xFFFF;
                 uint32_t _sym_C = (sym_BC) & 0xFFFF;
@@ -111,13 +114,10 @@ __device__ void kernel_outside_main(double* mu, double* beta, const uint32_t* se
             }
             
             // 3.
-            for(std::vector<std::tuple<uint32_t, uint32_t>>::reverse_iterator it = inside_order_1_rule_iteration_path.rbegin(); 
-                // B -> A, A is a nonterminate.
-                it != inside_order_1_rule_iteration_path.rend(); ++it) {
-                std::tuple<uint32_t, uint32_t> rule_id = *it;
-                uint32_t gid = std::get<0>(rule_id);
-                uint32_t sym_B = std::get<1>(rule_id);
-
+            for(int p = inside_order_1_rule_iteration_path_size - 1; p >= 0; p--){ 
+                // B -> A, A is a nonterminate.t)
+                uint32_t gid = *(inside_order_1_rule_iteration_path + p * 2);
+                uint32_t sym_B = *(inside_order_1_rule_iteration_path + p * 2 + 1);
             
                 uint32_t sym_A = grammar_table[(n_grammars + 1) * 1 + gid];
                 double possibility = *(double*)(grammar_table + (n_grammars + 1) * 4 + gid * 2);
@@ -141,7 +141,7 @@ __device__ void kernel_outside_main(double* mu, double* beta, const uint32_t* se
             // Case 2: A is terminate 
             for(int gid = 0; gid < n_grammars; gid++){
                 int j = i + span_length - 1; // Ending index of the span
-                uint32_t _sym_A = grammar->symbol_A_vector[gid];
+                uint32_t _sym_A = symbol_A_vector[gid];
                 uint32_t sym_BC = *(grammar_table + gid * BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS);
                 uint32_t _sym_B = (sym_BC >> 16) & 0xFFFF;
                 uint32_t _sym_C = (sym_BC) & 0xFFFF;
@@ -187,12 +187,10 @@ __device__ void kernel_outside_main(double* mu, double* beta, const uint32_t* se
 
 
             // 11.
-            for(std::vector<std::tuple<uint32_t, uint32_t>>::reverse_iterator it = inside_order_1_rule_iteration_path.rbegin(); 
+            for(int p = inside_order_1_rule_iteration_path_size - 1; p >= 0; p--){ 
                 // B -> A
-                it != inside_order_1_rule_iteration_path.rend(); ++it) {
-                std::tuple<uint32_t, uint32_t> rule_id = *it;
-                uint32_t gid = std::get<0>(rule_id);
-                uint32_t sym_B = std::get<1>(rule_id);
+                uint32_t gid = *(inside_order_1_rule_iteration_path + p * 2);
+                uint32_t sym_B = *(inside_order_1_rule_iteration_path + p * 2 + 1); 
                 
                 uint32_t sym_A = grammar_table[(n_grammars + 1) * 1 + gid];
                 double possibility = *(double*)(grammar_table + (n_grammars + 1) * 4 + gid * 2);
@@ -220,7 +218,7 @@ __device__ void kernel_outside_main(double* mu, double* beta, const uint32_t* se
 
     // fill mu[grammar_id, i, j]
     for (int span_length = 1; span_length < sequence_length + 1; span_length++) {
-        __shared__ double local_buffer_mu[MS * n_grammars];
+        double local_buffer_mu[512 * 256];
 
         if(thread_id == 0){
             for(int i = 0; i < MS * n_grammars; i++){
@@ -233,7 +231,7 @@ __device__ void kernel_outside_main(double* mu, double* beta, const uint32_t* se
         for (int i = thread_id; i <= sequence_length - span_length; i += total_threads) {
             int j = i + span_length - 1; // Ending index of the spanx`
             for(int gid = 0; gid < n_grammars; gid++){
-                uint32_t sym_A = grammar->symbol_A_vector[gid];
+                uint32_t sym_A = symbol_A_vector[gid];
                 uint32_t sym_BC = *(grammar_table + gid * BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS);
                 uint32_t sym_B = (sym_BC >> 16) & 0xFFFF;
                 uint32_t sym_C = (sym_BC) & 0xFFFF;
@@ -264,3 +262,4 @@ __device__ void kernel_outside_main(double* mu, double* beta, const uint32_t* se
         __syncthreads();
     }
 }
+#endif

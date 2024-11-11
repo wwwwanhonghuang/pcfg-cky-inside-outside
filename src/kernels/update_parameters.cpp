@@ -1,3 +1,4 @@
+#ifndef USE_CUDA
 
 #include "kernels/update_parameters.cuh"
 #include "utils/data_encoding.h"
@@ -126,3 +127,4 @@ void kernel_update_parameters(double* f, double* count, double* mu, double* beta
         }
         
     }
+#endif

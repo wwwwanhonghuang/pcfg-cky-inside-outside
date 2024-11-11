@@ -1,3 +1,4 @@
+#ifndef USE_CUDA
 #include <math.h>
 #include "kernels/inside.cuh"
 #include "utils/math.hpp"
@@ -45,7 +46,7 @@ void kernel_inside_base_fill_alpha(
             nonterminate_remains.insert(sym_id);
         }
 
-        for(int i = 0; i < N; i++){
+        for(int _i = 0; _i < N; _i++){
             int size = nonterminate_remains.size();
             for(int i = 0; i < sequence_length; i++){
                 for(std::tuple<uint32_t, uint32_t, uint32_t, double, uint32_t> item : 
@@ -79,13 +80,11 @@ void kernel_inside_base_fill_alpha(
 void kernel_inside_computeSpanKernel(const uint32_t* sequence, uint32_t* pretermination_lookuptable, 
         uint32_t* grammar_index, uint32_t* grammar_table, double* alpha, 
         int sequence_length, int n_syms, int N, int T, int MS, int n_grammars,
-        std::vector<std::tuple<uint32_t, uint32_t>> inside_order_1_rule_iteration_path
-        , pcfg* grammar
+        std::vector<std::tuple<uint32_t, uint32_t>> inside_order_1_rule_iteration_path, pcfg* grammar
         ) {
         std::vector<double> buffer(N * MS * MS, INIT_POSSIBILITY);
         // reduce the buffer relocations.
         for (int span_length = 2; span_length <= sequence_length; span_length++) {
-
             #pragma omp parallel
             {
                 #pragma omp for
@@ -155,3 +154,4 @@ void kernel_inside_computeSpanKernel(const uint32_t* sequence, uint32_t* preterm
             } // parallel for end.
         }
 }
+#endif
