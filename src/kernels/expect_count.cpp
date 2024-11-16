@@ -21,6 +21,7 @@ void kernel_expect_count(double* count, double* mu, double* beta, const uint32_t
                         #ifdef DEBUG_INSIDE_ALGORITHM
                         , pcfg* grammar
                         #endif
+                         ,uint32_t* symbol_A_vector
 
     ){
     memset(count, 0, n_grammars * sizeof(double));

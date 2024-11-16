@@ -22,6 +22,7 @@
 #include "kernels/inside.cuh"
 #include "kernels/outside.cuh"
 #include "kernels/update_parameters.cuh"
+#include "kernels/validation.cuh"
 
 uint32_t* to_inside_order_1_rule_iteration_path_array(std::vector<std::tuple<uint32_t, uint32_t>> inside_order_1_rule_iteration_path){
     size_t size = inside_order_1_rule_iteration_path.size();
@@ -169,12 +170,14 @@ int main(int argc, char* argv[])
 
             // 1. zerolization alpha.
             kernel_inside_alpha_zerolization<<<16, 16>>>(alpha, N, MS);
+            cudaDeviceSynchronize();
 
             // 2. fill alpha (base case).
             kernel_inside_base_fill_alpha<<<16, 16>>>
                 (sequence_device, pretermination_lookuptable_device, grammar_index_device, grammar_table_device, alpha, 
                                 sequence_length, grammar->n_syms(), N, T, MS, grammar->cnt_grammar, symbol_A_vector_device);
             
+            cudaDeviceSynchronize();
             // 3. fill alpha (recursive case).
             kernel_inside_computeSpanKernel<<<16, 16>>>
                 (sequence_device, pretermination_lookuptable_device, grammar_index_device, grammar_table_device, alpha, 
@@ -185,6 +188,7 @@ int main(int argc, char* argv[])
                 #endif
             );
 
+            cudaDeviceSynchronize();
             #if PRINT_STEPS == 1
                 std::cout << "Inside Algorithm Finished." << std::endl;
             #endif
@@ -204,7 +208,8 @@ int main(int argc, char* argv[])
                 grammar->n_syms(), N, T, MS, grammar->cnt_grammar, inside_order_1_rule_iteration_path_device, inside_order_1_rule_iteration_path.size(),
                 symbol_A_vector_device
                 );
-                    
+
+            cudaDeviceSynchronize();
             #if PRINT_STEPS == 1
                 std::cout << "Outside Algorithm Finished." << std::endl;
             #endif
@@ -226,6 +231,8 @@ int main(int argc, char* argv[])
                 grammar->cnt_grammar,
                 symbol_A_vector_device
             );
+            cudaDeviceSynchronize();
+
             
             #if PRINT_STEPS == 1
                 std::cout << "Calculate Expectation Count Finished." << std::endl;
@@ -249,6 +256,7 @@ int main(int argc, char* argv[])
                 MS, grammar->cnt_grammar, 
                 update_parameter_immediately
             );
+            cudaDeviceSynchronize();
 
             #if PRINT_STEPS == 1
                 std::cout << "Update Parameter Finished." << std::endl;
@@ -266,15 +274,19 @@ int main(int argc, char* argv[])
                     std::cerr << "Error: Could not open log file for writing.\n";
                 }
                 print_grammar(grammar, logfile_ostream);
+                logfile_ostream.close();
             }
             if(save_f && log_f_intervals > 0 && (i + 1) % log_f_intervals == 0){
-                log_f(log_path + "/log_" + std::to_string(i + 1) + "_epoch_id_" + std::to_string(epoch) + ".f", f, grammar);
+                double* host_f = new double[grammar->cnt_grammar]; // Allocate space on the host
+                cudaMemcpy(host_f, f, sizeof(double) * grammar->cnt_grammar, cudaMemcpyDeviceToHost); // Copy from device to host
+                std::ofstream logfile_ostream = std::ofstream(log_path + "/log_" + std::to_string(i + 1) + "_epoch_id_" + std::to_string(epoch) + ".f");
+                log_f(host_f, grammar, logfile_ostream);
+                logfile_ostream.close();
             }
             
         }
 
         // clear memory f at the end of an epoch.
-        
         cudaMemcpy(f, &init_val, grammar->cnt_grammar * sizeof(double), cudaMemcpyHostToDevice);
 
         
@@ -282,54 +294,37 @@ int main(int argc, char* argv[])
         if(!logfile_ostream){
             std::cerr << "Error: Could not open log file for writing.\n";
         }
+
+        cudaMemcpy(grammar->grammar_table, f,  (grammar->cnt_grammar * BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS + 1) * sizeof(uint32_t), cudaMemcpyDeviceToHost); // Copy from device to host
+        cudaMemcpy(grammar->preterminate_rule_lookup_table, f,  grammar->cnt_grammar * BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS * sizeof(uint32_t), cudaMemcpyDeviceToHost); // Copy from device to host
+
         print_grammar(grammar, logfile_ostream);
-        // Validation
-        double log_likelihood = -INFINITY;
-        for(int i = 0; i < n_sequences_val; i++){
-            auto& sentence = valid_set[i];
-            progress_bar(i + 1, n_sequences_val);
-            
-            int N = grammar->N();
 
-            int sequence_length = sentence.size();
-            uint32_t* sequence_device = valid_set_device[i];
-
-            
-            // 1. zerolization alpha.
-            kernel_inside_alpha_zerolization<<<16, 16>>>(alpha, N, MS);
-
-            // 2. fill alpha (base case).
-            kernel_inside_base_fill_alpha<<<16, 16>>>
-                (sequence_device, pretermination_lookuptable_device, 
-                grammar_index_device, grammar_table_device, alpha, 
-                                sequence_length, grammar->n_syms(), N, T, MS, grammar->cnt_grammar, symbol_A_vector_device);
-            
-            // 3. fill alpha (recursive case).
-            kernel_inside_computeSpanKernel<<<16, 16>>>
-                (sequence_device, pretermination_lookuptable_device, grammar_index_device, grammar_table_device, alpha, 
-                    sequence_length, grammar->n_syms(), N, T, MS, grammar->cnt_grammar,
-                    inside_order_1_rule_iteration_path_device, inside_order_1_rule_iteration_path.size(), 0
-                #ifdef DEBUG_INSIDE_ALGORITHM
-                    , grammar
-                #endif
-            );
-
-            
-            double log_likelihood_this_sentence = alpha[0 + 0 + sequence_length - 1];
-            if (log_likelihood_this_sentence > -INFINITY) {
-                log_likelihood = host_log_sum_exp(log_likelihood, log_likelihood_this_sentence);
-            } else {
-                #if SANITARY_OUTPUT == 0
-                    std::cout << "Warning: ignore -inf log likelihood (alpha = -inf). Underflow may have happened.";
-                #endif
-            }   
-        }
+        // // Validation
+        // // we should do validation at device.
+        // double log_likelihood = -INFINITY;
+        // double* log_likelihoods_device;
+        // cudaMalloc(&log_likelihoods_device, valid_set.size() * sizeof(double));
         
-        double average_likelihood = log_likelihood - std::log(n_sequences_val);
-        std::cout << "Average log likelihood on validate set at epoch " << epoch << " = " ;
-        std::cout << std::fixed << std::setprecision(56) << (double)(average_likelihood);
-        std::cout << " = " << log_likelihood << 
-            "-" << n_sequences_val << "  " << std::endl;
+        // validation_at_device<<16, 16>>(
+        //     log_likelihoods_device, valid_set.size(), 
+        //     pretermination_lookuptable_device, grammar_index_device, grammar_table_device, alpha, 
+        //             sequence_length, grammar->n_syms(), grammar->N(), grammar->T(), MAX_SEQUENCE_LENGTH, grammar->cnt_grammar,
+        //             inside_order_1_rule_iteration_path_device, inside_order_1_rule_iteration_path.size());        
+        // cudaDeviceSynchronize();
+
+        // double log_likelihoods_host[valid_set.size()];
+        // cudaMemcpy(log_likelihoods_device, log_likelihoods_host, valid_set.size() * sizeof(double), cudaMemcpyDeviceToHost); // Copy from device to host
+        // for(int i = 0; i < valid_set.size(); i++){
+        //     log_likelihood = log_sum_exp(log_likelihood, log_likelihoods_host[i]);
+        // }
+        // cudaFree(log_likelihoods_device);
+
+        // double average_likelihood = log_likelihood - std::log(n_sequences_val);
+        // std::cout << "Average log likelihood on validate set at epoch " << epoch << " = " ;
+        // std::cout << std::fixed << std::setprecision(56) << (double)(average_likelihood);
+        // std::cout << " = " << log_likelihood << 
+        //     "-" << n_sequences_val << "  " << std::endl;
     }
     
     // 7. log results.

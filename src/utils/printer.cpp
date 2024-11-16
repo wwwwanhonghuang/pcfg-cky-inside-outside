@@ -36,7 +36,11 @@ void progress_bar(int progress, int total, int barWidth) {
     std::cout.flush();  // Ensures the line is updated in place
 }
 void log_f(std::string file_path, double* f, pcfg* grammar){
-    auto stream = std::ofstream(file_path);
+    std::ofstream stream(file_path);
+    log_f(f, grammar, stream);
+    stream.close();
+}
+void log_f(double* f, pcfg* grammar, std::ostream& stream){    
     int N = grammar->N();
     for(std::tuple<uint32_t, uint32_t, uint32_t, double, uint32_t> item : 
         PCFGItemIterator(N, (uint32_t*) grammar->grammar_index, (uint32_t*) grammar->grammar_table)){

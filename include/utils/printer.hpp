@@ -7,6 +7,7 @@
 #include "macros.def"
 
 void log_f(std::string file_path, double* f, pcfg* grammar);
+void log_f(double* f, pcfg* grammar, std::ostream& stream);
 void progress_bar(int progress, int total, int barWidth = 50);
 
 template<typename T1, typename T2>

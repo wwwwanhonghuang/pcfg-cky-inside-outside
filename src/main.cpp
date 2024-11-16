@@ -211,6 +211,7 @@ int main(int argc, char* argv[])
                 #ifdef DEBUG_INSIDE_ALGORITHM
                     , grammar
                 #endif
+                , grammar->symbol_A_vector
             );
             
             #if PRINT_STEPS == 1

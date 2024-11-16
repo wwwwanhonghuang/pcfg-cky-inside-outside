@@ -1,6 +1,6 @@
 
 # Set USE_CUDA flag (0 or 1)
-USE_CUDA := 1
+USE_CUDA := 0
 
 # Include directories
 INCLUDES = -Iinclude
@@ -13,10 +13,12 @@ CUDA_COMPILER := nvcc
 TARGET_COMPILER := $(CXX)
 
 ifeq ($(USE_CUDA), 1)
-COMPILER_FLAGS := -v -std=c++11 -arch compute_86 -code sm_86 -O3 -DUSE_CUDA -DCOMPUTING_IN_LOG_SPACE
+COMPILER_FLAGS := -v -std=c++11 -arch compute_86 -code sm_86 -O3 -g -DUSE_CUDA -DCOMPUTING_IN_LOG_SPACE
 else
 COMPILER_FLAGS := -std=c++17 -O3 -g -fopenmp -Werror -DDEBUG_INSIDE_ALGORITHM -DCOMPUTING_IN_LOG_SPACE
 endif
+
+
 
 # Directories
 SRC_DIR := src
@@ -28,10 +30,10 @@ LIB_DIR := $(BUILD_DIR)/lib
 UNIT_TEST_DIR := unit_test
 
 # Source files and object files
-SRC_FILES := $(wildcard $(SRC_DIR)/**/*.cpp $(SRC_DIR)/*.cpp)
 
 # If CUDA is enabled, filter out main.cpp and other unwanted files
 ifneq ($(USE_CUDA), 0)
+    SRC_FILES := $(wildcard $(SRC_DIR)/**/*.cpp $(SRC_DIR)/*.cpp)
     # Include both CUDA source files and regular source files
     CUDA_SRC_FILES := $(wildcard  $(SRC_DIR)/**/**/*.cu  $(SRC_DIR)/**/*.cu) $(wildcard $(SRC_DIR)/*.cu)
     SRC_FILES := $(SRC_FILES) $(CUDA_SRC_FILES)
@@ -41,6 +43,10 @@ ifneq ($(USE_CUDA), 0)
     SRC_FILES := $(filter-out $(SRC_DIR)/algorithms/alg_inside_outside_main.cpp, $(SRC_FILES))
     SRC_FILES := $(filter-out $(SRC_DIR)/main.cpp, $(SRC_FILES))
     SRC_FILES := $(filter-out $(SRC_DIR)/statistics/*.cpp, $(SRC_FILES))
+else
+# Exclude unwanted .cpp files when CUDA is disabled
+    SRC_FILES := $(wildcard $(SRC_DIR)/**/*.cpp $(SRC_DIR)/*.cpp)
+    SRC_FILES := $(filter-out $(SRC_DIR)/kernels/cuda/*.cu, $(SRC_FILES))
 endif
 
 # Object files
