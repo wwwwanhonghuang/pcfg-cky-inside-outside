@@ -1,3 +1,5 @@
+#ifndef USE_CUDA
+#include "main.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
@@ -209,6 +211,7 @@ int main(int argc, char* argv[])
                 #ifdef DEBUG_INSIDE_ALGORITHM
                     , grammar
                 #endif
+                , grammar->symbol_A_vector
             );
             
             #if PRINT_STEPS == 1
@@ -353,3 +356,5 @@ int main(int argc, char* argv[])
     return 0;
 }
 
+
+#endif

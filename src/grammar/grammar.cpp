@@ -1,4 +1,8 @@
 #include "grammar/grammar.hpp"
+
+
+
+
 pcfg_grammar_item parse_grammar_single_line(std::string line){
     std::string left = "";
     std::string right1 = "";
@@ -77,6 +81,8 @@ int pcfg::get_sym_id(const std::string& symbol){
     return -1;
 }
 
+
+#ifndef ENABLE_GRAMMAR_VECTORIZATION_OPTIMIZATION
 std::tuple<uint32_t, uint32_t, uint32_t, double, uint32_t> PCFGItemIterator::operator*() const {
         uint32_t sym_A = this->_current_left_symbol_id;
         uint32_t symbols = *(this->_grammar_table + this->pt);
@@ -119,21 +125,53 @@ PCFGItemIterator PCFGItemIterator::end() const{
         iterator._current_gid =  *(this->_grammar_index + this->_N) / BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS;
         return iterator;
 }
+#else
+std::tuple<uint32_t, uint32_t, uint32_t, double, uint32_t> PCFGItemIterator::operator*() const {
+        uint32_t n_grammars = this->n_grammars;
+        uint32_t gid = this->_current_gid;
+        uint32_t sym_A = *(this->_grammar_table + (n_grammars + 1) * 0 + gid); // A
+        uint32_t sym_B = *(this->_grammar_table + (n_grammars + 1) * 1 + gid); // B
+        uint32_t sym_C = *(this->_grammar_table + (n_grammars + 1) * 2 + gid); // C
+        double possibility = *(double*)(this->_grammar_table + (n_grammars + 1) * 4 + gid * 2); // possibility 
 
+        return std::tuple<uint32_t, uint32_t, uint32_t, double, uint32_t>(sym_A, sym_B, sym_C, possibility, this->_current_gid);
+}
+
+PCFGItemIterator& PCFGItemIterator::operator++() {
+    // Check if the current gid is within bounds of grammars
+    if (this->_current_gid < this->n_grammars) {
+        ++(this->_current_gid);  // Increment gid to move to the next grammar
+    }
+    return *this;  // Return the updated iterator
+}
+
+bool PCFGItemIterator::operator!=(const PCFGItemIterator& other) const {
+        return this->_current_gid != this->n_grammars;
+}
+
+PCFGItemIterator PCFGItemIterator::begin() const{
+        return PCFGItemIterator(this->_N, this->_grammar_index, this->_grammar_table);
+}
+
+PCFGItemIterator PCFGItemIterator::end() const{
+        PCFGItemIterator iterator = PCFGItemIterator(this->_N, this->_grammar_index, this->_grammar_table);
+        iterator._current_gid = this->n_grammars;
+        return iterator;
+}
+#endif
 
 std::vector<std::tuple<uint32_t, uint32_t>> generate_inside_perterminate_iteration_paths(pcfg* grammar){
     int n_syms = grammar->N() + grammar->T();
     int N = grammar->N();
-    bool dependency_graph[n_syms * n_syms];
+    std::vector<bool> dependency_graph(n_syms * n_syms, false);
     int edges = 0;
-    std::fill(dependency_graph, dependency_graph + (n_syms * n_syms), false);
     
     std::vector<std::tuple<uint32_t, uint32_t>> rules = std::vector<std::tuple<uint32_t, uint32_t>>();
     std::vector<std::tuple<uint32_t, uint32_t>> results;
     std::map<uint32_t, uint32_t> gid_map = {};
 
     for(std::tuple<uint32_t, uint32_t, uint32_t, double, uint32_t> item : 
-                                PCFGItemIterator(N, (uint32_t*) grammar->grammar_index, (uint32_t*)grammar->grammar_table)){
+            PCFGItemIterator(N, (uint32_t*) grammar->grammar_index, (uint32_t*)grammar->grammar_table)){
         uint32_t sym_A = std::get<0>(item);
         uint32_t sym_B = std::get<1>(item);
         uint32_t sym_C = std::get<2>(item);
@@ -187,10 +225,15 @@ std::vector<std::tuple<uint32_t, uint32_t>> generate_inside_perterminate_iterati
     }
 
     for(auto&& gid : results){
+        #ifndef ENABLE_GRAMMAR_VECTORIZATION_OPTIMIZATION
         uint32_t* addr = ((uint32_t*)grammar->grammar_table + std::get<0>(gid) * BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS);
         uint32_t syms = *addr;
         uint32_t sym_A = (syms >> 16) & 0xFFFF;
         assert(IS_EPSILON(syms & (0xFFFF)));
+        #else
+        assert(IS_EPSILON((uint32_t*)grammar->grammar_table + (n_grammar + 1) * 4 + gid * 2));
+        #endif
+        
     }
     
     return results;

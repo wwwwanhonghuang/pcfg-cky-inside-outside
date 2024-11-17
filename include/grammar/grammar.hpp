@@ -25,6 +25,7 @@ public:
     uint32_t* grammar_index;
     uint32_t* grammar_table;
     uint32_t* preterminate_rule_lookup_table;
+    uint32_t* symbol_A_vector;
 
     // high-level grammar storage
     std::map<std::string, std::vector<pcfg_grammar_item>> grammar_items_map {};
@@ -51,6 +52,7 @@ public:
     
     int get_sym_id(const std::string& symbol);
 };
+
 
 class PCFGItemIterator {
 public:

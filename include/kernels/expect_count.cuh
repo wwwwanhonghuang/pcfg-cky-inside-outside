@@ -1,11 +1,13 @@
 #ifndef CUH_EXPECT_COUNT
 #define CUH_EXPECT_COUNT
 
-#ifndef USE_CUDA
 #include <cstring>
 #include <cstdint>
-#endif
 #include <omp.h>
+#ifdef USE_CUDA
+#include <cuda_runtime.h>
+#endif
+
 #include "utils/data_accessing.hpp"
 #include "grammar/grammar.hpp"
 #include "macros.def"
@@ -21,10 +23,10 @@
                                             " expectation count += " <<  mu_val << "(MU[" << gid << "," << i << ", " << j << "]" << std::endl;
 #endif
 
+extern "C" {
 #ifdef USE_CUDA
 __global__
 #endif
-
 void kernel_expect_count(double* count, double* mu, double* beta, 
     const uint32_t* sequence, uint32_t* pretermination_lookuptable, 
                         uint32_t* grammar_index, uint32_t* grammar_table, double* alpha, 
@@ -32,5 +34,7 @@ void kernel_expect_count(double* count, double* mu, double* beta,
                         #ifdef DEBUG_INSIDE_ALGORITHM
                         , pcfg* grammar
                         #endif
+                        ,uint32_t* symbol_A_vector
 );
+}
 #endif
