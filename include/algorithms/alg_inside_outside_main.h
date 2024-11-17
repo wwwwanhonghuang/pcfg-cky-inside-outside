@@ -8,6 +8,7 @@
 #include "kernels/update_parameters.cuh"
 #include "kernels/expect_count.cuh"
 
+
 double* outside_algorithm(double* mu, double* beta, const uint32_t* sequence, 
     uint32_t* pretermination_lookuptable, 
                         uint32_t* grammar_index, uint32_t* grammar_table, double* alpha, 

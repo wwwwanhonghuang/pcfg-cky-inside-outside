@@ -163,9 +163,8 @@ PCFGItemIterator PCFGItemIterator::end() const{
 std::vector<std::tuple<uint32_t, uint32_t>> generate_inside_perterminate_iteration_paths(pcfg* grammar){
     int n_syms = grammar->N() + grammar->T();
     int N = grammar->N();
-    bool dependency_graph[n_syms * n_syms];
+    std::vector<bool> dependency_graph(n_syms * n_syms, false);
     int edges = 0;
-    std::fill(dependency_graph, dependency_graph + (n_syms * n_syms), false);
     
     std::vector<std::tuple<uint32_t, uint32_t>> rules = std::vector<std::tuple<uint32_t, uint32_t>>();
     std::vector<std::tuple<uint32_t, uint32_t>> results;

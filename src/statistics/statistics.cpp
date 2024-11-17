@@ -1,5 +1,47 @@
 #ifndef USE_CUDA
+#include <sstream>
 #include "statistics/statistics.hpp"
+
+std::string report_all_statistics(parse_tree* node, double* alpha, std::vector<uint32_t> sentence, pcfg* grammar, int max_delays = 5){
+    std::ostringstream oss;
+    std::vector<uint32_t> derivations = to_derivations_by_preorder_iteration(node);
+    uint32_t* sequence = sentence.data();
+    double entropy_of_derivations = derivation_entropy(derivations);
+    oss << "derivation_entropy: " << entropy_of_derivations << std::endl; 
+    double entropy_of_word = word_entropy(sentence);
+    oss << "word_entropy: " << entropy_of_word << std::endl;
+
+    for(int d = 1; d <= max_delays; d++){
+        double word_delay_d_mutual_entropy = word_delay_L_mutual_entropy(sentence, d);
+        oss << "word_delay_" << d << "_mutual_entropy: " << word_delay_d_mutual_entropy << std::endl;
+    }
+   
+    for(int d = 1; d <= max_delays; d++){
+        double derivation_delay_d_mutual_entropy = derivation_delay_L_mutual_entropy(sentence, d);
+        oss << "derivation_delay_" << d << "_mutual_entropy: " << derivation_delay_d_mutual_entropy << std::endl;
+    }
+   
+    int depth_of_tree = tree_depth(node);
+    oss << "depth_of_tree: " << depth_of_tree << std::endl;
+
+    for(int d = 1; d <= max_delays; d++){
+        double d_layer_symbol_tree_transitional_entropy = L_layer_symbol_tree_transitional_entropy(grammar, node, d);
+        oss << d << "_layer_symbol_tree_transitional_entropy: " << d_layer_symbol_tree_transitional_entropy << std::endl;
+    }
+
+    for(int d = 1; d <= max_delays; d++){
+        double d_layer_derivation_tree_transitional_entropy = L_layer_derivation_tree_transitional_entropy(grammar, node, d);
+        oss << d << "_layer_derivation_tree_transitional_entropy: " << d_layer_derivation_tree_transitional_entropy << std::endl;
+    }
+
+    for(int span_length = 2; span_length < sentence.size(); span_length++){
+        for(int k = sentence.size() - 1; k >= span_length; k--){
+            double prefix_parse_entropy = prefix_L_parse_entropy(grammar, alpha, sentence.size(), k, span_length, sequence);
+            oss << "pre_" << span_length << "_end_" << k << ": " << prefix_parse_entropy << std::endl;
+        }
+    }
+    return oss.str();
+}
 
 double derivation_entropy(std::vector<uint32_t> derivations){  // vector of derivations (grammar IDs)
     return _sequence_entropy(derivations);
@@ -23,11 +65,11 @@ double _sequence_delay_L_mutual_entropy(std::vector<uint32_t> words, int L){
     }
     long Z = 0;
     for(auto& map_item : word_counter){
-        word_possibility[map_item.first] = static_cast<double>(map_item.second) / Z;
+        word_possibility[map_item.first] = (Z == 0 ? 0.0 : static_cast<double>(map_item.second) / Z);
     }
     Z = 0;
     for(auto& map_item : word_joint_counter){
-        word_joint_possibility[map_item.first] = static_cast<double>(map_item.second) / Z;
+        word_joint_possibility[map_item.first] = (Z == 0 ? 0.0 :  static_cast<double>(map_item.second) / Z);
     }
     double entropy = 0.0;
     for(auto& map_item: word_joint_possibility){
@@ -37,7 +79,7 @@ double _sequence_delay_L_mutual_entropy(std::vector<uint32_t> words, int L){
         double p_i = word_possibility.count(symbol_1) > 0 ? word_possibility[symbol_1] : 0.0;
         double p_j = word_possibility.count(symbol_2) > 0 ? word_possibility[symbol_2] : 0.0;
         if (p_i > 0 && p_j > 0 && p_ij > 0) {
-                entropy += p_ij * std::log(p_ij / (p_i * p_j));
+            entropy += p_ij * std::log(p_ij / (p_i * p_j));
         }
     }
     
@@ -77,13 +119,10 @@ std::vector<uint32_t> to_derivations_by_preorder_iteration(parse_tree* node){
             if (current->left != nullptr) {
                 stack.push_back(current->left);
             }
-        }
-        
+        }  
     }
     return result;
 }
-
-
 
 int tree_depth(parse_tree* node){
     if(node == nullptr) 
@@ -121,7 +160,7 @@ double L_layer_derivation_tree_transitional_entropy(pcfg* grammar, parse_tree* t
 }
 
 // !important
-double prefix_L_parse_entropy(pcfg* grammar, double* alpha, int sequence_length, int end, int L){
+double prefix_L_parse_entropy(pcfg* grammar, double* alpha, int sequence_length, int end, int L, uint32_t* sequence){
     if (end < 0 || L < 0) {
         throw std::invalid_argument("end and L must be non-negative");
     }
@@ -131,17 +170,25 @@ double prefix_L_parse_entropy(pcfg* grammar, double* alpha, int sequence_length,
     int MS = MAX_SEQUENCE_LENGTH;
 
     for(std::tuple<uint32_t, uint32_t, uint32_t, double, uint32_t> item : 
-                PCFGItemIterator(N, (uint32_t*)grammar->grammar_index, (uint32_t*)grammar->grammar_table)){                    
+                PCFGItemIterator(N, (uint32_t*) grammar->grammar_index, (uint32_t*) grammar->grammar_table)){                    
         uint32_t sym_A = std::get<0>(item);
         uint32_t sym_B = std::get<1>(item);
         uint32_t sym_C = std::get<2>(item);
         double possibility = std::get<3>(item);
 
         if(IS_EPSILON(sym_C)){
-            p_s.emplace_back(possibility * ALPHA(sym_B, std::max(end - L, 0), end));
+            #ifdef COMPUTING_IN_LOG_SPACE
+                p_s.emplace_back(possibility + ALPHA_GET(sym_B, std::max(end - L, 0), end));
+            #else
+                p_s.emplace_back(possibility * ALPHA_GET(sym_B, std::max(end - L, 0), end));
+            #endif
         }else{
             for(int k = std::min(end - L, 0); k < end; k++){
-                p_s.emplace_back(possibility * ALPHA(sym_B, k + 1, end));
+                #ifdef COMPUTING_IN_LOG_SPACE
+                    p_s.emplace_back(possibility + ALPHA_GET(sym_B, k + 1, end));
+                #else
+                    p_s.emplace_back(possibility * ALPHA_GET(sym_B, k + 1, end));
+                #endif
             }
         }
     }
@@ -149,13 +196,20 @@ double prefix_L_parse_entropy(pcfg* grammar, double* alpha, int sequence_length,
     // Normalize probabilities
     double total_probability = 0.0;
     for (auto&& p : p_s) {
-        total_probability += p;
+        #ifdef COMPUTING_IN_LOG_SPACE
+            total_probability += std::exp(p);
+        #else
+            total_probability += p;
+        #endif
     }
 
     // Calculate entropy
     double entropy = 0.0;
     if (total_probability > 0) {
-        for (auto&& p : p_s) {
+        for (double p : p_s) {
+            #ifdef COMPUTING_IN_LOG_SPACE
+                p = std::exp(p);
+            #endif
             if (p > 0) {
                 double normalized_p = p / total_probability; // Normalize p
                 entropy += normalized_p * std::log(normalized_p); // log(p)

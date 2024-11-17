@@ -1,6 +1,5 @@
 #include "algorithms/alg_inside_outside_main.h"
-#include "kernels/outside.cuh"
-#include "kernels/inside.cuh"
+
 
 double* outside_algorithm(double* mu, double* beta, const uint32_t* sequence, 
                         uint32_t* pretermination_lookuptable, 
@@ -13,6 +12,7 @@ double* outside_algorithm(double* mu, double* beta, const uint32_t* sequence,
                         ,pcfg* grammar
                         #endif
 ){
+
     kernel_outside_main(mu, beta, sequence, pretermination_lookuptable,
         grammar_index, grammar_table, alpha, sequence_length, 
         n_syms, N, T, MS, n_grammars, 
@@ -67,16 +67,15 @@ double* inside_algorithm(const uint32_t* sequence,
                             ,grammar
                         #endif
     );
-    
 
     // 3. fill alpha (recursive case).
     kernel_inside_computeSpanKernel(sequence, pretermination_lookuptable, grammar_index, grammar_table, alpha, 
         sequence_length, n_syms, N, T, MS, n_grammars,
         inside_order_1_rule_iteration_path,
         #ifdef ENABLE_GRAMMAR_VECTORIZATION_OPTIMIZATION
-            symbol_A_vector
+            grammar->symbol_A_vector
         #else
-            0
+            (uint32_t*)0
         #endif
         #ifndef USE_CUDA
             , grammar
