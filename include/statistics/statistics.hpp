@@ -24,7 +24,7 @@ double _sequence_entropy(std::vector<T> sequence){
     uint32_t Z = 0;
 
     for(auto& map_item : counter){
-        Z += (Z == 0.0 ? 0.0 : map_item.second / Z);
+        Z += map_item.second;
     }
 
     double entropy = 0.0;
@@ -55,17 +55,21 @@ template<typename T>
 double calculate_delay_L_layer_mutual_information(pcfg* grammar, std::vector<std::vector<T>> layers, int L){
     std::unordered_map<uint64_t, long> joint_counter;
     std::unordered_map<uint32_t, long> symbol_counter;
+   
     int size_layers = layers.size();
     // Counting occurances
     for(int pre_layer_id = 0; pre_layer_id < size_layers - L; pre_layer_id++){
         int delay_L_layer_id = pre_layer_id + L;
-
+        // std::cout << " -- " << pre_layer_id << " " << std::endl;
         for(T prelayer_element: layers[pre_layer_id]){
             // Count occurrences in the joint distribution
             symbol_counter[prelayer_element]++;
 
             for(auto&& postlayer_element: layers[delay_L_layer_id]){
                 uint64_t key = ((prelayer_element << 16) & 0xFFFF0000) | (postlayer_element & 0xFFFF);
+                            // std::cout << " --- pre = " << prelayer_element << 
+                            // "  --- post = " << postlayer_element << std::endl;
+
                 joint_counter[key]++;
             }
         }
@@ -99,10 +103,14 @@ double calculate_delay_L_layer_mutual_information(pcfg* grammar, std::vector<std
         symbol_possibility[map_item.first] = (Z == 0.0 ? 0.0 : static_cast<double>(map_item.second) / Z);
     }
 
+    // lacks of epsilon
     // mutual entropy
     double mutual_entropy = 0.0;
-    for(uint32_t symbol1 = 0; symbol1 < grammar->n_syms(); symbol1++){
-        for(uint32_t symbol2 = 0; symbol2 < grammar->n_syms(); symbol2++){
+    for(uint32_t symbol1 = 0; symbol1 <= grammar->n_syms(); symbol1++){
+        for(uint32_t symbol2 = 0; symbol2 <= grammar->n_syms(); symbol2++){
+            if(symbol1 == grammar->n_syms()) symbol1 = 0xFFFF;
+            if(symbol2 == grammar->n_syms()) symbol2 = 0xFFFF;
+
             double p_A = symbol_possibility.find(symbol1) == symbol_possibility.end() ? 0.0 : symbol_possibility.find(symbol1)->second;
             double p_B = symbol_possibility.find(symbol2) == symbol_possibility.end() ? 0.0 : symbol_possibility.find(symbol2)->second;
             double p_AB = 
@@ -117,27 +125,32 @@ double calculate_delay_L_layer_mutual_information(pcfg* grammar, std::vector<std
 }
 
 template<typename T> std::vector<std::vector<T>> 
-dfs_get_all_layers_value(pcfg* grammar, parse_tree* tree, std::function<T(const std::tuple<uint32_t, uint32_t, uint32_t, int, double, int>&)> value_selector){
+dfs_get_all_layers_value(pcfg* grammar, parse_tree* root, std::function<T(const std::tuple<uint32_t, uint32_t, uint32_t, int, double, int>&)> value_selector){
     std::vector<std::vector<T>> layers;
     std::queue<parse_tree*> node_queue;
     
-    if (tree == nullptr) {
+    if (root == nullptr) {
         return layers;
     }
 
     // BFS to select all layers' root's values.
-    node_queue.push(tree);
+    node_queue.push(root);
+    int layer_id = 0;
     while(!node_queue.empty()){
         std::vector<T> layer;
         int size = node_queue.size();
-
+        // std::cout << "layer " << layer_id << ": " << std::endl;
+        layer_id++;
         for(int i = 0; i < size; i++){
             parse_tree* first_node = node_queue.front();
             node_queue.pop();
-            layers.emplace_back(value_selector(first_node->value)); // the A'id in A->BC/
+
+            layer.emplace_back(value_selector(first_node->value)); // the A'id in A->BC/
+            // std::cout << "push - " << value_selector(first_node->value) << std::endl;
             if(first_node->left != nullptr){
                 node_queue.push(first_node->left);
-            }else if(first_node->right != nullptr){
+            }
+            if(first_node->right != nullptr){
                 node_queue.push(first_node->right);
             }
         }
