@@ -1,8 +1,11 @@
 #ifndef USE_CUDA
 #include <sstream>
 #include "statistics/statistics.hpp"
+#include <fstream>
+#include <iostream>
 
-std::string report_all_statistics(parse_tree* node, double* alpha, std::vector<uint32_t> sentence, pcfg* grammar, int max_delays = 5){
+std::string report_all_statistics(parse_tree* node, double* alpha, std::vector<uint32_t> sentence, 
+                            pcfg* grammar, int max_delays = 5){
     std::ostringstream oss;
     std::vector<uint32_t> derivations = to_derivations_by_preorder_iteration(node);
     uint32_t* sequence = sentence.data();
@@ -31,7 +34,7 @@ std::string report_all_statistics(parse_tree* node, double* alpha, std::vector<u
 
     for(int d = 1; d <= max_delays; d++){
         double d_layer_derivation_tree_transitional_entropy = L_layer_derivation_tree_transitional_entropy(grammar, node, d);
-        oss << d << "_layer_derivation_tree_transitional_entropy: " << d_layer_derivation_tree_transitional_entropy << std::endl;
+            oss << d << "_layer_derivation_tree_transitional_entropy: " << d_layer_derivation_tree_transitional_entropy << std::endl;
     }
 
     for(int span_length = 2; span_length < sentence.size(); span_length++){
@@ -65,12 +68,19 @@ double _sequence_delay_L_mutual_entropy(std::vector<uint32_t> words, int L){
     }
     long Z = 0;
     for(auto& map_item : word_counter){
-        word_possibility[map_item.first] = (Z == 0 ? 0.0 : static_cast<double>(map_item.second) / Z);
+        Z += static_cast<double>(map_item.second);
+    }
+    for(auto& map_item : word_counter){
+        word_possibility[map_item.first] = static_cast<double>(map_item.second) / Z;
     }
     Z = 0;
-    for(auto& map_item : word_joint_counter){
-        word_joint_possibility[map_item.first] = (Z == 0 ? 0.0 :  static_cast<double>(map_item.second) / Z);
+    for(auto& map_item : word_counter){
+        Z += static_cast<double>(map_item.second);
     }
+    for(auto& map_item : word_joint_counter){
+        word_joint_possibility[map_item.first] = static_cast<double>(map_item.second) / Z;
+    }
+
     double entropy = 0.0;
     for(auto& map_item: word_joint_possibility){
         uint32_t symbol_1 = (map_item.first >> 32) & 0xFFFFFFFF;
@@ -142,6 +152,20 @@ double L_layer_symbol_tree_transitional_entropy(pcfg* grammar, parse_tree* tree,
             return std::get<0>(value); 
         }
     );
+    //  for(auto& layer : layers){
+    //     for(auto&& e : layer){
+    //         std::cout << e << " " ;
+    //     }
+    //     std::cout << std::endl;
+    // }
+    // std::cout << "layer size = " << layers.size() << std::endl;
+    // std::ofstream ofs("1.log");
+    // for(auto& layer: layers){
+    //     for(int i = 0; i < layer.size(); i++){
+    //         ofs << layer[i] << " ";
+    //     }
+    //     ofs << "\n";
+    // }
     return calculate_delay_L_layer_mutual_information(grammar, layers, L);
 }
 
@@ -149,6 +173,7 @@ double L_layer_derivation_tree_transitional_entropy(pcfg* grammar, parse_tree* t
     if (tree == nullptr) {
         throw std::invalid_argument("Tree cannot be null");
     }
+    
     auto layers = dfs_get_all_layers_value<int>(
         grammar, 
         tree, 
@@ -156,6 +181,7 @@ double L_layer_derivation_tree_transitional_entropy(pcfg* grammar, parse_tree* t
             return std::get<5>(value);
         }
     );
+    
     return calculate_delay_L_layer_mutual_information(grammar, layers, L);
 }
 
