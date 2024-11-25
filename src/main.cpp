@@ -135,6 +135,7 @@ int main(int argc, char* argv[])
                     , grammar
                 #endif
             );
+
             #ifndef COMPUTING_IN_LOG_SPACE
             if((ALPHA(0, 0, sequence_length - 1)) == 0){ // TODO: it could be -inf
                 if(log_warning_in_training){
@@ -162,7 +163,15 @@ int main(int argc, char* argv[])
                     #endif
                 }
             }
+            #else
+                
+                if(ALPHA(0, 0, sequence_length - 1) > 1e-9){
+                    printer.print_inside_outside_table(alpha,  grammar->N(), grammar->T(), sequence_length, MS, grammar);
+                    std::cout << "assert failed: Log possibility should less than or equal to 0." << std::endl;
+                    assert(false);
+                }
             #endif
+            
 
             #if PRINT_STEPS == 1
                 std::cout << "Inside Algorithm Finished." << std::endl;
@@ -296,6 +305,7 @@ int main(int argc, char* argv[])
                     , grammar
                 #endif
             );
+           
 
             #ifndef COMPUTING_IN_LOG_SPACE
                 double likelihood_this_sentence = alpha[0 + 0 + sequence_length - 1];
@@ -306,7 +316,7 @@ int main(int argc, char* argv[])
                 }
                 if(likelihood_this_sentence <= 1 + grammar_minimal_possibility && 
                     likelihood_this_sentence > grammar_minimal_possibility){
-                    LOG_SUM_EXP_SET(log_likelihood, std::log(likelihood_this_sentence)); // warn: right side can be -inf if underflow.
+                    LOG_SUM_EXP_SET(log_likelihood, std::log(likelihood_this_sentence)); // Warn: right side can be -inf if underflow.
                 }else{
                     #if SANITARY_OUTPUT == 0
                         std::cout << "Warning: ignore -inf log likelihood (alpha = 0). Underflow may have happened.";
@@ -314,6 +324,7 @@ int main(int argc, char* argv[])
                 }
             #else
                 double log_likelihood_this_sentence = alpha[0 + 0 + sequence_length - 1];
+                assert(log_likelihood_this_sentence <= 1e-9);
                 if (log_likelihood_this_sentence > -INFINITY) {
                     LOG_SUM_EXP_SET(log_likelihood, log_likelihood_this_sentence);
                 } else {
@@ -337,7 +348,13 @@ int main(int argc, char* argv[])
         #else
             "/"
         #endif
-        << n_sequences_val << "  " << std::endl;
+        << 
+        #ifdef COMPUTING_IN_LOG_SPACE
+            std::log(n_sequences_val)
+        #else
+            n_sequences_val
+        #endif
+        << "  " << std::endl;
     }
     
     // 7. log results.
