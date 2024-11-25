@@ -3,6 +3,7 @@
 #include "statistics/statistics.hpp"
 #include <fstream>
 #include <iostream>
+#include <unordered_map>
 
 std::string report_all_statistics(parse_tree* node, double* alpha, std::vector<uint32_t> sentence, 
                             pcfg* grammar, int max_delays = 5){
@@ -28,13 +29,13 @@ std::string report_all_statistics(parse_tree* node, double* alpha, std::vector<u
     oss << "depth_of_tree: " << depth_of_tree << std::endl;
 
     for(int d = 1; d <= max_delays; d++){
-        double d_layer_symbol_tree_transitional_entropy = L_layer_symbol_tree_transitional_entropy(grammar, node, d);
-        oss << d << "_layer_symbol_tree_transitional_entropy: " << d_layer_symbol_tree_transitional_entropy << std::endl;
+        double d_layer_symbol_tree__entropy = L_layer_symbol_tree__entropy(grammar, node, d);
+        oss << d << "_layer_symbol_tree__entropy: " << d_layer_symbol_tree__entropy << std::endl;
     }
 
     for(int d = 1; d <= max_delays; d++){
-        double d_layer_derivation_tree_transitional_entropy = L_layer_derivation_tree_transitional_entropy(grammar, node, d);
-            oss << d << "_layer_derivation_tree_transitional_entropy: " << d_layer_derivation_tree_transitional_entropy << std::endl;
+        double d_layer_derivation_tree__entropy = L_layer_derivation_tree__entropy(grammar, node, d);
+            oss << d << "_layer_derivation_tree__entropy: " << d_layer_derivation_tree__entropy << std::endl;
     }
 
     for(int span_length = 2; span_length < sentence.size(); span_length++){
@@ -93,7 +94,34 @@ double _sequence_delay_L_mutual_entropy(std::vector<uint32_t> words, int L){
         }
     }
     
-    return entropy;
+    return -entropy;
+}
+
+
+double _sequence_transitional_entropy(std::vector<uint32_t> sequence){
+    std::unordered_map<uint32_t, std::unordered_map<uint32_t, uint32_t>> symbol_transition_counter;
+    int length = sequence.size();
+    for(int i = 1; i < length; i++){
+        uint32_t l = sequence[i - 1];
+        uint32_t r = sequence[i];
+        symbol_transition_counter[l][r]++;
+    }
+
+    double entropy = 0.0;
+    for(auto& counter_item: symbol_transition_counter){
+        double Z = 0.0;
+        for(auto& current_symbol_counter_item: counter_item.second){
+            Z += current_symbol_counter_item.second;
+        }
+        
+        if(Z > 0.0){
+            for(auto& current_symbol_counter_item: counter_item.second){
+                double p = current_symbol_counter_item.second / Z;
+                entropy += p * std::log(p);
+            }
+        }
+    }
+    return -entropy;
 }
 
 double word_delay_L_mutual_entropy(std::vector<uint32_t> words, int L){
@@ -141,7 +169,7 @@ int tree_depth(parse_tree* node){
     return left_right_max_depth + 1;
 }
 
-double L_layer_symbol_tree_transitional_entropy(pcfg* grammar, parse_tree* tree, int L){
+double L_layer_symbol_tree_mutual_entropy(pcfg* grammar, parse_tree* tree, int L){
     if (tree == nullptr) {
         throw std::invalid_argument("Tree cannot be null");
     }
@@ -169,7 +197,7 @@ double L_layer_symbol_tree_transitional_entropy(pcfg* grammar, parse_tree* tree,
     return calculate_delay_L_layer_mutual_information(grammar, layers, L);
 }
 
-double L_layer_derivation_tree_transitional_entropy(pcfg* grammar, parse_tree* tree, int L){
+double L_layer_derivation_tree__entropy(pcfg* grammar, parse_tree* tree, int L){
     if (tree == nullptr) {
         throw std::invalid_argument("Tree cannot be null");
     }
