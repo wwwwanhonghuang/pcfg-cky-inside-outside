@@ -7,6 +7,7 @@ void kernel_outside_main(double* mu, double* beta, const uint32_t* sequence,
                         uint32_t* grammar_index, uint32_t* grammar_table, double* alpha, 
                         int sequence_length, int n_syms, int N, int T, int MS, int n_grammars,
                         std::vector<std::tuple<uint32_t, uint32_t>> inside_order_1_rule_iteration_path
+                        , uint32_t* symbol_A_vector
                         , pcfg* grammar
 ){
     memset(mu, 0, n_grammars * MS * MS * sizeof(double));
