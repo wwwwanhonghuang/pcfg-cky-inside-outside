@@ -95,6 +95,7 @@ parse_tree* _parsing_helper(double* alpha, int MS, uint32_t symbol_id, int span_
     
     // std::cout << "symbol_id = " << symbol_id << " span_from " << span_from << " span_to "
     //      << span_to << std::endl;
+    
     // Termination case:
     if(IS_TERMINATE(symbol_id)){
         // std::cout << " !!! - terminate: " << symbol_id << std::endl;
@@ -120,6 +121,7 @@ parse_tree* _parsing_helper(double* alpha, int MS, uint32_t symbol_id, int span_
     uint32_t current_offset = grammar->grammar_index[symbol_id];
     uint32_t next_offset = grammar->grammar_index[symbol_id + 1];
 
+`   // iterate all grammar rules, in which left symbol is the symbol identified by symbol_id.
     while(current_offset < next_offset){
         uint32_t encode_symbol = (uint32_t)(*(grammar->grammar_table + current_offset));
         uint32_t sym_B = (encode_symbol >> 16) & 0xFFFF;
@@ -127,11 +129,14 @@ parse_tree* _parsing_helper(double* alpha, int MS, uint32_t symbol_id, int span_
         double possibility = *(double*)(grammar->grammar_table + current_offset + 1);
         uint32_t gid = (int)(current_offset / BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS);
         // std::cout << " - for " << sym_A << " -> " << sym_B << ", " << sym_C << std::endl;
+        
+        // An impossibile case: span length = 1, however sym_C is not the empty (epsilon) in rule A -> BC.
         if(!IS_EPSILON(sym_C) && span_from == span_to) {
             current_offset += BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS;
             continue;
         }
 
+        // Find the best split point k and the value of possibility.
         if(!IS_EPSILON(sym_C)){
             for(int k = span_from; k < span_to; k++){
                 #ifdef COMPUTING_IN_LOG_SPACE
