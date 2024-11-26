@@ -1,6 +1,7 @@
 #include "grammar/grammar_normalizer.hpp"
 #include "utils/data_structure.hpp"
 #include "utils/data_encoding.h"
+#include "utils/math.hpp"
 
 void normalize_grammar(pcfg* grammar){
     int N = grammar->N();
@@ -10,13 +11,21 @@ void normalize_grammar(pcfg* grammar){
         uint32_t left_id = grammar->nonterminate_map[nonterminate];
         std::vector<pcfg_grammar_item>& grammar_items = map_item.second;
         double Z = 0;
-        
+        #ifdef COMPUTING_IN_LOG_SPACE
+        for(auto& grammar_item : grammar_items){
+            Z = log_sum_exp(Z, grammar_item.possibility);
+        }
+        for(auto& grammar_item : grammar_items){
+            grammar_item.possibility -= Z;
+        }
+        #else
         for(auto& grammar_item : grammar_items){
             Z += grammar_item.possibility;
         }
         for(auto& grammar_item : grammar_items){
             grammar_item.possibility /= Z;
         }
+        #endif
         uint32_t current_offset = (uint32_t)(grammar->grammar_index[left_id]);
         uint32_t end_offset = (uint32_t)(grammar->grammar_index[left_id + 1]);
 

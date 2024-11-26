@@ -444,7 +444,4 @@ pcfg* prepare_grammar(const std::string& path){
     }
 
     return grammar;
-    
-    
-    // return nullptr;
 };

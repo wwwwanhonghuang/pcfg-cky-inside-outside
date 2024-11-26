@@ -5,7 +5,6 @@
 #include <bits/stdc++.h>
 #include <map>
 #include <yaml-cpp/yaml.h>
-
 #include "utils/application_io.hpp"
 #include "grammar/grammar_parser.hpp"
 
@@ -23,7 +22,6 @@ std::vector<std::vector<uint32_t>> read_input_file(const std::string& file_path)
         if(line == "")
             continue;
         std::vector<uint32_t> input_words;
-
         std::string word;
         std::stringstream line_string_stream(line);
         while (getline(line_string_stream, word, ' ')) {
