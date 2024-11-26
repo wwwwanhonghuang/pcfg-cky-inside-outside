@@ -20,3 +20,11 @@ phase_convert:
   grammar_file: "data/grammar.pcfg"
   input: "data/eeg_sentences.txt"
   output: "data/sentences_converted.txt"
+
+syntax_analysis:
+  grammar_file: "data/grammar_demo_2.pcfg"
+  input: "data/sequence.txt"
+  log_intervals: 1
+  log_path: "data/logs/"
+  report_path: "data/reports/"
+  serialize_to_files: true

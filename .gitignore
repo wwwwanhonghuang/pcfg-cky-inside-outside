@@ -7,3 +7,9 @@ data/**/**.txt
 *.txt
 logs
 **/**.bk
+**.report
+**.a
+lib
+bin
+cmake_install.cmake
+CMakeFiles

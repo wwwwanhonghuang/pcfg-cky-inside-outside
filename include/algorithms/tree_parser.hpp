@@ -23,6 +23,7 @@ public:
 std::string serialize_tree(parse_tree* root);
 parse_tree* deserialize_tree(std::string tree);
 parse_tree* deserialize_tree(std::istringstream& tree);
+void serialize_tree_to_file(std::string filepath, parse_tree* root);
 
 parse_tree* merge_trees(uint32_t sym_A, int gid, uint32_t sym_B, uint32_t sym_C, int k, double p, parse_tree* left, parse_tree* right);
 parse_tree* parse(pcfg* grammar, std::vector<uint32_t> sequence, double* alpha, 

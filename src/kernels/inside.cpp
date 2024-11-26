@@ -11,15 +11,17 @@ void kernel_inside_alpha_zerolization(double* alpha, int N, int MS){
     }
 }
 
+
 void kernel_inside_base_fill_alpha(  
         const uint32_t* sequence, uint32_t* pretermination_lookuptable, 
         uint32_t* grammar_index, uint32_t* grammar_table, double* alpha, 
         int sequence_length, int n_syms, int N, int T, int MS, int n_grammars
         , uint32_t* symbol_A_vector
-        #ifdef DEBUG_INSIDE_ALGORITHM
+
+        #ifndef USE_CUDA
         , pcfg* grammar
         #endif
-        ) {
+){
         #pragma omp parallel for
         for(int sym_A = 0; sym_A < N; sym_A ++){
             for(int i = 0; i < sequence_length; i++){
@@ -66,10 +68,19 @@ void kernel_inside_base_fill_alpha(
 void kernel_inside_computeSpanKernel(const uint32_t* sequence, uint32_t* pretermination_lookuptable, 
         uint32_t* grammar_index, uint32_t* grammar_table, double* alpha, 
         int sequence_length, int n_syms, int N, int T, int MS, int n_grammars,
-        std::vector<std::tuple<uint32_t, uint32_t>> inside_order_1_rule_iteration_path, 
-        uint32_t* symbol_A_vector,
-        pcfg* grammar
-    ) {
+
+        #ifndef USE_CUDA
+                std::vector<std::tuple<uint32_t, uint32_t>> inside_order_1_rule_iteration_path
+        #else
+                uint32_t* inside_order_1_rule_iteration_path, uint32_t inside_order_1_rule_iteration_path_size
+        #endif
+        , uint32_t* symbol_A_vector
+        #ifndef USE_CUDA
+        , pcfg* grammar
+        #endif
+){
+        std::vector<double> buffer(N * MS * MS, INIT_POSSIBILITY);
+        // reduce the buffer relocations.
         for (int span_length = 2; span_length <= sequence_length; span_length++) {
             #pragma omp parallel
             {

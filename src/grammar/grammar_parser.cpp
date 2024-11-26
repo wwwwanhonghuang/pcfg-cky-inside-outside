@@ -11,8 +11,6 @@
 
 
 #define _STRICK_CHECK
-// #define DEBUG_PRINT_GRAMMAR_PARSING
-// #define VERBOSE_GRAMMAR_STRUCTURE_BUILDING
 #define DEBUG_PRINT_GRAMMAR_SYMBOL_MAP
 std::ifstream open_grammar_file(const std::string& path) {
     std::ifstream file(path);
@@ -27,8 +25,8 @@ void _record_terminate_symbol(const std::string non_terminate_symbol, pcfg* gram
         std::vector<pcfg_grammar_item>>& grammar_items_map){
     if(grammar->terminate_map.find(non_terminate_symbol) == grammar->terminate_map.end()){
             int id = grammar->T();
-            grammar->terminate_map.insert(std::make_pair(non_terminate_symbol, id));
-            grammar->reversed_terminate_map.insert(std::make_pair(id, non_terminate_symbol));
+        grammar->terminate_map.insert(std::make_pair(non_terminate_symbol, id));
+        grammar->reversed_terminate_map.insert(std::make_pair(id, non_terminate_symbol));
     }
 }
 
