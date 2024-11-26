@@ -15,7 +15,7 @@ TARGET_COMPILER := $(CXX)
 ifeq ($(USE_CUDA), 1)
 COMPILER_FLAGS := -v -std=c++11 -arch compute_86 -code sm_86 -O3 -g -DUSE_CUDA -DCOMPUTING_IN_LOG_SPACE
 else
-COMPILER_FLAGS := -std=c++17 -O3 -g -fopenmp -Werror -DDEBUG_INSIDE_ALGORITHM -DCOMPUTING_IN_LOG_SPACE
+COMPILER_FLAGS := -std=c++17 -O3 -g -fopenmp -DDEBUG_INSIDE_ALGORITHM -DCOMPUTING_IN_LOG_SPACE
 endif
 
 
@@ -24,7 +24,12 @@ endif
 SRC_DIR := src
 INCLUDE_DIR := include
 BUILD_DIR := build
+ifeq ($(USE_CUDA), 1)
+OBJ_DIR := $(BUILD_DIR)/obj_cuda
+else
 OBJ_DIR := $(BUILD_DIR)/obj
+endif
+
 BIN_DIR := $(BUILD_DIR)/bin
 LIB_DIR := $(BUILD_DIR)/lib
 UNIT_TEST_DIR := unit_test
@@ -62,7 +67,12 @@ TARGET_MAIN = $(BIN_DIR)/main_executable
 TARGET_CUDA_MAIN = $(BIN_DIR)/main_cuda_executable
 TARGET_PHASE_CONVERT = $(BIN_DIR)/phase_convert_executable
 TEST_EXE = $(BIN_DIR)/unit_tests
+
+ifeq ($(USE_CUDA), 1)
+SHARED_LIB = $(LIB_DIR)/libshared_cuda.a
+else
 SHARED_LIB = $(LIB_DIR)/libshared.a
+endif
 
 # Targets
 .PHONY: all main cuda_main phase_convert run_tests clean

@@ -24,7 +24,13 @@
 
 int main(int argc, char* argv[])
 {
-    YAML::Node config = YAML::LoadFile("config.yaml");
+    std::string configuration_file_path = "config.yaml";
+    if(argc > 1){
+        configuration_file_path = std::string(argv[1]);
+    }
+    std::cout << "read configuration file " << configuration_file_path << std::endl;
+    YAML::Node config = YAML::LoadFile(configuration_file_path);
+    
     if (!config.IsDefined()) {
         std::cout << "Error: config.yaml could not be loaded!" << std::endl;
         return 1;
@@ -135,6 +141,7 @@ int main(int argc, char* argv[])
                     , grammar
                 #endif
             );
+            
             #ifndef COMPUTING_IN_LOG_SPACE
             if((ALPHA(0, 0, sequence_length - 1)) == 0){ // TODO: it could be -inf
                 if(log_warning_in_training){
@@ -162,6 +169,11 @@ int main(int argc, char* argv[])
                     #endif
                 }
             }
+            #else
+                if(ALPHA(0, 0, sequence_length - 1) >= 0 + 1e-9){
+                    printer.print_inside_outside_table(alpha,  grammar->N(), grammar->T(), sequence_length, MAX_SEQUENCE_LENGTH, grammar);
+                    assert(false);
+                }
             #endif
 
             #if PRINT_STEPS == 1
@@ -314,6 +326,10 @@ int main(int argc, char* argv[])
                 }
             #else
                 double log_likelihood_this_sentence = alpha[0 + 0 + sequence_length - 1];
+                if(log_likelihood_this_sentence >= 0 + 1e-9){
+                    printer.print_inside_outside_table(alpha,  grammar->N(), grammar->T(), sequence_length, MAX_SEQUENCE_LENGTH, grammar);
+                    assert(false);
+                }
                 if (log_likelihood_this_sentence > -INFINITY) {
                     LOG_SUM_EXP_SET(log_likelihood, log_likelihood_this_sentence);
                 } else {
@@ -325,9 +341,9 @@ int main(int argc, char* argv[])
         }
         
         #ifdef COMPUTING_IN_LOG_SPACE
-        double average_likelihood = log_likelihood - std::log(n_sequences_val);
+            double average_likelihood = log_likelihood - std::log(n_sequences_val);
         #else
-        double average_likelihood = (double) log_likelihood / (double) n_sequences_val;
+            double average_likelihood = (double) log_likelihood / (double) n_sequences_val;
         #endif
         std::cout << "Average log likelihood on validate set at epoch " << epoch << " = " ;
         std::cout << std::fixed << std::setprecision(56) << (double)(average_likelihood);
