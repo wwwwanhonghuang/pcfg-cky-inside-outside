@@ -11,13 +11,11 @@ void kernel_inside_alpha_zerolization(double* alpha, int N, int MS){
     }
 }
 
-
 void kernel_inside_base_fill_alpha(  
         const uint32_t* sequence, uint32_t* pretermination_lookuptable, 
         uint32_t* grammar_index, uint32_t* grammar_table, double* alpha, 
         int sequence_length, int n_syms, int N, int T, int MS, int n_grammars
         , uint32_t* symbol_A_vector
-
         #ifndef USE_CUDA
         , pcfg* grammar
         #endif
@@ -68,19 +66,12 @@ void kernel_inside_base_fill_alpha(
 void kernel_inside_computeSpanKernel(const uint32_t* sequence, uint32_t* pretermination_lookuptable, 
         uint32_t* grammar_index, uint32_t* grammar_table, double* alpha, 
         int sequence_length, int n_syms, int N, int T, int MS, int n_grammars,
-
-        #ifndef USE_CUDA
-                std::vector<std::tuple<uint32_t, uint32_t>> inside_order_1_rule_iteration_path
-        #else
-                uint32_t* inside_order_1_rule_iteration_path, uint32_t inside_order_1_rule_iteration_path_size
-        #endif
+        std::vector<std::tuple<uint32_t, uint32_t>> inside_order_1_rule_iteration_path
         , uint32_t* symbol_A_vector
         #ifndef USE_CUDA
         , pcfg* grammar
         #endif
 ){
-        std::vector<double> buffer(N * MS * MS, INIT_POSSIBILITY);
-        // reduce the buffer relocations.
         for (int span_length = 2; span_length <= sequence_length; span_length++) {
             #pragma omp parallel
             {
@@ -126,8 +117,6 @@ void kernel_inside_computeSpanKernel(const uint32_t* sequence, uint32_t* preterm
                             double possibility = *(double*)(grammar_table + (n_grammars + 1) * 4 + gid * 2);
                         #endif
                         assert(possibility < 1e-9);
-                        
-                        // Important.
                         assert(ALPHA(sym_A, i, j) < 1e-9);
                         assert(ALPHA_GET(sym_B, i, j) < 1e-9);
 
@@ -138,7 +127,7 @@ void kernel_inside_computeSpanKernel(const uint32_t* sequence, uint32_t* preterm
                         assert(ALPHA(sym_A, i, j)  < 1e-9);
                     }
                 }
-            } // parallel for end.
+            }
         }
 }
 #endif

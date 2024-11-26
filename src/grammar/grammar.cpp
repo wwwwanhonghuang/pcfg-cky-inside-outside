@@ -1,8 +1,5 @@
 #include "grammar/grammar.hpp"
 
-
-
-
 pcfg_grammar_item parse_grammar_single_line(std::string line){
     std::string left = "";
     std::string right1 = "";
