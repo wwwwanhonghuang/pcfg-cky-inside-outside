@@ -5,14 +5,10 @@
 #include "constants.h"
 
 void kernel_inside_alpha_zerolization(double* alpha, int N, int MS){
-    #ifdef COMPUTING_IN_LOG_SPACE
-        memset(alpha, 0, N * MS * MS * sizeof(double));
-        for (int i = 0; i < N * MS * MS; i++) {
-            alpha[i] = -INFINITY;
-        }
-    #else
-        memset(alpha, 0, N * MS * MS * sizeof(double));
-    #endif
+    memset(alpha, 0, N * MS * MS * sizeof(double));
+    for (int i = 0; i < N * MS * MS; i++) {
+        alpha[i] = -INFINITY;
+    }
 }
 
 
@@ -21,6 +17,7 @@ void kernel_inside_base_fill_alpha(
         uint32_t* grammar_index, uint32_t* grammar_table, double* alpha, 
         int sequence_length, int n_syms, int N, int T, int MS, int n_grammars
         , uint32_t* symbol_A_vector
+
         #ifndef USE_CUDA
         , pcfg* grammar
         #endif
@@ -31,12 +28,7 @@ void kernel_inside_base_fill_alpha(
                 double p = INIT_POSSIBILITY;
                 uint64_t key = encode_key(sym_A, sequence[i]);
                 p = reverse_grammar_hashtable_get_value(pretermination_lookuptable, n_grammars * BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS, key);
-                
-                #ifdef COMPUTING_IN_LOG_SPACE
-                    if(p == -INFINITY) continue;
-                #else
-                    if(abs(p - 0) < grammar_minimal_possibility) continue;
-                #endif           
+                if(p == -INFINITY) continue;
                 ALPHA(sym_A, i, i) = p;
             }
         }
@@ -61,17 +53,10 @@ void kernel_inside_base_fill_alpha(
                     if(!IS_EPSILON(sym_C) || IS_TERMINATE(sym_B)) continue;
                     double alpha_B = ALPHA(sym_B, i, i);
                     
-                    #ifdef COMPUTING_IN_LOG_SPACE
                     if(alpha_B + possibility > alpha_get(alpha, sym_A, i, i, MS)){
                         ALPHA(sym_A, i, i) = alpha_B + possibility;
                         nonterminate_remains.erase(sym_A);
                     }
-                    #else
-                    if(alpha_B * possibility > alpha_get(alpha, sym_A, i, i, MS)){
-                        ALPHA(sym_A, i, i) = alpha_B * possibility;
-                        nonterminate_remains.erase(sym_A);
-                    }
-                    #endif
                 }
                 
             }
@@ -79,9 +64,11 @@ void kernel_inside_base_fill_alpha(
         }
 }
 
+
 void kernel_inside_computeSpanKernel(const uint32_t* sequence, uint32_t* pretermination_lookuptable, 
         uint32_t* grammar_index, uint32_t* grammar_table, double* alpha, 
         int sequence_length, int n_syms, int N, int T, int MS, int n_grammars,
+
         #ifndef USE_CUDA
                 std::vector<std::tuple<uint32_t, uint32_t>> inside_order_1_rule_iteration_path
         #else
@@ -106,22 +93,23 @@ void kernel_inside_computeSpanKernel(const uint32_t* sequence, uint32_t* preterm
                         uint32_t sym_B = (sym_BC >> 16) & 0xFFFF;
                         uint32_t sym_C = (sym_BC) & 0xFFFF;
                         double possibility = *(double*)(grammar_table + gid * BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS + 1);
+                        assert(possibility < 1e-9);
 
+                        if(IS_EPSILON(sym_C)) continue;
                         for (int k = i; k < j; k++) {
-                            if(IS_EPSILON(sym_C)) continue;
-
                             // A->BC
                             double alpha_B = ALPHA_GET(sym_B, i, k);
                             double alpha_C = ALPHA_GET(sym_C, k + 1, j);
-                            #ifdef COMPUTING_IN_LOG_SPACE
-                                LOG_SUM_EXP_SET(buffer[sym_A * MS * MS + span_length * MS + i], alpha_B + alpha_C + possibility);
-                            #else
-                                buffer[sym_A * MS * MS + span_length * MS + i] += alpha_B * alpha_C * possibility; 
-                            #endif   
+                            
+                            assert(alpha_B < 1e-9);
+                            assert(alpha_C < 1e-9);
+                            assert(alpha_B + alpha_C + possibility < 1e-9);
+                            LOG_SUM_EXP_SET(ALPHA(sym_A, i, j), alpha_B + alpha_C + possibility);
+
+                            assert(ALPHA(sym_A, i, j) < 1e-9);
+
                         }
                     }
-
-                    //#pragma omp barrier
 
                     // A->B
                     for(std::tuple<uint32_t, uint32_t>& rule_id: inside_order_1_rule_iteration_path) {
@@ -137,28 +125,17 @@ void kernel_inside_computeSpanKernel(const uint32_t* sequence, uint32_t* preterm
                             uint32_t sym_B = grammar_table[(n_grammars + 1) * 1 + gid];
                             double possibility = *(double*)(grammar_table + (n_grammars + 1) * 4 + gid * 2);
                         #endif
+                        assert(possibility < 1e-9);
                         
-                        
-                        double alpha_B = POSSIBILITY_ADD(buffer[sym_B * sequence_length * sequence_length + span_length * sequence_length + i], ALPHA_GET(sym_B, i, j)); // Cell [i, j] is newly calculated and has not been written back. We need access the buffer, rather than ALPHA(..)
+                        // Important.
+                        assert(ALPHA(sym_A, i, j) < 1e-9);
+                        assert(ALPHA_GET(sym_B, i, j) < 1e-9);
 
-                        #ifdef COMPUTING_IN_LOG_SPACE
-                            LOG_SUM_EXP_SET(buffer[sym_A * MS * MS + span_length * MS + i], alpha_B + possibility);
-                        #else
-                            buffer[sym_A * MS * MS + span_length * MS + i] += alpha_B * possibility;
-                        #endif
-                    }
-                    
-
-                    //#pragma omp barrier
-
-                    // write back.
-                    for (int sym_A = 0; sym_A < N; sym_A++) {
-                        int j = i + span_length - 1; // Ending index of the span
-                        #ifdef COMPUTING_IN_LOG_SPACE
-                            LOG_SUM_EXP_SET(ALPHA(sym_A, i, j), buffer[sym_A * MS * MS + span_length * MS + i]);
-                        #else
-                            ALPHA_INCREASE(sym_A, i, j, buffer[sym_A * MS * MS + span_length * MS + i]);
-                        #endif
+                        LOG_SUM_EXP_SET(ALPHA(sym_A, i, j), ALPHA_GET(sym_B, i, j) + possibility);
+                        if(ALPHA(sym_A, i, j) >= 1e-9){
+                            std::cout << ALPHA(sym_A, i, j)  << std::endl;
+                        }
+                        assert(ALPHA(sym_A, i, j)  < 1e-9);
                     }
                 }
             } // parallel for end.

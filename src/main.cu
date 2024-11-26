@@ -39,7 +39,12 @@ uint32_t* to_inside_order_1_rule_iteration_path_array(std::vector<std::tuple<uin
 }
 int main(int argc, char* argv[])
 {
-    YAML::Node config = YAML::LoadFile("config.yaml");
+    std::string configuration_file_path = "config.yaml";
+    if(argc > 1){
+        configuration_file_path = std::string(argv[1]);
+    }
+    std::cout << "read configuration file " << configuration_file_path << std::endl;
+    YAML::Node config = YAML::LoadFile(configuration_file_path);
     if (!config.IsDefined()) {
         std::cout << "Error: config.yaml could not be loaded!" << std::endl;
         return 1;
@@ -77,23 +82,39 @@ int main(int argc, char* argv[])
 
     // 3. define matrices needed by the inside-outside algorithm.
     double* alpha, *beta, *mu, *count, *f;
+    uint32_t *pretermination_lookuptable_device, *grammar_index_device, *grammar_table_device, *inside_order_1_rule_iteration_path_device;
+
     double init_val = -INFINITY;
     uint32_t* symbol_A_vector_device;
-
+    double* alpha_host = new double[grammar->N() * MAX_SEQUENCE_LENGTH * MAX_SEQUENCE_LENGTH]();
     cudaMalloc(&alpha, grammar->N() * MAX_SEQUENCE_LENGTH * MAX_SEQUENCE_LENGTH * sizeof(double));
     cudaMalloc(&beta, (grammar->N() + grammar->T()) * MAX_SEQUENCE_LENGTH * MAX_SEQUENCE_LENGTH * sizeof(double));
     cudaMalloc(&mu, grammar->cnt_grammar * MAX_SEQUENCE_LENGTH * MAX_SEQUENCE_LENGTH * sizeof(double));
     cudaMalloc(&count, grammar->cnt_grammar * sizeof(double));
     cudaMalloc(&f, grammar->cnt_grammar * sizeof(double));
     cudaMalloc(&symbol_A_vector_device, grammar->cnt_grammar * sizeof(uint32_t));
-
+    cudaMalloc(&pretermination_lookuptable_device, grammar->cnt_grammar * BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS * sizeof(uint32_t));
+    cudaMalloc(&grammar_index_device, (grammar->N() + 1) * sizeof(uint32_t));
+    cudaMalloc(&grammar_table_device, (grammar->cnt_grammar * BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS + 1) * sizeof(uint32_t));
+    cudaMalloc(&inside_order_1_rule_iteration_path_device, (inside_order_1_rule_iteration_path.size() * 2) * sizeof(uint32_t));
+    
+    cudaError_t err = cudaGetLastError();
+    if (err != cudaSuccess) {
+        printf("[device memory allocation] CUDA error: %s\n", cudaGetErrorString(err));
+        abort();
+    }
     cudaMemcpy(f, &init_val, grammar->cnt_grammar * sizeof(double), cudaMemcpyHostToDevice);
     cudaMemcpy(symbol_A_vector_device, grammar->symbol_A_vector, grammar->cnt_grammar * sizeof(uint32_t), cudaMemcpyHostToDevice);
-
+    err = cudaGetLastError();
+    if (err != cudaSuccess) {
+        printf("[device memory copy 1] CUDA error: %s\n", cudaGetErrorString(err));
+        abort();
+    }
     // 4. load corpus.
     std::cout << "Load sentences..." << std::endl;
     std::vector<std::vector<uint32_t>> sentences = parse_input_file(input_filename, grammar, limit_n_sentences);
     std::cout << "Load sentences finished. Total instances:" << sentences.size() << std::endl;
+    
     if (sentences.empty()) {
         std::cerr << "Error: No sentences loaded." << std::endl;
         return 1;
@@ -124,13 +145,17 @@ int main(int argc, char* argv[])
     int T = 0;
     int MS = MAX_SEQUENCE_LENGTH;
     cky_printer printer;
-    uint32_t *pretermination_lookuptable_device, *grammar_index_device, *grammar_table_device, *inside_order_1_rule_iteration_path_device;
-    cudaMemcpy(&pretermination_lookuptable_device, grammar->preterminate_rule_lookup_table, 
+    cudaMemcpy(pretermination_lookuptable_device, 
+        grammar->preterminate_rule_lookup_table, 
         grammar->cnt_grammar * BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS * sizeof(uint32_t), cudaMemcpyHostToDevice);
-    cudaMemcpy(&grammar_index_device, grammar->grammar_index, (grammar->N() + 1) * sizeof(uint32_t), cudaMemcpyHostToDevice);
-    cudaMemcpy(&grammar_table_device, grammar->grammar_table, (grammar->cnt_grammar * BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS + 1) * sizeof(uint32_t), cudaMemcpyHostToDevice);
-    cudaMemcpy(&inside_order_1_rule_iteration_path_device, inside_order_1_rule_iteration_path_array, (inside_order_1_rule_iteration_path.size() * 2) * sizeof(uint32_t), cudaMemcpyHostToDevice);
-
+    cudaMemcpy(grammar_index_device, grammar->grammar_index, (grammar->N() + 1) * sizeof(uint32_t), cudaMemcpyHostToDevice);
+    cudaMemcpy(grammar_table_device, grammar->grammar_table, (grammar->cnt_grammar * BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS + 1) * sizeof(uint32_t), cudaMemcpyHostToDevice);
+    cudaMemcpy(inside_order_1_rule_iteration_path_device, inside_order_1_rule_iteration_path_array, (inside_order_1_rule_iteration_path.size() * 2) * sizeof(uint32_t), cudaMemcpyHostToDevice);
+    err = cudaGetLastError();
+    if (err != cudaSuccess) {
+        printf("[device memory copy] CUDA error: %s\n", cudaGetErrorString(err));
+        abort();
+    }
 
     // 7. copy train set and validation set to the GPU device.
     std::vector<uint32_t*> train_set_device(train_set.size(), 0);
@@ -170,6 +195,11 @@ int main(int argc, char* argv[])
 
             // 1. zerolization alpha.
             kernel_inside_alpha_zerolization<<<16, 16>>>(alpha, N, MS);
+            err = cudaGetLastError();
+            if (err != cudaSuccess) {
+                printf("[kernel_inside_alpha_zerolization] CUDA error: %s\n", cudaGetErrorString(err));
+                abort();
+            }
             cudaDeviceSynchronize();
 
             // 2. fill alpha (base case).
@@ -177,22 +207,47 @@ int main(int argc, char* argv[])
                 (sequence_device, pretermination_lookuptable_device, grammar_index_device, grammar_table_device, alpha, 
                                 sequence_length, grammar->n_syms(), N, T, MS, grammar->cnt_grammar, symbol_A_vector_device);
             
+            err = cudaGetLastError();
+            if (err != cudaSuccess) {
+                printf("[kernel_inside_base_fill_alpha] CUDA error: %s\n", cudaGetErrorString(err));
+                abort();
+            }
             cudaDeviceSynchronize();
             // 3. fill alpha (recursive case).
+            std::cout << "fill alpha" << std::endl;
+            std::cout << (long)sequence_device << ", "
+                << (long)pretermination_lookuptable_device << ","
+                << (long)grammar_index_device << ","
+                << (long)grammar_table_device << ","
+                << (long)alpha << ","
+                << (long)inside_order_1_rule_iteration_path_device << std::endl;
+                ;
             kernel_inside_computeSpanKernel<<<16, 16>>>
-                (sequence_device, pretermination_lookuptable_device, grammar_index_device, grammar_table_device, alpha, 
+                (sequence_device, pretermination_lookuptable_device, 
+                grammar_index_device, grammar_table_device, alpha, 
                     sequence_length, grammar->n_syms(), N, T, MS, grammar->cnt_grammar,
-                    inside_order_1_rule_iteration_path_device, inside_order_1_rule_iteration_path.size(), 0
+                    inside_order_1_rule_iteration_path_device, 
+                    inside_order_1_rule_iteration_path.size(), 0
                 #ifdef DEBUG_INSIDE_ALGORITHM
                     , grammar
                 #endif
             );
+            err = cudaGetLastError();
+            if (err != cudaSuccess) {
+                printf("[kernel_inside_computeSpanKernel] CUDA error: %s\n", cudaGetErrorString(err));
+                abort();
+            }
 
             cudaDeviceSynchronize();
             #if PRINT_STEPS == 1
                 std::cout << "Inside Algorithm Finished." << std::endl;
             #endif
 
+            cudaMemcpy(alpha_host, alpha, grammar->N() * MAX_SEQUENCE_LENGTH * MAX_SEQUENCE_LENGTH, 
+                cudaMemcpyDeviceToHost);
+
+            printer.print_inside_outside_table(alpha_host,  grammar->N(), grammar->T(), sequence_length, MAX_SEQUENCE_LENGTH, grammar);
+            return;
             #if PRINT_INSIDE == 1
                 printer.print_inside_outside_table(alpha,  grammar->N(), grammar->T(), sequence_length, MAX_SEQUENCE_LENGTH, grammar);
             #endif
@@ -232,7 +287,6 @@ int main(int argc, char* argv[])
                 symbol_A_vector_device
             );
             cudaDeviceSynchronize();
-
             
             #if PRINT_STEPS == 1
                 std::cout << "Calculate Expectation Count Finished." << std::endl;
@@ -300,31 +354,6 @@ int main(int argc, char* argv[])
 
         print_grammar(grammar, logfile_ostream);
 
-        // // Validation
-        // // we should do validation at device.
-        // double log_likelihood = -INFINITY;
-        // double* log_likelihoods_device;
-        // cudaMalloc(&log_likelihoods_device, valid_set.size() * sizeof(double));
-        
-        // validation_at_device<<16, 16>>(
-        //     log_likelihoods_device, valid_set.size(), 
-        //     pretermination_lookuptable_device, grammar_index_device, grammar_table_device, alpha, 
-        //             sequence_length, grammar->n_syms(), grammar->N(), grammar->T(), MAX_SEQUENCE_LENGTH, grammar->cnt_grammar,
-        //             inside_order_1_rule_iteration_path_device, inside_order_1_rule_iteration_path.size());        
-        // cudaDeviceSynchronize();
-
-        // double log_likelihoods_host[valid_set.size()];
-        // cudaMemcpy(log_likelihoods_device, log_likelihoods_host, valid_set.size() * sizeof(double), cudaMemcpyDeviceToHost); // Copy from device to host
-        // for(int i = 0; i < valid_set.size(); i++){
-        //     log_likelihood = log_sum_exp(log_likelihood, log_likelihoods_host[i]);
-        // }
-        // cudaFree(log_likelihoods_device);
-
-        // double average_likelihood = log_likelihood - std::log(n_sequences_val);
-        // std::cout << "Average log likelihood on validate set at epoch " << epoch << " = " ;
-        // std::cout << std::fixed << std::setprecision(56) << (double)(average_likelihood);
-        // std::cout << " = " << log_likelihood << 
-        //     "-" << n_sequences_val << "  " << std::endl;
     }
     
     // 7. log results.

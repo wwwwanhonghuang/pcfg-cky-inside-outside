@@ -1,5 +1,6 @@
 #ifdef USE_CUDA
 #include <math.h>
+#include <cstdio>
 #include "kernels/inside.cuh"
 #include "utils/math.hpp"
 #include "constants.h"
@@ -104,7 +105,7 @@ __global__ void kernel_inside_computeSpanKernel(
         }
 
         __syncthreads();
-        
+
         for (int span_length = 2; span_length <= sequence_length; span_length++) {
                 for (int i = thread_id_x; i <= sequence_length - span_length; i += total_threads_x) {
                     // the buffer need be access with lock, if parallel gid. we choose not parallel this axis.
@@ -147,6 +148,7 @@ __global__ void kernel_inside_computeSpanKernel(
                     // write back.
                     for (int sym_A = thread_id_x; sym_A < N; sym_A += total_threads_x) {
                         int j = i + span_length - 1; // Ending index of the span
+                        printf("set %d logsumexp ", ALPHA(sym_A, i, j), buffer[sym_A * MS * MS + span_length * MS + i]);
                          LOG_SUM_EXP_SET(ALPHA(sym_A, i, j), buffer[sym_A * MS * MS + span_length * MS + i]);  
                     }
 
