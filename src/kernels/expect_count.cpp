@@ -25,11 +25,10 @@ void kernel_expect_count(double* count, double* mu, double* beta, const uint32_t
 
     ){
     memset(count, 0, n_grammars * sizeof(double));
-    #ifdef COMPUTING_IN_LOG_SPACE
-        for (int i = 0; i < n_grammars; i++) {
-            count[i] = -INFINITY;
-        }
-    #endif
+    for (int i = 0; i < n_grammars; i++) {
+        count[i] = -INFINITY;
+    }
+
 
     /* 0 is the id of S symbol. This expression assign alpha['S', 0, sequence_length - 1] to Z */
     double Z = ALPHA(0, 0, sequence_length - 1); 
@@ -48,26 +47,15 @@ void kernel_expect_count(double* count, double* mu, double* beta, const uint32_t
                 uint32_t gid = std::get<4>(item);
                 double mu_val = MU(gid, i, j);
                 
-                #ifdef COMPUTING_IN_LOG_SPACE
-                    LOG_SUM_EXP_SET(local_buffer_count[gid], mu_val);
-                #else
-                    local_buffer_count[gid] += mu_val;
-                #endif
+                LOG_SUM_EXP_SET(local_buffer_count[gid], mu_val);
             }
 
-            #ifdef COMPUTING_IN_LOG_SPACE
-                for(int gid = 0; gid < n_grammars; gid++){
-                    #pragma omp critical
-                    {
-                        LOG_SUM_EXP_SET(count[gid], local_buffer_count[gid]);
-                    }
+            for(int gid = 0; gid < n_grammars; gid++){
+                #pragma omp critical
+                {
+                    LOG_SUM_EXP_SET(count[gid], local_buffer_count[gid]);
                 }
-            #else
-                for(int gid = 0; gid < n_grammars; gid++){
-                    #pragma omp atomic
-                    count[gid] += local_buffer_count[gid];
-                }
-            #endif
+            }
         } // parallel for end.
     }
     

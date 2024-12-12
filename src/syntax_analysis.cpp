@@ -1,7 +1,3 @@
-#ifdef USE_CUDA
-#include <cuda_runtime.h>
-#endif
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
@@ -49,7 +45,6 @@ int main(int argc, char* argv[])
     if(sentences.empty()) return 0;
 
     cky_printer printer;
-
     size_t n_total_sentences = sentences.size();
     for(int i = 0; i < n_total_sentences; i++){
         auto& sentence = sentences[i];
@@ -62,6 +57,7 @@ int main(int argc, char* argv[])
         std::string statistics_report = report_all_statistics(root, alpha, sentence, grammar, 5);
         std::string report_filename = report_path + std::string("setence_") + std::to_string(i + 1) + std::string(".report");
         std::ofstream report_file_output_stream(report_filename);
+
         if(!report_file_output_stream){
             std::cerr << "Error: cannot open output file " << report_filename << std::endl;
             continue;
@@ -71,12 +67,10 @@ int main(int argc, char* argv[])
                 sentence_serialization_stream << sentence[word_id] << " ";
             }
             sentence_serialization_stream << std::endl;
-            report_file_output_stream << 
-                sentence_serialization_stream.str() << 
-                statistics_report << std::endl;
+            report_file_output_stream << sentence_serialization_stream.str() << 
+                                         statistics_report << std::endl;
         }
     }
-
     std::cout << std::endl << "All finished" << std::endl;
 
     delete[] alpha;

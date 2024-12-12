@@ -7,15 +7,9 @@
 
 
 inline double _calculate_new_possibility(double S, double f_gid) {
-    #ifdef COMPUTING_IN_LOG_SPACE
     if(std::abs(f_gid) < std::log(grammar_minimal_possibility))
         f_gid = std::log(grammar_minimal_possibility);
-    return f_gid - S; // f_gid is a logarithm possibility. f_gid - S = log e^f_gid / e^S
-    #else
-    if(std::abs(f_gid) < grammar_minimal_possibility)
-        f_gid = grammar_minimal_possibility;
-    return f_gid / S;
-    #endif
+    return f_gid - S;
 }
 
 #ifndef ENABLE_GRAMMAR_VECTORIZATION_OPTIMIZATION
@@ -45,7 +39,7 @@ void kernel_update_parameters(double* f, double* count, double* mu, double* beta
         uint32_t*
         grammar_table, double* alpha, 
         int sequence_length, int n_syms, int N, int T, int MS, int n_grammars
-        #ifdef DEBUG_INSIDE_ALGORITHM
+        #ifdef USE_CUDA
             , pcfg* grammar
         #endif
         , bool do_update
@@ -56,13 +50,9 @@ void kernel_update_parameters(double* f, double* count, double* mu, double* beta
         for(int sym_A = 0; sym_A < N; sym_A++){
             uint32_t grammar_pointer_current = *(grammar_index + sym_A);
             uint32_t grammar_pointer_next = *(grammar_index + sym_A + 1);
-            
             for(uint32_t pt = grammar_pointer_current; pt < grammar_pointer_next; PT_INCREASE){        
-                #ifdef COMPUTING_IN_LOG_SPACE
-                    LOG_SUM_EXP_SET(f[gid], count[gid]);
-                #else
-                    f[gid] += count[gid];
-                #endif
+
+                LOG_SUM_EXP_SET(f[gid], count[gid]);
                 gid++;
             }
         }
@@ -79,12 +69,8 @@ void kernel_update_parameters(double* f, double* count, double* mu, double* beta
                     int gid_begin = gid;
                     for(uint32_t pt = grammar_pointer_current; pt < grammar_pointer_next; PT_INCREASE){
                         double f_gid = f[gid];
-                        #ifdef COMPUTING_IN_LOG_SPACE
-                            LOG_SUM_EXP_SET(S, 
+                        LOG_SUM_EXP_SET(S, 
                                 (std::abs(f_gid - 0) < std::log(grammar_minimal_possibility) ? std::log(grammar_minimal_possibility) : f_gid));
-                        #else
-                            S += (std::abs(f_gid - 0) < grammar_minimal_possibility ? grammar_minimal_possibility : f_gid);
-                        #endif
                         gid ++;
                     }
 
@@ -94,20 +80,11 @@ void kernel_update_parameters(double* f, double* count, double* mu, double* beta
 
                     for(uint32_t pt = grammar_pointer_current; pt < grammar_pointer_next; PT_INCREASE){
                         SYMBOL_AND_POSSIBILITY_EXTRACTION(sym_B, sym_C, possibility);
-                        
                         double f_gid = f[gid];
-                        
-                        double new_possibility = _calculate_new_possibility(S,  
-                        #ifdef COMPUTING_IN_LOG_SPACE
-                            (std::abs(f_gid - 0) < std::log(grammar_minimal_possibility) ? std::log(grammar_minimal_possibility) : f_gid));
-                        #else
-                            (std::abs(f_gid - 0) < grammar_minimal_possibility ? grammar_minimal_possibility : f_gid));
-                            if (new_possibility < -grammar_minimal_possibility || new_possibility > 1.0L + grammar_minimal_possibility) {
-                                std::cout << "Improper possibility updation, possibility = " << new_possibility 
-                                        << ", caused by " << f[gid] << "/" << S << std::endl;
-                                assert(false);
-                            }
-                        #endif
+                        double new_possibility = 
+                            _calculate_new_possibility(S, 
+                                (std::abs(f_gid - 0) < std::log(grammar_minimal_possibility) ?
+                                 std::log(grammar_minimal_possibility) : f_gid));
                         
                         #ifndef ENABLE_GRAMMAR_VECTORIZATION_OPTIMIZATION
                             *(double*)(grammar_table + pt + 1) = new_possibility;

@@ -1,11 +1,11 @@
 main:
-  grammar_file: "data/grammar_demo_2.pcfg"
-  input: "data/sequence.txt"
-  log_intervals: 1
+  grammar_file: "data/grammar.pcfg"
+  input: "data/sentences_converted.txt"
+  log_intervals: 10000
   log_path: "data/logs/"
   log_f:
     enabled: true
-    intervals: 1
+    intervals: 10000
   log_warning_in_training: false
   batch_size_for_parameter_update: -1
   split_data:
@@ -13,7 +13,7 @@ main:
     val_dataset_path: "data/validate_sentences.txt" 
     train_dataset_path: "data/train_sentences.txt"
     train_fraction: 0.8
-  n_epochs: 2
+  n_epochs: 5
   limit_n_sentences: -1
 
 phase_convert:
