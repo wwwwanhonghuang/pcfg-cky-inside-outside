@@ -97,7 +97,6 @@ double _sequence_delay_L_mutual_entropy(std::vector<uint32_t> words, int L){
     return -entropy;
 }
 
-
 double _sequence_transitional_entropy(std::vector<uint32_t> sequence){
     std::unordered_map<uint32_t, std::unordered_map<uint32_t, uint32_t>> symbol_transition_counter;
     int length = sequence.size();
@@ -127,7 +126,6 @@ double _sequence_transitional_entropy(std::vector<uint32_t> sequence){
 double word_delay_L_mutual_entropy(std::vector<uint32_t> words, int L){
     return _sequence_delay_L_mutual_entropy(words, L);
 }
-
 
 double derivation_delay_L_mutual_entropy(std::vector<uint32_t> derivations, int L){
     return _sequence_delay_L_mutual_entropy(derivations, L);

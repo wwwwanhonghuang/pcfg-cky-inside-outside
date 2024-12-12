@@ -51,6 +51,7 @@ void kernel_update_parameters(double* f, double* count, double* mu, double* beta
             uint32_t grammar_pointer_current = *(grammar_index + sym_A);
             uint32_t grammar_pointer_next = *(grammar_index + sym_A + 1);
             for(uint32_t pt = grammar_pointer_current; pt < grammar_pointer_next; PT_INCREASE){        
+
                 LOG_SUM_EXP_SET(f[gid], count[gid]);
                 gid++;
             }
