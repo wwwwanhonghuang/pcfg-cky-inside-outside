@@ -29,7 +29,11 @@ void kernel_outside_main(double* mu, double* beta,
     #endif
     
     /* base case: S is the root of the whole sequence with possibility 1.0. */
-    BETA(0, 0, sequence_length - 1) = 1.0;
+    #ifdef COMPUTING_IN_LOG_SPACE
+        BETA(0, 0, sequence_length - 1) = 0.0;
+    #else
+        BETA(0, 0, sequence_length - 1) = 1.0;
+    #endif
 
     /* all cases:
                     1. B->AC      <1>
@@ -47,14 +51,14 @@ void kernel_outside_main(double* mu, double* beta,
         , where w_A w_C are terminates.
     */
 
-    std::vector<double> buffer_beta(n_syms * MS, INIT_POSSIBILITY);
+    // std::vector<double> buffer_beta(n_syms * MS, INIT_POSSIBILITY);
     // Case 1: A is non-terminate 
     // confirm these codes are correct.
     /* diagonal-order iteration */
     for(int span_length = sequence_length; span_length >= 1; span_length--){
         /* for one diagnal of the beta table, all cell can be parallelly computed. */
         
-        std::fill(buffer_beta.begin(), buffer_beta.end(), INIT_POSSIBILITY);
+        // std::fill(buffer_beta.begin(), buffer_beta.end(), INIT_POSSIBILITY);
         
         #pragma omp parallel
         {
@@ -64,13 +68,14 @@ void kernel_outside_main(double* mu, double* beta,
                 
                 // 1. 2. 6. 7.
                 for(int gid = 0; gid < n_grammars; gid++){
-                    int j = i + span_length - 1; // Ending index of the span
                     uint32_t _sym_A = grammar->symbol_A_vector[gid];
                     uint32_t sym_BC = *(grammar_table + gid * BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS);
                     uint32_t _sym_B = (sym_BC >> 16) & 0xFFFF;
                     uint32_t _sym_C = (sym_BC) & 0xFFFF;
+                    std::cout << "gid:: " << gid << " " << _sym_A << "->" << _sym_B << ", " 
+                        << _sym_C << std::endl;
                     double possibility = *(double*)(grammar_table + gid * BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS + 1);
-            
+                    assert(possibility < 1e-9);
                     for(int k = 0; k < i; k++){       
                         uint32_t sym_B = _sym_A;
                         uint32_t sym_C = _sym_B;
@@ -84,11 +89,15 @@ void kernel_outside_main(double* mu, double* beta,
                             double beta_B = BETA(sym_B, k, j);
 
                             #ifdef COMPUTING_IN_LOG_SPACE
-                                LOG_SUM_EXP_SET(buffer_beta[sym_A * MS + i], possibility + alpha_C + beta_B);                    
+                                // LOG_SUM_EXP_SET(buffer_beta[sym_A * MS + i], possibility + alpha_C + beta_B); 
+                                LOG_SUM_EXP_SET(BEAT(sym_A, i, j), possibility + alpha_C + beta_B);                    
                             #else
                                 // A: [i, j] part
                                 buffer_beta[sym_A * MS + i] += possibility * alpha_C * beta_B;
                             #endif
+                            assert(alpha_C < 1e-9);
+                            assert(beta_B < 1e-9);
+                            assert(BEAT(sym_A, i, j) < 1e-9);
                         }   
                     }
 
@@ -104,11 +113,15 @@ void kernel_outside_main(double* mu, double* beta,
                             // B: [k, j] part
                             double beta_B = BETA(sym_B, i, k);
                             #ifdef COMPUTING_IN_LOG_SPACE
-                                LOG_SUM_EXP_SET(buffer_beta[sym_A * MS + i],  possibility + alpha_C + beta_B);
+                                // LOG_SUM_EXP_SET(buffer_beta[sym_A * MS + i],  possibility + alpha_C + beta_B);
+                                LOG_SUM_EXP_SET(BEAT(sym_A, i, j),  possibility + alpha_C + beta_B);
                             #else
                                 // A: [i, j] part
                                 buffer_beta[sym_A * MS + i] += possibility * alpha_C * beta_B;
                             #endif
+                            assert(alpha_C < 1e-9);
+                            assert(beta_B < 1e-9);
+                            assert(BEAT(sym_A, i, j < 1e-9));
                         }   
                     }
                 }
@@ -131,7 +144,7 @@ void kernel_outside_main(double* mu, double* beta,
                     #endif
 
                     double alpha_B = ALPHA_GET(sym_B, i, j);
-                    double beta_B = POSSIBILITY_ADD(BETA(sym_B, i, j), buffer_beta[sym_B * MS + i]);
+                    double beta_B = BETA(sym_B, i, j); // POSSIBILITY_ADD(BETA(sym_B, i, j), buffer_beta[sym_B * MS + i]);
                     
                     if(IS_TERMINATE(sym_A)) continue; 
                     /* grammar become B -> A. In this condition, B -> A contributes possibility * beta_B
@@ -140,10 +153,14 @@ void kernel_outside_main(double* mu, double* beta,
                         of this rule. 'continue;' is uesed to skip k iterations. */
                     
                     #ifdef COMPUTING_IN_LOG_SPACE
-                        LOG_SUM_EXP_SET(buffer_beta[sym_A * MS + i], possibility + beta_B);
+                        // LOG_SUM_EXP_SET(buffer_beta[sym_A * MS + i], possibility + beta_B);
+                        LOG_SUM_EXP_SET(BETA(sym_A, i, j), possibility + beta_B);
                     #else
                         buffer_beta[sym_A * MS + i] += possibility * beta_B;
                     #endif
+                    assert(alpha_B < 1e-9);
+                    assert(beta_B < 1e-9);
+                    assert(BETA(sym_A, i, j) < 1e-9);
                 }
 
                 // 5. 8. 9. 10.
@@ -155,7 +172,7 @@ void kernel_outside_main(double* mu, double* beta,
                     uint32_t _sym_B = (sym_BC >> 16) & 0xFFFF;
                     uint32_t _sym_C = (sym_BC) & 0xFFFF;
                     double possibility = *(double*)(grammar_table + gid * BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS + 1);
-                
+                    assert(possibility < 1e-9);
                     uint32_t sym_B = _sym_A;
                     uint32_t sym_A = _sym_B;
                     uint32_t sym_C = _sym_C;
@@ -166,7 +183,11 @@ void kernel_outside_main(double* mu, double* beta,
                     if(IS_TERMINATE(sym_A) && IS_NONTERMINATE(sym_C) && (i == j)){
                         for(int k = j + 1; k < sequence_length; k++){
                             #ifdef COMPUTING_IN_LOG_SPACE
-                                LOG_SUM_EXP_SET(buffer_beta[sym_A * MS + i], BETA(sym_B, i, k) + ALPHA(sym_C, j + 1, k) + possibility);
+                                // LOG_SUM_EXP_SET(buffer_beta[sym_A * MS + i], BETA(sym_B, i, k) + ALPHA(sym_C, j + 1, k) + possibility);
+                                LOG_SUM_EXP_SET(BETA(sym_A, i, j), BETA(sym_B, i, k) + ALPHA(sym_C, j + 1, k) + possibility);
+                                assert(BETA(sym_A, i, j) < 1e-9);
+                                assert(BETA(sym_B, i, k) < 1e-9);
+                                assert(ALPHA(sym_C, j + 1, k) < 1e-9);
                             #else
                                 buffer_beta[sym_A * MS + i] += BETA(sym_B, i, k) * ALPHA(sym_C, j + 1, k) * possibility;
                             #endif
@@ -177,7 +198,11 @@ void kernel_outside_main(double* mu, double* beta,
                     if(IS_TERMINATE(sym_A) && IS_TERMINATE(sym_C) && (i == j)){
                         if(j + 1 < sequence_length){
                             #ifdef COMPUTING_IN_LOG_SPACE
-                                LOG_SUM_EXP_SET(buffer_beta[sym_A * MS + i], ALPHA(sym_C, j + 1, j + 1) + BETA(sym_B, i, j + 1) + possibility);
+                                // LOG_SUM_EXP_SET(buffer_beta[sym_A * MS + i], ALPHA(sym_C, j + 1, j + 1) + BETA(sym_B, i, j + 1) + possibility);
+                                LOG_SUM_EXP_SET(BETA(sym_A, i, j), ALPHA(sym_C, j + 1, j + 1) + BETA(sym_B, i, j + 1) + possibility);
+                                assert(BETA(sym_A, i, j) < 1e-9);
+                                assert(ALPHA(sym_C, j + 1, j + 1) < 1e-9);
+                                assert(BETA(sym_B, i, j + 1) < 1e-9);
                             #else
                                 buffer_beta[sym_A * MS + i] += ALPHA(sym_C, j + 1, j + 1) * BETA(sym_B, i, j + 1) * possibility;
                             #endif
@@ -191,7 +216,11 @@ void kernel_outside_main(double* mu, double* beta,
                     if(IS_NONTERMINATE(sym_C) && IS_TERMINATE(sym_A) && (i == j)){
                         for(int k = 0; k <= i - 1; k++){
                             #ifdef COMPUTING_IN_LOG_SPACE
-                                LOG_SUM_EXP_SET(buffer_beta[sym_A * MS + i], ALPHA(sym_C, k, i - 1) + BETA(sym_B, k, j) + possibility);
+                                // LOG_SUM_EXP_SET(buffer_beta[sym_A * MS + i], ALPHA(sym_C, k, i - 1) + BETA(sym_B, k, j) + possibility);
+                                LOG_SUM_EXP_SET(BETA(sym_A, i, j), ALPHA(sym_C, k, i - 1) + BETA(sym_B, k, j) + possibility);
+                                assert(BETA(sym_A, i, j) < 1e-9);
+                                assert(ALPHA(sym_C, k, i - 1) < 1e-9);
+                                assert(BETA(sym_B, k, j) < 1e-9);
                             #else
                                 buffer_beta[sym_A * MS + i] += ALPHA(sym_C, k, i - 1) * BETA(sym_B, k, j) * possibility;
                             #endif
@@ -202,11 +231,15 @@ void kernel_outside_main(double* mu, double* beta,
                     if(IS_TERMINATE(sym_C) && IS_TERMINATE(sym_A) && (i == j)){
                         if(i - 1 >= 0){
                             #ifdef COMPUTING_IN_LOG_SPACE
-                                LOG_SUM_EXP_SET(buffer_beta[sym_A * MS + i], ALPHA(sym_C, i - 1, i - 1) + BETA(sym_B, i - 1, j) + possibility);
+                                // LOG_SUM_EXP_SET(buffer_beta[sym_A * MS + i], ALPHA(sym_C, i - 1, i - 1) + BETA(sym_B, i - 1, j) + possibility);
+                                LOG_SUM_EXP_SET(BETA(sym_A, i, j), ALPHA(sym_C, i - 1, i - 1) + BETA(sym_B, i - 1, j) + possibility);
+                                assert(BETA(sym_A, i, j) < 1e-9);
+                                assert(ALPHA(sym_C, i - 1, i - 1) < 1e-9);
+                                assert(BETA(sym_B, i - 1, j) < 1e-9);
                             #else
                                 buffer_beta[sym_A * MS + i] += ALPHA(sym_C, i - 1, i - 1) * BETA(sym_B, i - 1, j) * possibility;
                             #endif
-                        }                   
+                        }
                     }
                 }
 
@@ -225,28 +258,35 @@ void kernel_outside_main(double* mu, double* beta,
                         uint32_t sym_A = grammar_table[(n_grammars + 1) * 1 + gid];
                         double possibility = *(double*)(grammar_table + (n_grammars + 1) * 4 + gid * 2);
                     #endif
-
+                    assert(possibility < 1e-9);
                     double alpha_B = ALPHA_GET(sym_B, i, j);
-                    double beta_B = POSSIBILITY_ADD(BETA(sym_B, i, j), buffer_beta[sym_B * MS + i]);
+                    double beta_B = BETA(sym_B, i, j); // POSSIBILITY_ADD(BETA(sym_B, i, j), buffer_beta[sym_B * MS + i]);
+                    assert(alpha_B < 1e-9);
+                    assert(beta_B < 1e-9);
                     if(i != j) break;
                     if(IS_NONTERMINATE(sym_A)) continue; 
                     // B->w_A
                     
                     #ifdef COMPUTING_IN_LOG_SPACE
-                        LOG_SUM_EXP_SET(buffer_beta[sym_A * MS + i],  possibility + beta_B);
+                        // LOG_SUM_EXP_SET(buffer_beta[sym_A * MS + i],  possibility + beta_B);
+                        LOG_SUM_EXP_SET(BETA(sym_A, i, j),  possibility + beta_B);
+                        assert(BETA(sym_A, i, j) < 1e-9);
+                        assert(possibility + beta_B < 1e-9);
                     #else
                         buffer_beta[sym_A * MS + i] += possibility * beta_B;
                     #endif
                 }
 
-                // write back
-                for(int sym_A = 0; sym_A < N; sym_A++){
-                    #ifdef COMPUTING_IN_LOG_SPACE
-                        LOG_SUM_EXP_SET(BETA(sym_A, i, j), buffer_beta[sym_A * MS + i]);
-                    #else
-                        BETA_INCREASE(sym_A, i, j, buffer_beta[sym_A * MS + i]);
-                    #endif
-                }
+                // // write back
+                // for(int sym_A = 0; sym_A < N; sym_A++){
+                //     #ifdef COMPUTING_IN_LOG_SPACE
+                //         // LOG_SUM_EXP_SET(BETA(sym_A, i, j), buffer_beta[sym_A * MS + i]);
+                //         LOG_SUM_EXP_SET(BETA(sym_A, i, j), buffer_beta[sym_A * MS + i]);
+
+                //     #else
+                //         BETA_INCREASE(sym_A, i, j, buffer_beta[sym_A * MS + i]);
+                //     #endif
+                // }
             } // parallel for end.
         }
     }
@@ -274,10 +314,13 @@ void kernel_outside_main(double* mu, double* beta,
                         double beta_A_i_j = BETA(sym_A, i, j);
                         double alpha_B_i_k = ALPHA_GET(sym_B, i, k);
                         double alpha_C_k_p1_j = ALPHA_GET(sym_C, k + 1, j);
-                        
+                        assert(beta_A_i_j < 1e-9);
+                        assert(alpha_B_i_k < 1e-9);
+                        assert(alpha_C_k_p1_j < 1e-9);
                         #ifdef COMPUTING_IN_LOG_SPACE
                             LOG_SUM_EXP_SET(local_buffer_mu[gid * MS + i], 
-                                                possibility + beta_A_i_j + alpha_B_i_k + alpha_C_k_p1_j);                        
+                                                possibility + beta_A_i_j + alpha_B_i_k + alpha_C_k_p1_j);  
+                            assert(local_buffer_mu[gid * MS + i] < 1e-9);              
                         #else
                             local_buffer_mu[gid * MS + i] +=  possibility * beta_A_i_j * alpha_B_i_k * alpha_C_k_p1_j;
                         #endif
@@ -288,6 +331,7 @@ void kernel_outside_main(double* mu, double* beta,
                 #ifdef COMPUTING_IN_LOG_SPACE
                     for(int gid = 0; gid < n_grammars; gid++){
                         LOG_SUM_EXP_SET(MU(gid, i, j), local_buffer_mu[gid * MS + i]);
+                        assert(local_buffer_mu[gid * MS + i] < 1e-9); 
                     }
                 #else
                     for(int gid = 0; gid < n_grammars; gid++){

@@ -290,7 +290,7 @@ int main(int argc, char* argv[])
             progress_bar(i + 1, n_sequences_val);
             
             int N = grammar->N();
-
+            
             uint32_t* sequence = sentence.data();
             int sequence_length = sentence.size();
             

@@ -10,7 +10,7 @@ inline double _calculate_new_possibility(double S, double f_gid) {
     #ifdef COMPUTING_IN_LOG_SPACE
     if(std::abs(f_gid) < std::log(grammar_minimal_possibility))
         f_gid = std::log(grammar_minimal_possibility);
-    return f_gid - S;
+    return f_gid - S; // f_gid is a logarithm possibility. f_gid - S = log e^f_gid / e^S
     #else
     if(std::abs(f_gid) < grammar_minimal_possibility)
         f_gid = grammar_minimal_possibility;
@@ -63,7 +63,6 @@ void kernel_update_parameters(double* f, double* count, double* mu, double* beta
                 #else
                     f[gid] += count[gid];
                 #endif
-
                 gid++;
             }
         }
