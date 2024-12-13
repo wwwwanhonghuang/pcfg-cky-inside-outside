@@ -15,6 +15,7 @@ void normalize_grammar(pcfg* grammar){
         for(auto& grammar_item : grammar_items){
             Z = log_sum_exp(Z, grammar_item.possibility);
         }
+        
         for(auto& grammar_item : grammar_items){
             grammar_item.possibility -= Z;
         }

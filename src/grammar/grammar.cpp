@@ -12,7 +12,6 @@ pcfg_grammar_item parse_grammar_single_line(std::string line){
 
     while(pos < length){
         char ch = line[pos];
-        std::cout << ch << std::endl;
         switch(state){
             case 1:
                 if(ch == '-'){

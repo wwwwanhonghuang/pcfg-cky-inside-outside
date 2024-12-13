@@ -11,32 +11,41 @@ std::string report_all_statistics(parse_tree* node, double* alpha, std::vector<u
     std::vector<uint32_t> derivations = to_derivations_by_preorder_iteration(node);
     uint32_t* sequence = sentence.data();
     double entropy_of_derivations = derivation_entropy(derivations);
-    oss << "derivation_entropy: " << entropy_of_derivations << std::endl; 
+    oss << "derivation_entropy: " << entropy_of_derivations << std::endl;
+    // std::cout << "  - derivation_entropy outputted." << std::endl;
     double entropy_of_word = word_entropy(sentence);
     oss << "word_entropy: " << entropy_of_word << std::endl;
+    // std::cout << "  - word_entropy outputted." << std::endl;
 
     for(int d = 1; d <= max_delays; d++){
         double word_delay_d_mutual_entropy = word_delay_L_mutual_entropy(sentence, d);
         oss << "word_delay_" << d << "_mutual_entropy: " << word_delay_d_mutual_entropy << std::endl;
     }
+    // std::cout << "  - word_delay_L_mutual_entropy all outputted." << std::endl;
+
 
     for(int d = 1; d <= max_delays; d++){
         double derivation_delay_d_mutual_entropy = derivation_delay_L_mutual_entropy(sentence, d);
         oss << "derivation_delay_" << d << "_mutual_entropy: " << derivation_delay_d_mutual_entropy << std::endl;
     }
+    // std::cout << "  - derivation_delay_L_mutual_entropy all outputted." << std::endl;
+
 
     int depth_of_tree = tree_depth(node);
     oss << "depth_of_tree: " << depth_of_tree << std::endl;
+    // std::cout << "  - depth_of_tree outputted." << std::endl;
 
     for(int d = 1; d <= max_delays; d++){
         double d_layer_symbol_tree__entropy = L_layer_symbol_tree_mutual_entropy(grammar, node, d);
         oss << d << "_layer_symbol_tree__entropy: " << d_layer_symbol_tree__entropy << std::endl;
     }
+    // std::cout << "  - L_layer_symbol_tree__entropy all outputted." << std::endl;
 
     for(int d = 1; d <= max_delays; d++){
         double d_layer_derivation_tree__entropy = L_layer_derivation_tree_mutual_entropy(grammar, node, d);
             oss << d << "_layer_derivation_tree__entropy: " << d_layer_derivation_tree__entropy << std::endl;
     }
+    // std::cout << "  - L_layer_derivation_tree__entropy all outputted." << std::endl;
 
     for(int span_length = 2; span_length < sentence.size(); span_length++){
         for(int k = sentence.size() - 1; k >= span_length; k--){
@@ -44,6 +53,9 @@ std::string report_all_statistics(parse_tree* node, double* alpha, std::vector<u
             oss << "pre_" << span_length << "_end_" << k << ": " << prefix_parse_entropy << std::endl;
         }
     }
+    // std::cout << "  - entropies of spans all outputted." << std::endl;
+
+
     return oss.str();
 }
 
@@ -60,11 +72,10 @@ double _sequence_delay_L_mutual_entropy(std::vector<uint32_t> words, int L){
     std::map<uint64_t, uint32_t> word_joint_counter;
     std::map<uint32_t, double> word_possibility;
     std::map<uint64_t, double> word_joint_possibility;
-
-    for(int i = 0; i < words.size() - L; i++){
+    for(int i = 0; i < (int)(words.size()) - L; i++){
         word_joint_counter[static_cast<uint64_t>(words[i]) << 32 | words[i + L]] ++;
     }
-    for(int i = 0; i < words.size(); i++){
+    for(int i = 0; i < (int)(words.size()); i++){
         word_counter[words[i]] ++;
     }
     long Z = 0;
@@ -74,6 +85,9 @@ double _sequence_delay_L_mutual_entropy(std::vector<uint32_t> words, int L){
     for(auto& map_item : word_counter){
         word_possibility[map_item.first] = static_cast<double>(map_item.second) / Z;
     }
+    // std::cout << "  - in _sequence_delay_L_mutual_entropy:" << std::endl;
+    // std::cout << "      - word_possibility updated:" << std::endl;
+
     Z = 0;
     for(auto& map_item : word_counter){
         Z += static_cast<double>(map_item.second);
@@ -81,6 +95,8 @@ double _sequence_delay_L_mutual_entropy(std::vector<uint32_t> words, int L){
     for(auto& map_item : word_joint_counter){
         word_joint_possibility[map_item.first] = static_cast<double>(map_item.second) / Z;
     }
+    // std::cout << "      - word_joint_possibility updated:" << std::endl;
+
 
     double entropy = 0.0;
     for(auto& map_item: word_joint_possibility){
@@ -93,6 +109,9 @@ double _sequence_delay_L_mutual_entropy(std::vector<uint32_t> words, int L){
             entropy += p_ij * std::log(p_ij / (p_i * p_j));
         }
     }
+    // std::cout << "      - entropy calculate finished:" << std::endl;
+    // std::cout << "  - end _sequence_delay_L_mutual_entropy" << std::endl;
+
     
     return -entropy;
 }
