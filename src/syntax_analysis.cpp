@@ -26,7 +26,7 @@ int main(int argc, char* argv[])
         std::cout << "Error: config.yaml could not be loaded!" << std::endl;
         return 1;
     }
-   
+
     std::string grammar_filename = config["syntax_analysis"]["grammar_file"].as<std::string>();
     std::string input_filename = config["syntax_analysis"]["input"].as<std::string>();
     uint32_t log_itervals = config["syntax_analysis"]["log_intervals"].as<int>();
@@ -50,15 +50,15 @@ int main(int argc, char* argv[])
         auto& sentence = sentences[i];
         progress_bar(i + 1, n_total_sentences);
         // std::cout << "sentences length = " << sentence.size() << std::endl;
-        parse_tree* root = parse(grammar, sentence, alpha, inside_order_1_rule_iteration_path);
+        parsing::SyntaxTree* root = parsing::SyntaxTreeParser::parse(grammar, sentence, alpha, inside_order_1_rule_iteration_path);
         // std::cout << "parse finished" << std::endl;
         if(serialize_to_files){
-            serialize_tree_to_file(std::string("data/serialized_tree/sentence_") + 
+            parsing::SyntaxTreeSerializer::serialize_tree_to_file(std::string("data/serialized_tree/sentence_") + 
                 std::to_string(i + 1) + std::string(".txt"), root);
         }
         // std::cout << "serialize finished" << std::endl;
 
-        std::string statistics_report = report_all_statistics(root, alpha, sentence, grammar, 5);
+        std::string statistics_report = statistics::Statistician::report_all_statistics(root, alpha, sentence, grammar, 5);
         // std::cout << "report statistics finished" << std::endl;
 
         std::string report_filename = report_path + std::string("sentence_") + std::to_string(i + 1) + std::string(".report");

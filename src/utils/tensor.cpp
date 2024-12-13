@@ -5,8 +5,6 @@ T tensor<T>::operator[](int index){
     return this->tensor_pt[index];
 };
 
-
-
 template<typename T>
 void tensor_printer::print(const tensor<T>& tensor){
     if (tensor.mode.empty()) {
