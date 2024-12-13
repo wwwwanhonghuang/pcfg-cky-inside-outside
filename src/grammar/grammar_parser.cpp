@@ -2,9 +2,7 @@
 #include <fstream>
 #include <vector>
 #include <iostream>
-#ifdef COMPUTING_IN_LOG_SPACE
 #include <cmath>
-#endif
 #include "grammar/grammar_parser.hpp"
 #include "utils/printer.hpp"
 #include "utils/data_structure.hpp"
@@ -58,9 +56,9 @@ pcfg* _parse_grammar_file(const std::string& path){
         }
         pcfg_grammar_item rule = parse_grammar_single_line(line);
         std::cout << "[grammar: " << ++cnt_recognized_grammars << "] " << rule.left << "->" << rule.right1 << " " << rule.right2 << " " << rule.possibility << std::endl;
-        #ifdef COMPUTING_IN_LOG_SPACE
-            rule.possibility = std::log(rule.possibility);
-        #endif
+        
+        rule.possibility = std::log(rule.possibility);
+        
         _record_non_terminate_symbol(rule.left, grammar, rule, grammar_items_map);
         if(!map_contains(grammar_items_map, rule.left)){
             grammar_items_map.insert(std::make_pair(rule.left, std::vector<pcfg_grammar_item> {}));

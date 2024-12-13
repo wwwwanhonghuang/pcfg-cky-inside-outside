@@ -9,7 +9,7 @@
 #define PRINT_GRAMMAR_EACH_UPDATION_AFTER 0
 #define DEBUG_MODE 0
 #define SANITARY_OUTPUT 1
-#define COMPUTING_IN_LOG_SPACE
+// #define COMPUTING_IN_LOG_SPACE
 
 #if SANITARY_OUTPUT == 1
 #undef PRINT_INSIDE
@@ -38,30 +38,20 @@
 #define BETA_INCREASE(SYMBOL, I, J, VALUE) beta[(SYMBOL) * MS * MS + (I) * MS + J] +=  VALUE;
 #define MU_INCREASE(SYMBOL, I, J, VALUE) mu[(SYMBOL) * MS * MS + (I) * MS + J] +=  VALUE;
 
-#ifdef COMPUTING_IN_LOG_SPACE
 #define LOG_SUM_EXP_SET(A, B) A = log_sum_exp(A, B);
-#endif
+
 
 #define ALPHA(SYMBOL, I, J) alpha[(SYMBOL) * MS * MS + (I) * MS + J] 
 #define BETA(SYMBOL, I, J) beta[(SYMBOL) * MS * MS + (I) * MS + J]
 #define MU(GID, I, J) mu[(GID) * MS * MS + (I) * MS + J]
-#ifdef COMPUTING_IN_LOG_SPACE
 #define ALPHA_GET(SYMBOL, I, J) ((I) > (J) ? 0.0f : (SYMBOL) < N ? ALPHA(SYMBOL, I, J) : ((SYMBOL) == 0xFFFF ? -INFINITY: ((I) == (J) && sequence[I] == (SYMBOL) ? 0.0f : -INFINITY)))
-#else
-#define ALPHA_GET(SYMBOL, I, J) ((I) > (J) ? 1.0f : (SYMBOL) < N ? ALPHA(SYMBOL, I, J) : ((SYMBOL) == 0xFFFF ? 0.0f : ((I) == (J) && sequence[I] == (SYMBOL) ? 1.0f : 0.0f)))
-#endif
+
+
 #define SYMBOL_STR(SYMBOL_ID) ((SYMBOL_ID) < N ? grammar->reversed_nonterminate_map[(SYMBOL_ID)]: grammar->reversed_terminate_map[(SYMBOL_ID) - N])
 
-#ifdef COMPUTING_IN_LOG_SPACE
-    #define POSSIBILITY_ADD(P1, P2) log_sum_exp((P1), (P2))
-#else
-    #define POSSIBILITY_ADD(P1, P2) ((P1) + (P2))
-#endif
+#define POSSIBILITY_ADD(P1, P2) log_sum_exp((P1), (P2))
 
-#ifdef COMPUTING_IN_LOG_SPACE
+
 #define INIT_POSSIBILITY -INFINITY
-#else
-#define INIT_POSSIBILITY 0.0
-#endif
 
 #endif

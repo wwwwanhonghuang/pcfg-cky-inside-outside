@@ -229,18 +229,10 @@ double prefix_L_parse_entropy(pcfg* grammar, double* alpha, int sequence_length,
         double possibility = std::get<3>(item);
 
         if(IS_EPSILON(sym_C)){
-            #ifdef COMPUTING_IN_LOG_SPACE
-                p_s.emplace_back(possibility + ALPHA_GET(sym_B, std::max(end - L, 0), end));
-            #else
-                p_s.emplace_back(possibility * ALPHA_GET(sym_B, std::max(end - L, 0), end));
-            #endif
+            p_s.emplace_back(possibility + ALPHA_GET(sym_B, std::max(end - L, 0), end));
         }else{
             for(int k = std::min(end - L, 0); k < end; k++){
-                #ifdef COMPUTING_IN_LOG_SPACE
-                    p_s.emplace_back(possibility + ALPHA_GET(sym_B, k + 1, end));
-                #else
-                    p_s.emplace_back(possibility * ALPHA_GET(sym_B, k + 1, end));
-                #endif
+                p_s.emplace_back(possibility + ALPHA_GET(sym_B, k + 1, end));
             }
         }
     }
@@ -248,20 +240,16 @@ double prefix_L_parse_entropy(pcfg* grammar, double* alpha, int sequence_length,
     // Normalize probabilities
     double total_probability = 0.0;
     for (auto&& p : p_s) {
-        #ifdef COMPUTING_IN_LOG_SPACE
-            total_probability += std::exp(p);
-        #else
-            total_probability += p;
-        #endif
+        total_probability += std::exp(p);
     }
 
     // Calculate entropy
     double entropy = 0.0;
     if (total_probability > 0) {
         for (double p : p_s) {
-            #ifdef COMPUTING_IN_LOG_SPACE
-                p = std::exp(p);
-            #endif
+            
+            p = std::exp(p);
+            
             if (p > 0) {
                 double normalized_p = p / total_probability; // Normalize p
                 entropy += normalized_p * std::log(normalized_p); // log(p)

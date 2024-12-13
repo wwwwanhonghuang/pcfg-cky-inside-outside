@@ -71,9 +71,7 @@ int main(int argc, char* argv[])
     double* count = new double[grammar->cnt_grammar]();
     double* f = new double[grammar->cnt_grammar]();
     
-    #ifdef COMPUTING_IN_LOG_SPACE
     std::fill(f, f + grammar->cnt_grammar, -INFINITY);
-    #endif
 
     // 4. load corpus.
     std::cout << "Load sentences..." << std::endl;

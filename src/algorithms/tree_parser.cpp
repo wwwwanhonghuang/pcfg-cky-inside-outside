@@ -111,11 +111,8 @@ parse_tree* _parsing_helper(double* alpha, int MS, uint32_t symbol_id, int span_
     uint32_t best_k = 0;
     uint32_t best_gid = 0;
     
-    #ifdef COMPUTING_IN_LOG_SPACE
-        double best_v = -INFINITY;
-    #else
-        double best_v = 0.0;
-    #endif
+    double best_v = -INFINITY;
+    
     
     uint32_t sym_A = symbol_id;
     uint32_t current_offset = grammar->grammar_index[symbol_id];
@@ -139,11 +136,7 @@ parse_tree* _parsing_helper(double* alpha, int MS, uint32_t symbol_id, int span_
         // Find the best split point k and the value of possibility.
         if(!IS_EPSILON(sym_C)){
             for(int k = span_from; k < span_to; k++){
-                #ifdef COMPUTING_IN_LOG_SPACE
-                    double v = possibility + ALPHA_GET(sym_B, span_from, k) + ALPHA_GET(sym_C, k + 1, span_to);
-                #else
-                    double v = possibility * ALPHA_GET(sym_B, span_from, k) * ALPHA_GET(sym_C, k + 1, span_to);
-                #endif
+                double v = possibility + ALPHA_GET(sym_B, span_from, k) + ALPHA_GET(sym_C, k + 1, span_to);
                 
                 std::cout << "     -- in k = " << k
                     << " alpha(" << sym_B << ", " << span_from << ", " << k << ")"
@@ -159,13 +152,9 @@ parse_tree* _parsing_helper(double* alpha, int MS, uint32_t symbol_id, int span_
                     best_k = k;
                 }
             }
-            // break;
         }else{
-            #ifdef COMPUTING_IN_LOG_SPACE
-                double v = possibility + ALPHA_GET(sym_B, span_from, span_to);
-            #else
-                double v = possibility * ALPHA_GET(sym_B, span_from, span_to);
-            #endif
+            double v = possibility + ALPHA_GET(sym_B, span_from, span_to);
+
             if(v > best_v){
                 best_v = v;
                 best_symbol_B = sym_B;

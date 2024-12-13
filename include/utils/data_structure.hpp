@@ -40,13 +40,7 @@ inline double reverse_grammar_hashtable_get_value(uint32_t* hashtable, int hasht
             pos = (pos + BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS) % hashtable_size;
         }
     }
-    return 
-        #ifdef COMPUTING_IN_LOG_SPACE
-        -INFINITY
-        #else
-        0.0
-        #endif
-    ;    
+    return -INFINITY;    
 };
 
 #ifdef USE_CUDA

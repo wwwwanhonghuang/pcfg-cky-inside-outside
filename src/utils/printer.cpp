@@ -9,9 +9,9 @@ void print_grammar(pcfg* grammar, std::ostream& stream){
         uint32_t sym_B = std::get<1>(item);
         uint32_t sym_C = std::get<2>(item);
         double possibility = std::get<3>(item);
-        #ifdef COMPUTING_IN_LOG_SPACE
+    
         possibility = std::exp(possibility);
-        #endif
+    
         uint32_t gid = std::get<4>(item);
         stream << "[" << gid << "] " << SYMBOL_STR(sym_A) << " -> " << SYMBOL_STR(sym_B) << " " <<
             SYMBOL_STR(sym_C)  << " [" << std::fixed << std::setprecision(56) <<
