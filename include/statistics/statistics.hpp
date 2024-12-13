@@ -14,17 +14,17 @@
 #include "grammar/grammar.hpp"
 #include "macros.def"
 
-
 namespace statistics{
     class Statistician{
     public:
         template<typename T>
         static double _sequence_entropy(std::vector<T> sequence){
             std::map<uint32_t, uint32_t> counter;
+            uint32_t Z = 0;
+            
             for(auto&& element : sequence){
                 counter[element]++;
             }
-            uint32_t Z = 0;
 
             for(auto& map_item : counter){
                 Z += map_item.second;
@@ -33,19 +33,17 @@ namespace statistics{
             double entropy = 0.0;
             for(auto& map_item : counter){
                 double v = (Z == 0.0 ? 0.0 : static_cast<double>(map_item.second) / Z);
-                entropy += (v == 0 ? 0 : -v * std::log(v)); 
+                entropy += (v == 0 ? 0 : -v * std::log(v));
             }
             return entropy;
         }
 
-                
         // entropy
         static double derivation_entropy(std::vector<uint32_t> derivations);
 
         static double word_entropy(std::vector<uint32_t> words);
 
         static double _sequence_delay_L_mutual_entropy(std::vector<uint32_t> words, int L);
-
 
         static double derivation_delay_L_mutual_entropy(std::vector<uint32_t> derivations, int L);
 
@@ -68,9 +66,8 @@ namespace statistics{
 
                     for(auto&& postlayer_element: layers[delay_L_layer_id]){
                         uint64_t key = ((prelayer_element << 16) & 0xFFFF0000) | (postlayer_element & 0xFFFF);
-                                    // std::cout << " --- pre = " << prelayer_element << 
-                                    // "  --- post = " << postlayer_element << std::endl;
-
+                        // std::cout << " --- pre = " << prelayer_element << 
+                        // "  --- post = " << postlayer_element << std::endl;
                         joint_counter[key]++;
                     }
                 }

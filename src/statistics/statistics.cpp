@@ -87,18 +87,6 @@ namespace statistics{
         return redundancy + calculateRedundancy(node->left) + calculateRedundancy(node->right);
     }
 
-    // // Metric : Entropy (Tree Disorder/Complexity)
-    // double Statistician::calculateEntropy(parsing::SyntaxTree* node) {
-    //     if (node == nullptr) return 0.0;
-
-    //     // Calculate left and right subtree entropy recursively
-    //     double leftEntropy = calculateEntropy(node->left);
-    //     double rightEntropy = calculateEntropy(node->right);
-
-    //     // Example simplistic entropy calculation
-    //     return 1 + leftEntropy + rightEntropy;
-    // }
-
     // Metric : Traversal Time (Steps taken to traverse)
     int Statistician::countTraversalSteps(parsing::SyntaxTree* node) {
         if (node == nullptr) return 0;
@@ -177,7 +165,7 @@ namespace statistics{
         // std::cout << "  - entropies of spans all outputted." << std::endl;
         double average_path_length = averagePathLength(node);
         int redundancy = calculateRedundancy(node);
-        // double = calculateEntropy(node);
+        double symbol_entropy = calculate_tree_symbol_entropy(node);
         int traversal_steps = countTraversalSteps(node);
         double skewness = calculateSkewness(node);
         double density = calculateDensity(node);
@@ -186,7 +174,7 @@ namespace statistics{
         oss << "traversal_steps" << ": " << traversal_steps << std::endl;
         oss << "skewness" << ": " << skewness << std::endl;
         oss << "density" << ": " << density << std::endl;
-
+        oss << "symbol_entropy" << ": " << density << std::endl;
         return oss.str();
     }
 

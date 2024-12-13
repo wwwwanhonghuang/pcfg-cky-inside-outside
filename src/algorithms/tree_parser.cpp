@@ -184,7 +184,8 @@ namespace parsing
             SyntaxTree* node = new SyntaxTree();
             node->value = std::make_tuple(sym_A, best_symbol_B, best_symbol_C, span_from, best_v, best_gid); 
             node->right = nullptr;
-            SyntaxTree* tree_left = _parsing_helper(alpha, MS, best_symbol_B, span_from, span_to, grammar, sequence);
+            SyntaxTree* tree_left = 
+                _parsing_helper(alpha, MS, best_symbol_B, span_from, span_to, grammar, sequence);
             node->left = tree_left;        
             return node;
         }

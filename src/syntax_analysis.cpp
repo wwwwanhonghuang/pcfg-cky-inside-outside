@@ -8,6 +8,8 @@
 #include <sstream>
 #include <yaml-cpp/yaml.h>
 #include <fstream>
+#include <filesystem>
+
 #include "macros.def"
 #include "statistics/statistics.hpp"
 
@@ -18,7 +20,19 @@
 #include "dataset/dataset_helper.hpp"
 #include "algorithms/tree_parser.hpp"
 
+namespace fs = std::filesystem;
 
+void create_path_if_not_exists(const std::string& path){
+    if (!fs::exists(path)) {
+        try {
+            // Create the directory if it doesn't exist
+            fs::create_directories(path);  // create_directories will create intermediate directories if needed
+            std::cout << "Directory created: " << path << std::endl;
+        } catch (const fs::filesystem_error& e) {
+            std::cerr << "Error creating directory: " << e.what() << std::endl;
+        }
+    }
+}
 int main(int argc, char* argv[])
 {
     YAML::Node config = YAML::LoadFile("config.yaml");
@@ -33,6 +47,12 @@ int main(int argc, char* argv[])
     std::string log_path = config["syntax_analysis"]["log_path"].as<std::string>();
     bool serialize_to_files = config["syntax_analysis"]["serialize_to_files"].as<bool>(); 
     std::string report_path = config["syntax_analysis"]["report_path"].as<std::string>();
+    std::string tree_serialization_path = config["syntax_analysis"]["tree_serialization_path"].as<std::string>();
+
+    create_path_if_not_exists(log_path);
+    create_path_if_not_exists(tree_serialization_path);
+    create_path_if_not_exists(report_path);
+
     pcfg* grammar = prepare_grammar(grammar_filename);
     auto inside_order_1_rule_iteration_path = generate_inside_perterminate_iteration_paths(grammar);
 
@@ -46,6 +66,8 @@ int main(int argc, char* argv[])
 
     cky_printer printer;
     size_t n_total_sentences = sentences.size();
+
+
     for(int i = 0; i < n_total_sentences; i++){
         auto& sentence = sentences[i];
         progress_bar(i + 1, n_total_sentences);
@@ -53,7 +75,7 @@ int main(int argc, char* argv[])
         parsing::SyntaxTree* root = parsing::SyntaxTreeParser::parse(grammar, sentence, alpha, inside_order_1_rule_iteration_path);
         // std::cout << "parse finished" << std::endl;
         if(serialize_to_files){
-            parsing::SyntaxTreeSerializer::serialize_tree_to_file(std::string("data/serialized_tree/sentence_") + 
+            parsing::SyntaxTreeSerializer::serialize_tree_to_file(tree_serialization_path + std::string("/sentence_") + 
                 std::to_string(i + 1) + std::string(".txt"), root);
         }
         // std::cout << "serialize finished" << std::endl;
@@ -61,7 +83,7 @@ int main(int argc, char* argv[])
         std::string statistics_report = statistics::Statistician::report_all_statistics(root, alpha, sentence, grammar, 5);
         // std::cout << "report statistics finished" << std::endl;
 
-        std::string report_filename = report_path + std::string("sentence_") + std::to_string(i + 1) + std::string(".report");
+        std::string report_filename = report_path + std::string("/sentence_") + std::to_string(i + 1) + std::string(".report");
         std::ofstream report_file_output_stream(report_filename);
 
         if(!report_file_output_stream){

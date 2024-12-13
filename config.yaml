@@ -25,6 +25,7 @@ syntax_analysis:
   grammar_file: "data/grammar-trained.pcfg"
   input: "data/seizure_integrated_all_d2_s4_converted.txt"
   log_intervals: 1
-  log_path: "data/logs/"
-  report_path: "data/reports/"
+  log_path: "data/logs/seizures/"
+  report_path: "data/reports/seizures/"
   serialize_to_files: true
+  tree_serialization_path: "data/serialized_tree/seizures/"
