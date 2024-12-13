@@ -30,7 +30,7 @@ void serialize_tree_to_file(std::string filepath, parse_tree* root){
     std::string serialized_tree = serialize_tree(root);
     std::ofstream output_file_stream(filepath);
     if(!output_file_stream){
-        std::cout << "Failed to open output file stream." << std::endl;
+        std::cout << "Failed to open output file stream. Filepath = " << filepath << std::endl;
     }
     output_file_stream << serialized_tree;
 }
@@ -76,8 +76,8 @@ parse_tree* deserialize_tree(std::istringstream& tree_iss){
 
 parse_tree* _parsing_helper(double* alpha, int MS, uint32_t symbol_id, int span_from, int span_to, pcfg* grammar, uint32_t* sequence){
     int N = grammar->N();
-    // std::cout << "in parser sym = " << symbol_id << " span_from = " << 
-    //     span_from << " span_to = " << span_to << std::endl;
+    std::cout << "in parser sym = " << symbol_id << " span_from = " << 
+        span_from << " span_to = " << span_to << std::endl;
 
     if(span_from > span_to || IS_EPSILON(symbol_id)){
         return nullptr;
@@ -93,8 +93,8 @@ parse_tree* _parsing_helper(double* alpha, int MS, uint32_t symbol_id, int span_
         return nullptr;
     }
     
-    // std::cout << "symbol_id = " << symbol_id << " span_from " << span_from << " span_to "
-    //      << span_to << std::endl;
+    std::cout << "symbol_id = " << symbol_id << " span_from " << span_from << " span_to "
+        << span_to << std::endl;
     
     // Termination case:
     if(IS_TERMINATE(symbol_id)){
@@ -121,16 +121,16 @@ parse_tree* _parsing_helper(double* alpha, int MS, uint32_t symbol_id, int span_
     uint32_t current_offset = grammar->grammar_index[symbol_id];
     uint32_t next_offset = grammar->grammar_index[symbol_id + 1];
 
-`   // iterate all grammar rules, in which left symbol is the symbol identified by symbol_id.
+    // iterate all grammar rules, in which left symbol is the symbol identified by symbol_id.
     while(current_offset < next_offset){
         uint32_t encode_symbol = (uint32_t)(*(grammar->grammar_table + current_offset));
         uint32_t sym_B = (encode_symbol >> 16) & 0xFFFF;
         uint32_t sym_C = encode_symbol & 0xFFFF;
         double possibility = *(double*)(grammar->grammar_table + current_offset + 1);
         uint32_t gid = (int)(current_offset / BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS);
-        // std::cout << " - for " << sym_A << " -> " << sym_B << ", " << sym_C << std::endl;
+        std::cout << " - for " << sym_A << " -> " << sym_B << ", " << sym_C << std::endl;
         
-        // An impossibile case: span length = 1, however sym_C is not the empty (epsilon) in rule A -> BC.
+        // An impossible case: span length = 1, however sym_C is not the empty (epsilon) in rule A -> BC.
         if(!IS_EPSILON(sym_C) && span_from == span_to) {
             current_offset += BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS;
             continue;
@@ -145,12 +145,12 @@ parse_tree* _parsing_helper(double* alpha, int MS, uint32_t symbol_id, int span_
                     double v = possibility * ALPHA_GET(sym_B, span_from, k) * ALPHA_GET(sym_C, k + 1, span_to);
                 #endif
                 
-                // std::cout << "     -- in k = " << k
-                //     << " alpha(" << sym_B << ", " << span_from << ", " << k << ")"
-                //     << " = " << ALPHA_GET(sym_B, span_from, k)
-                //     << " alpha(" << sym_C << ", " << k + 1 << ", " << span_to << ")"
-                //     << " = " <<  ALPHA_GET(sym_C, k + 1, span_to)
-                //     << " possibility = " << possibility << std::endl;
+                std::cout << "     -- in k = " << k
+                    << " alpha(" << sym_B << ", " << span_from << ", " << k << ")"
+                    << " = " << ALPHA_GET(sym_B, span_from, k)
+                    << " alpha(" << sym_C << ", " << k + 1 << ", " << span_to << ")"
+                    << " = " <<  ALPHA_GET(sym_C, k + 1, span_to)
+                    << " possibility = " << possibility << std::endl;
 
                 if(v > best_v){
                     best_v = v;
@@ -159,7 +159,7 @@ parse_tree* _parsing_helper(double* alpha, int MS, uint32_t symbol_id, int span_
                     best_k = k;
                 }
             }
-            break;
+            // break;
         }else{
             #ifdef COMPUTING_IN_LOG_SPACE
                 double v = possibility + ALPHA_GET(sym_B, span_from, span_to);
@@ -178,11 +178,11 @@ parse_tree* _parsing_helper(double* alpha, int MS, uint32_t symbol_id, int span_
         current_offset += BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS;
     }
 
-    // std::cout << "  best_symbol_B = " << best_symbol_B << std::endl;
-    // std::cout << "  best_symbol_C = " << best_symbol_C << std::endl;
+    std::cout << "  best_symbol_B = " << best_symbol_B << std::endl;
+    std::cout << "  best_symbol_C = " << best_symbol_C << std::endl;
 
     if(span_from == span_to){
-        // std::cout << "  best_symbol_B = " << best_symbol_B << std::endl;
+        std::cout << "  best_symbol_B = " << best_symbol_B << std::endl;
         parse_tree* node = new parse_tree();
         node->value = std::make_tuple(sym_A, best_symbol_B, best_symbol_C, span_from, best_v, best_gid); 
         node->right = nullptr;
@@ -198,7 +198,7 @@ parse_tree* _parsing_helper(double* alpha, int MS, uint32_t symbol_id, int span_
 }
 
 parse_tree* merge_trees(uint32_t sym_A, int gid, uint32_t sym_B, uint32_t sym_C, int k, double p, parse_tree* left, parse_tree* right){
-    // std::cout << "merge " << sym_B << " " << sym_C << " -> " << sym_A << std::endl;
+    std::cout << "merge " << sym_B << " " << sym_C << " -> " << sym_A << std::endl;
     assert((sym_B == 0xFFFF && !left) || std::get<0>(left->value) == sym_B);
     assert((sym_C == 0xFFFF && !right) || std::get<0>(right->value) == sym_C);
     parse_tree* result = new parse_tree();
@@ -226,7 +226,7 @@ parse_tree* parse(pcfg* grammar, std::vector<uint32_t> sequence, double* alpha,
     int N = grammar->N();
     int argmax_nonterminate_id = 0;
     double max_inside_value = 0;
-    
+    assert(alpha[sequence.size() - 1] > -INFINITY);
     parse_tree* node = _parsing_helper(alpha, MAX_SEQUENCE_LENGTH, 0, 0, sequence.size() - 1, grammar, sequence.data());
     return node;
 }

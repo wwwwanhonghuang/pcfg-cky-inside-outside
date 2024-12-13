@@ -55,7 +55,7 @@ template<typename T>
 double calculate_delay_L_layer_mutual_information(pcfg* grammar, std::vector<std::vector<T>> layers, int L){
     std::unordered_map<uint64_t, long> joint_counter;
     std::unordered_map<uint32_t, long> symbol_counter;
-   
+
     int size_layers = layers.size();
     // Counting occurances
     for(int pre_layer_id = 0; pre_layer_id < size_layers - L; pre_layer_id++){
@@ -163,6 +163,8 @@ int tree_depth(parse_tree* node);
 
 double L_layer_symbol_tree_transitional_entropy(pcfg* grammar, parse_tree* tree, int L);
 double L_layer_derivation_tree_transitional_entropy(pcfg* grammar, parse_tree* tree, int L);
+double L_layer_derivation_tree_mutual_entropy(pcfg* grammar, parse_tree* tree, int L);
+double L_layer_symbol_tree_mutual_entropy(pcfg* grammar, parse_tree* tree, int L);
 
 // !important
 double prefix_L_parse_entropy(pcfg* grammar, double* alpha, int sequence_length, int end, int L, uint32_t* sequence);

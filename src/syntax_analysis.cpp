@@ -49,13 +49,17 @@ int main(int argc, char* argv[])
     for(int i = 0; i < n_total_sentences; i++){
         auto& sentence = sentences[i];
         progress_bar(i + 1, n_total_sentences);
+        std::cout << "sentences length = " << sentence.size() << std::endl;
         parse_tree* root = parse(grammar, sentence, alpha, inside_order_1_rule_iteration_path);
+        std::cout << "parse finished" << std::endl;
         if(serialize_to_files){
             serialize_tree_to_file(std::string("data/serialized_tree/sentence_") + 
-                std::to_string(i) + std::string(".txt"), root);
+                std::to_string(i + 1) + std::string(".txt"), root);
         }
+        std::cout << "serialize finished" << std::endl;
+
         std::string statistics_report = report_all_statistics(root, alpha, sentence, grammar, 5);
-        std::string report_filename = report_path + std::string("setence_") + std::to_string(i + 1) + std::string(".report");
+        std::string report_filename = report_path + std::string("sentence_") + std::to_string(i + 1) + std::string(".report");
         std::ofstream report_file_output_stream(report_filename);
 
         if(!report_file_output_stream){
@@ -68,7 +72,7 @@ int main(int argc, char* argv[])
             }
             sentence_serialization_stream << std::endl;
             report_file_output_stream << sentence_serialization_stream.str() << 
-                                         statistics_report << std::endl;
+            statistics_report << std::endl;
         }
     }
     std::cout << std::endl << "All finished" << std::endl;

@@ -12,10 +12,12 @@ pcfg_grammar_item parse_grammar_single_line(std::string line){
 
     while(pos < length){
         char ch = line[pos];
+        std::cout << ch << std::endl;
         switch(state){
             case 1:
                 if(ch == '-'){
                     state = 11;
+
                 }else{
                     left += {ch};
                 }
@@ -45,6 +47,7 @@ pcfg_grammar_item parse_grammar_single_line(std::string line){
                     state = 31;
                     pos++;
                 }else{
+
                     state = 22;
                 }
                 break;
@@ -65,8 +68,8 @@ pcfg_grammar_item parse_grammar_single_line(std::string line){
         }
     }
     
-
-    return pcfg_grammar_item(left, right1, right2, std::stof(possibility_string));
+    std::cout << possibility_string << std::endl;;
+    return pcfg_grammar_item(left, right1, right2, std::stod(possibility_string));
 };
 
 int pcfg::get_sym_id(const std::string& symbol){

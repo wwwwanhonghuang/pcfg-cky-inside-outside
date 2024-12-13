@@ -136,9 +136,7 @@ int main(int argc, char* argv[])
                 sequence_length, grammar->n_syms(), grammar->N(), 
                 grammar->T(), MS, grammar->cnt_grammar,
                 inside_order_1_rule_iteration_path
-                #ifdef USE_CUDA
                     , grammar
-                #endif
             );
                 
             if(ALPHA(0, 0, sequence_length - 1) > 1e-9){

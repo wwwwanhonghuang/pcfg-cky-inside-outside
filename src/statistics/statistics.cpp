@@ -19,22 +19,22 @@ std::string report_all_statistics(parse_tree* node, double* alpha, std::vector<u
         double word_delay_d_mutual_entropy = word_delay_L_mutual_entropy(sentence, d);
         oss << "word_delay_" << d << "_mutual_entropy: " << word_delay_d_mutual_entropy << std::endl;
     }
-   
+
     for(int d = 1; d <= max_delays; d++){
         double derivation_delay_d_mutual_entropy = derivation_delay_L_mutual_entropy(sentence, d);
         oss << "derivation_delay_" << d << "_mutual_entropy: " << derivation_delay_d_mutual_entropy << std::endl;
     }
-   
+
     int depth_of_tree = tree_depth(node);
     oss << "depth_of_tree: " << depth_of_tree << std::endl;
 
     for(int d = 1; d <= max_delays; d++){
-        double d_layer_symbol_tree__entropy = L_layer_symbol_tree__entropy(grammar, node, d);
+        double d_layer_symbol_tree__entropy = L_layer_symbol_tree_mutual_entropy(grammar, node, d);
         oss << d << "_layer_symbol_tree__entropy: " << d_layer_symbol_tree__entropy << std::endl;
     }
 
     for(int d = 1; d <= max_delays; d++){
-        double d_layer_derivation_tree__entropy = L_layer_derivation_tree__entropy(grammar, node, d);
+        double d_layer_derivation_tree__entropy = L_layer_derivation_tree_mutual_entropy(grammar, node, d);
             oss << d << "_layer_derivation_tree__entropy: " << d_layer_derivation_tree__entropy << std::endl;
     }
 
@@ -195,7 +195,7 @@ double L_layer_symbol_tree_mutual_entropy(pcfg* grammar, parse_tree* tree, int L
     return calculate_delay_L_layer_mutual_information(grammar, layers, L);
 }
 
-double L_layer_derivation_tree__entropy(pcfg* grammar, parse_tree* tree, int L){
+double L_layer_derivation_tree_mutual_entropy(pcfg* grammar, parse_tree* tree, int L){
     if (tree == nullptr) {
         throw std::invalid_argument("Tree cannot be null");
     }
