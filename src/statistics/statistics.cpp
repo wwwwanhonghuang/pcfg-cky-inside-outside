@@ -8,7 +8,6 @@
 #include <deque>
 
 namespace statistics{
-    // Metric : Average Path Length
     int Statistician::calculateHeight(parsing::SyntaxTree* node) {
         if (node == nullptr) return 0;
         return 1 + std::max(calculateHeight(node->left), calculateHeight(node->right));
@@ -21,7 +20,6 @@ namespace statistics{
         std::queue<parsing::SyntaxTree*> tree_node_queue;
 
         tree_node_queue.push(node);
-
 
         while(!tree_node_queue.empty()){
             parsing::SyntaxTree* current_node = tree_node_queue.front();
@@ -48,7 +46,7 @@ namespace statistics{
         }
 
         for(const auto& frequency_record : symbol_frequency){
-            entropy += -std::log2(frequency_record.second) * frequency_record.second;
+            entropy += -std::log(frequency_record.second) * frequency_record.second;
         }
 
         return entropy;
@@ -142,22 +140,22 @@ namespace statistics{
 
         int depth_of_tree = tree_depth(node);
         oss << "depth_of_tree: " << depth_of_tree << std::endl;
-        // std::cout << "  - depth_of_tree outputted." << std::endl;
 
+        // std::cout << "  - depth_of_tree outputted." << std::endl;
         for(int d = 1; d <= max_delays; d++){
             double d_layer_symbol_tree__entropy = L_layer_symbol_tree_mutual_entropy(grammar, node, d);
             oss << d << "_layer_symbol_tree__entropy: " << d_layer_symbol_tree__entropy << std::endl;
         }
+        
         // std::cout << "  - L_layer_symbol_tree__entropy all outputted." << std::endl;
-
         for(int d = 1; d <= max_delays; d++){
             double d_layer_derivation_tree__entropy = L_layer_derivation_tree_mutual_entropy(grammar, node, d);
-                oss << d << "_layer_derivation_tree__entropy: " << d_layer_derivation_tree__entropy << std::endl;
+            oss << d << "_layer_derivation_tree__entropy: " << d_layer_derivation_tree__entropy << std::endl;
         }
-        // std::cout << "  - L_layer_derivation_tree__entropy all outputted." << std::endl;
 
-        for(int span_length = 2; span_length < sentence.size(); span_length++){
-            for(int k = sentence.size() - 1; k >= span_length; k--){
+        // std::cout << "  - L_layer_derivation_tree__entropy all outputted." << std::endl;
+        for (int span_length = 2; span_length < sentence.size(); span_length++){
+            for (int k = sentence.size() - 1; k >= span_length; k--){
                 double prefix_parse_entropy = prefix_L_parse_entropy(grammar, alpha, sentence.size(), k, span_length, sequence);
                 oss << "pre_" << span_length << "_end_" << k << ": " << prefix_parse_entropy << std::endl;
             }
@@ -195,16 +193,21 @@ namespace statistics{
         for(int i = 0; i < (int)(words.size()) - L; i++){
             word_joint_counter[static_cast<uint64_t>(words[i]) << 32 | words[i + L]] ++;
         }
+        
         for(int i = 0; i < (int)(words.size()); i++){
             word_counter[words[i]] ++;
         }
+        
         long Z = 0;
+        
         for(auto& map_item : word_counter){
             Z += static_cast<double>(map_item.second);
         }
+
         for(auto& map_item : word_counter){
             word_possibility[map_item.first] = static_cast<double>(map_item.second) / Z;
         }
+        
         // std::cout << "  - in _sequence_delay_L_mutual_entropy:" << std::endl;
         // std::cout << "      - word_possibility updated:" << std::endl;
 
@@ -212,11 +215,10 @@ namespace statistics{
         for(auto& map_item : word_joint_counter){
             Z += static_cast<double>(map_item.second);
         }
+
         for(auto& map_item : word_joint_counter){
             word_joint_possibility[map_item.first] = static_cast<double>(map_item.second) / Z;
         }
-        // std::cout << "      - word_joint_possibility updated:" << std::endl;
-
 
         double entropy = 0.0;
         for(auto& map_item: word_joint_possibility){
@@ -229,9 +231,7 @@ namespace statistics{
                 entropy += p_ij * std::log(p_ij / (p_i * p_j));
             }
         }
-        // std::cout << "      - entropy calculate finished:" << std::endl;
-        // std::cout << "  - end _sequence_delay_L_mutual_entropy" << std::endl;
-        
+
         return -entropy;
     }
 
@@ -316,6 +316,7 @@ namespace statistics{
                 return std::get<0>(value); 
             }
         );
+
         //  for(auto& layer : layers){
         //     for(auto&& e : layer){
         //         std::cout << e << " " ;
@@ -330,6 +331,7 @@ namespace statistics{
         //     }
         //     ofs << "\n";
         // }
+        
         return calculate_delay_L_layer_mutual_information(grammar, layers, L);
     }
 
@@ -349,7 +351,7 @@ namespace statistics{
         return calculate_delay_L_layer_mutual_information(grammar, layers, L);
     }
 
-    // !important
+    // ! important
     double Statistician::prefix_L_parse_entropy(pcfg* grammar, double* alpha, int sequence_length, int end, int L, uint32_t* sequence){
         if (end < 0 || L < 0) {
             throw std::invalid_argument("end and L must be non-negative");
@@ -381,7 +383,7 @@ namespace statistics{
             total_probability += std::exp(p);
         }
 
-        // Calculate entropy
+        // calculate entropy
         double entropy = 0.0;
         if (total_probability > 0) {
             for (double p : p_s) {
@@ -393,7 +395,7 @@ namespace statistics{
                     entropy += normalized_p * std::log(normalized_p); // log(p)
                 }
             }
-            entropy = -entropy; // Final entropy calculation
+            entropy = -entropy;
         }
         return entropy;
     }

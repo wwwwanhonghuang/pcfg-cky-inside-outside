@@ -56,7 +56,7 @@ namespace statistics{
             std::unordered_map<uint32_t, long> symbol_counter;
 
             int size_layers = layers.size();
-            // Counting occurances
+            // counting occurances
             for(int pre_layer_id = 0; pre_layer_id < size_layers - L; pre_layer_id++){
                 int delay_L_layer_id = pre_layer_id + L;
                 // std::cout << " -- " << pre_layer_id << " " << std::endl;
@@ -170,13 +170,9 @@ namespace statistics{
         static double prefix_L_parse_entropy(pcfg* grammar, double* alpha, int sequence_length, int end, int L, uint32_t* sequence);
         static double word_delay_L_mutual_entropy(std::vector<uint32_t> words, int L);
 
-
-
         static std::string report_all_statistics(parsing::SyntaxTree* node, 
             double* alpha, std::vector<uint32_t> sentence, pcfg* grammar, int max_delays);
 
-
-            
         // Metric : Average Path Length
         static int calculateHeight(parsing::SyntaxTree* node);
         static int calculateTotalDepth(parsing::SyntaxTree* node, int depth);

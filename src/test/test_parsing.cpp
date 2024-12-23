@@ -32,7 +32,32 @@ void create_path_if_not_exists(const std::string& path){
             std::cerr << "Error creating directory: " << e.what() << std::endl;
         }
     }
-}
+};
+void extract_leaf_nodes(parsing::SyntaxTree* node, std::vector<uint32_t>& leaf_nodes);
+void test_leaf_order(parsing::SyntaxTree* tree, const std::vector<uint32_t>& input_sequence);
+
+void test_leaf_order(parsing::SyntaxTree* tree, const std::vector<uint32_t>& input_sequence) {
+    std::vector<uint32_t> leaf_nodes;
+    extract_leaf_nodes(tree, leaf_nodes);
+
+    assert(leaf_nodes == input_sequence && "Leaf nodes do not match input sequence!");
+    std::cout << "Test passed: Leaf nodes match input sequence.\n";
+};
+
+void extract_leaf_nodes(parsing::SyntaxTree* node, std::vector<uint32_t>& leaf_nodes) {
+    if (!node) return;
+    if (node->is_leaf()) {
+        leaf_nodes.push_back(std::get<0>(node->value)); // Assuming `token_id` holds the terminal symbol
+    } else {
+        if(node->left) {
+            extract_leaf_nodes(node->left, leaf_nodes);
+        }
+
+        if(node->right) {
+            extract_leaf_nodes(node->right, leaf_nodes);
+        }
+    }
+};
 
 int main(int argc, char* argv[])
 {
@@ -42,17 +67,8 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    std::string grammar_filename = config["syntax_analysis"]["grammar_file"].as<std::string>();
-    std::string input_filename = config["syntax_analysis"]["input"].as<std::string>();
-    uint32_t log_itervals = config["syntax_analysis"]["log_intervals"].as<int>();
-    std::string log_path = config["syntax_analysis"]["log_path"].as<std::string>();
-    bool serialize_to_files = config["syntax_analysis"]["serialize_to_files"].as<bool>(); 
-    std::string report_path = config["syntax_analysis"]["report_path"].as<std::string>();
-    std::string tree_serialization_path = config["syntax_analysis"]["tree_serialization_path"].as<std::string>();
-
-    create_path_if_not_exists(log_path);
-    create_path_if_not_exists(tree_serialization_path);
-    create_path_if_not_exists(report_path);
+    std::string grammar_filename = config["test_parsing"]["grammar_file"].as<std::string>();
+    std::string input_filename = config["test_parsing"]["input"].as<std::string>();
 
     pcfg* grammar = prepare_grammar(grammar_filename);
     auto inside_order_1_rule_iteration_path = generate_inside_perterminate_iteration_paths(grammar);
@@ -77,38 +93,21 @@ int main(int argc, char* argv[])
             continue;
         }
 
-        // std::cout << "sentences length = " << sentence.size() << std::endl;
         parsing::SyntaxTree* root = parsing::SyntaxTreeParser::parse(grammar, sentence, alpha, inside_order_1_rule_iteration_path);
-        
-        // std::cout << "parse finished" << std::endl;
-        if(serialize_to_files){
-            parsing::SyntaxTreeSerializer::serialize_tree_to_file(tree_serialization_path + std::string("/sentence_") + 
-                std::to_string(i + 1) + std::string(".txt"), root);
-        }
-        
-        // std::cout << "serialize finished" << std::endl;
-
-        std::string statistics_report = statistics::Statistician::report_all_statistics(root, alpha, sentence, grammar, 5);
-        // std::cout << "report statistics finished" << std::endl;
-
-        std::string report_filename = report_path + std::string("/sentence_") + std::to_string(i + 1) + std::string(".report");
-        std::ofstream report_file_output_stream(report_filename);
-
-        if(!report_file_output_stream){
-            std::cerr << "Error: cannot open output file " << report_filename << std::endl;
+        if (!root) {
+            std::cout << "Failed to parse sentence at index " << i << std::endl;
             continue;
-        }else{
-            std::ostringstream sentence_serialization_stream;
-            for(size_t word_id = 0; word_id < sentence.size(); word_id++){
-                sentence_serialization_stream << sentence[word_id] << " ";
-            }
-            sentence_serialization_stream << std::endl;
-            report_file_output_stream << sentence_serialization_stream.str() << 
-            statistics_report << std::endl;
+        }
+
+        try {
+            test_leaf_order(root, sentence);
+        } catch (const std::exception& e) {
+            std::cerr << "Validation failed for sentence at index " << i << ": " << e.what() << std::endl;
+            continue;
         }
     }
-    std::cout << std::endl << "All finished" << std::endl;
 
+    std::cout << std::endl << "All finished" << std::endl;
     delete[] alpha;
 
     return 0;

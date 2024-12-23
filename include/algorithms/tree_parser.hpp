@@ -23,6 +23,10 @@ namespace parsing{
 
         SyntaxTree():
             left(nullptr), right(nullptr) {}
+        
+        bool is_leaf(){
+            return left == nullptr && right == nullptr;
+        }
     };
 
     class SyntaxTreeParser{
@@ -47,7 +51,7 @@ namespace parsing{
         static SyntaxTree* deserialize_tree(const std::string& tree);
         static SyntaxTree* deserialize_tree(std::istringstream& tree);
         static SyntaxTree* deserialize_tree_from_file(const std::string& filepath);
-
+    
     private:
         static void _serialize_helper(SyntaxTree* root, std::ostringstream& oss);
 
