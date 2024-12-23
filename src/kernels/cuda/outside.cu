@@ -245,12 +245,9 @@ __global__ void kernel_outside_main(double* mu, double* beta, const uint32_t* se
                     double alpha_B_i_k = ALPHA_GET(sym_B, i, k);
                     double alpha_C_k_p1_j = ALPHA_GET(sym_C, k + 1, j);
                     
-                    #ifdef COMPUTING_IN_LOG_SPACE
-                        LOG_SUM_EXP_SET(local_buffer_mu[gid * MS + i], 
+                    LOG_SUM_EXP_SET(local_buffer_mu[gid * MS + i], 
                                             possibility + beta_A_i_j + alpha_B_i_k + alpha_C_k_p1_j);                        
-                    #else
-                        local_buffer_mu[gid * MS + i] +=  possibility * beta_A_i_j * alpha_B_i_k * alpha_C_k_p1_j;
-                    #endif
+                    
                 }
             }
             

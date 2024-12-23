@@ -113,7 +113,8 @@ namespace statistics{
         return static_cast<double>(nodeCount) / maxNodes;
     }
 
-    std::string Statistician::report_all_statistics(parsing::SyntaxTree* node, double* alpha, std::vector<uint32_t> sentence, 
+    std::string Statistician::report_all_statistics(parsing::SyntaxTree* node,
+    double* alpha, std::vector<uint32_t> sentence, 
                                 pcfg* grammar, int max_delays = 5){
         std::ostringstream oss;
         std::vector<uint32_t> derivations = to_derivations_by_preorder_iteration(node);
@@ -133,7 +134,7 @@ namespace statistics{
 
 
         for(int d = 1; d <= max_delays; d++){
-            double derivation_delay_d_mutual_entropy = derivation_delay_L_mutual_entropy(sentence, d);
+            double derivation_delay_d_mutual_entropy = derivation_delay_L_mutual_entropy(derivations, d);
             oss << "derivation_delay_" << d << "_mutual_entropy: " << derivation_delay_d_mutual_entropy << std::endl;
         }
         // std::cout << "  - derivation_delay_L_mutual_entropy all outputted." << std::endl;
@@ -174,7 +175,7 @@ namespace statistics{
         oss << "traversal_steps" << ": " << traversal_steps << std::endl;
         oss << "skewness" << ": " << skewness << std::endl;
         oss << "density" << ": " << density << std::endl;
-        oss << "symbol_entropy" << ": " << density << std::endl;
+        oss << "symbol_entropy" << ": " << symbol_entropy << std::endl;
         return oss.str();
     }
 
@@ -208,7 +209,7 @@ namespace statistics{
         // std::cout << "      - word_possibility updated:" << std::endl;
 
         Z = 0;
-        for(auto& map_item : word_counter){
+        for(auto& map_item : word_joint_counter){
             Z += static_cast<double>(map_item.second);
         }
         for(auto& map_item : word_joint_counter){

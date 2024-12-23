@@ -71,13 +71,21 @@ int main(int argc, char* argv[])
     for(int i = 0; i < n_total_sentences; i++){
         auto& sentence = sentences[i];
         progress_bar(i + 1, n_total_sentences);
+        if(sentence.size() > 500) {
+            std::cout << "Warning: a sentence with length " << 
+            sentence.size() << " is skipped." << std::endl;
+            continue;
+        }
+
         // std::cout << "sentences length = " << sentence.size() << std::endl;
         parsing::SyntaxTree* root = parsing::SyntaxTreeParser::parse(grammar, sentence, alpha, inside_order_1_rule_iteration_path);
+        
         // std::cout << "parse finished" << std::endl;
         if(serialize_to_files){
             parsing::SyntaxTreeSerializer::serialize_tree_to_file(tree_serialization_path + std::string("/sentence_") + 
                 std::to_string(i + 1) + std::string(".txt"), root);
         }
+        
         // std::cout << "serialize finished" << std::endl;
 
         std::string statistics_report = statistics::Statistician::report_all_statistics(root, alpha, sentence, grammar, 5);
