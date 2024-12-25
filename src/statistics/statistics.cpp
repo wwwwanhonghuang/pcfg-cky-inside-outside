@@ -195,7 +195,53 @@ namespace statistics{
         std::vector<std::vector<parsing::SyntaxTreeNode*>> layers = 
             bfs_get_all_layers_value<parsing::SyntaxTreeNode*>(grammar, node, [](parsing::SyntaxTreeNode* node)->parsing::SyntaxTreeNode*{return node;});
         double layer_average_derivation_entropy = calculate_layer_average_derivation_entropy(node, layers);
+        double path_average_derivation_entropy = calculate_path_average_derivation_entropy(node);
+        oss << "layer_average_derivation_entropy" << ": " << layer_average_derivation_entropy << std::endl;
+        oss << "path_average_derivation_entropy" << ": " << path_average_derivation_entropy << std::endl;
+
+        double layer_average_symbol_entropy = calculate_layer_average_symbol_entropy(node, layers);
+        double path_average_symbol_entropy = calculate_path_average_symbol_entropy(node);
+        oss << "layer_average_symbol_entropy" << ": " << layer_average_symbol_entropy << std::endl;
+        oss << "path_average_symbol_entropy" << ": " << path_average_symbol_entropy << std::endl;
+
+
+        for(int d = 1; d <= max_delays; d++){
+            double value_layer_symbol_transfer_entropy_delay_L = layer_symbol_transfer_entropy_delay_L(layers, d);
+            oss << "layer_symbol_transfer_entropy_delay_" << d << ": " << value_layer_symbol_transfer_entropy_delay_L << std::endl;
+        }
+
+        for(int d = 1; d <= max_delays; d++){
+            double value_layer_derivation_transfer_entropy_delay_L = layer_derivation_transfer_entropy_delay_L(layers, d);
+            oss << "layer_derivation_transfer_entropy_delay_" << d << ": " << value_layer_derivation_transfer_entropy_delay_L << std::endl;
+        }
+
+
+        // metrics for layer symbol and derivation sequence distribution's skew..
+            // Mean Divergence
+            // Skewness
+        std::vector<std::vector<int>> symbols_of_layers = 
+            bfs_get_all_layers_value<int>(grammar, 
+            node, [](parsing::SyntaxTreeNode* node)->int{return std::get<0>(node->value);});
+        std::vector<std::vector<int>> derivations_of_layers = 
+            bfs_get_all_layers_value<int>(grammar, 
+            node, [](parsing::SyntaxTreeNode* node)->int{return std::get<5>(node->value);});
+        
+        double average_layer_symbol_skewness = calculate_average_skewness(symbols_of_layers);
+        double average_layer_derivation_skewness = calculate_average_skewness(derivations_of_layers);
+        oss << "average_layer_symbol_skewness" << ": " << average_layer_symbol_skewness << std::endl;
+        oss << "average_layer_derivation_skewness" << ": " << average_layer_derivation_skewness << std::endl;
+
+
+        double average_layer_symbol_KL_divergence = calculate_average_kl_divergence(symbols_of_layers);
+        double average_layer_derivation_KL_divergence = calculate_average_kl_divergence(derivations_of_layers);
+        oss << "average_layer_symbol_skewness" << ": " << average_layer_symbol_skewness << std::endl;
+        oss << "average_layer_derivation_skewness" << ": " << average_layer_derivation_skewness << std::endl;
+
+
+        
+
         return oss.str();
+
     }
 
     double Statistician::derivation_entropy(std::vector<uint32_t> derivations){  // vector of derivations (grammar IDs)

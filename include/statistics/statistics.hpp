@@ -17,6 +17,104 @@
 namespace statistics{
     class Statistician{
     public:
+        template<typename T>
+        static double calculate_average_kl_divergence(const std::vector<std::vector<T>>& layers) {
+            double total_kl = 0.0;
+            int num_layers = layers.size();
+            int n_samples = 0;
+            // Calculate KL divergence for each layer and accumulate
+            for (int i = 0; i < num_layers; ++i) {
+                for(int j = i + 1; j < num_layers; ++j){
+                    // Calculate distribution for the current layer
+                    std::unordered_map<T, double> layer_distribution_i = calculate_distribution(layers[i]);
+                    std::unordered_map<T, double> layer_distribution_j = calculate_distribution(layers[j]);
+
+                    // Calculate KL divergence between the layer and the reference distribution
+                    total_kl += calculate_kl_divergence(layer_distribution_i, layer_distribution_j);
+                    n_samples++;
+                }
+            }
+
+            // Return the average KL divergence across layers
+            return total_kl / n_samples;
+        }
+
+        template<typename T>
+        static double calculate_kl_divergence(const std::unordered_map<T, double>& p, const std::unordered_map<T, double>& q) {
+            double kl_divergence = 0.0;
+
+            for (const auto& pair : p) {
+                T val = pair.first;
+                double p_val = pair.second;
+                double q_val = q.count(val) > 0 ? q.at(val) : 0.0;
+
+                if (p_val > 0 && q_val > 0) {
+                    kl_divergence += p_val * std::log(p_val / q_val);
+                }
+            }
+
+            return kl_divergence;
+        }
+
+        template<typename T>
+        static std::unordered_map<T, double> calculate_distribution(const std::vector<T>& values) {
+            std::unordered_map<T, int> counts;
+            for (T val : values) {
+                counts[val]++;
+            }
+
+            std::unordered_map<T, double> distribution;
+            int total = values.size();
+            for (const auto& pair : counts) {
+                distribution[pair.first] = static_cast<double>(pair.second) / total;
+            }
+
+            return distribution;
+        }
+        
+        template<typename T>
+        static double calculate_skewness(const std::vector<T>& values) {
+            int n = values.size();
+            if (n < 3) return 0.0;  // Skewness is not defined for n < 3
+
+            // Calculate mean
+            double mean = 0.0;
+            for (T val : values) {
+                mean += val;
+            }
+            mean /= n;
+
+            // Calculate standard deviation
+            double variance = 0.0;
+            for (T val : values) {
+                variance += (val - mean) * (val - mean);
+            }
+            variance /= n;
+            double stddev = std::sqrt(variance);
+
+            // Calculate skewness
+            double skewness = 0.0;
+            for (T val : values) {
+                skewness += std::pow((val - mean) / stddev, 3);
+            }
+            skewness *= (n / ((n - 1) * (n - 2)));
+            
+            return skewness;
+        }
+
+        static double calculate_average_skewness(const std::vector<std::vector<int>>& layers) {
+            double total_skewness = 0.0;
+            int num_layers = layers.size();
+
+            // Calculate skewness for each layer and accumulate
+            for (int i = 0; i < num_layers; ++i) {
+                total_skewness += calculate_skewness(layers[i]);
+            }
+
+            // Return the average skewness across layers
+            return total_skewness / num_layers;
+        }
+
 
         static double layer_symbol_transfer_entropy_delay_L(
             std::vector<std::vector<parsing::SyntaxTreeNode*>> layers, 
@@ -25,6 +123,34 @@ namespace statistics{
             return _layer_transfer_entropy_delay_L<int>(
                 layers,
                 [&](parsing::SyntaxTreeNode* node)->int{return std::get<0>(node->value);},
+                L,
+                [&](long key, int index)->long{
+                    if(index == 100){return (key >> 32) & 0xFFFF;}
+                    if(index == 010){return (key >> 16) & 0xFFFF;}
+                    if(index == 001){return (key) & 0xFFFF;}
+                    if(index == 110){return (key >> 16) & 0xFFFFFFFFL;}
+                    if(index == 011){return key & 0xFFFFFFFFL;}
+                    if(index == 101){return (key & 0xFFFF) | ((key >> 32) & 0xFFFF);}
+                    if(index == 111){return key;}
+                    return -1;
+                },
+                [](int val)->long{return val;},
+                [](int val2, int val1)->long {return (((long)val2) << 16) | val1;},
+                [](int val3, int val2, int val1)->long 
+                    {return (((long)val2) << 32)  | 
+                            (((long)val2) << 16) | 
+                            val1;
+                    }
+            );
+        }
+
+        static double layer_derivation_transfer_entropy_delay_L(
+            std::vector<std::vector<parsing::SyntaxTreeNode*>> layers, 
+            int L
+        ) {
+            return _layer_transfer_entropy_delay_L<int>(
+                layers,
+                [&](parsing::SyntaxTreeNode* node)->int{return std::get<5>(node->value);},
                 L,
                 [&](long key, int index)->long{
                     if(index == 100){return (key >> 32) & 0xFFFF;}
