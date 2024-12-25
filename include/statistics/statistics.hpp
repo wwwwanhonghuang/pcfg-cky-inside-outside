@@ -17,12 +17,44 @@
 namespace statistics{
     class Statistician{
     public:
-        template<typename T, typename IndexingFunction>
+
+        static double layer_symbol_transfer_entropy_delay_L(
+            std::vector<std::vector<parsing::SyntaxTreeNode*>> layers, 
+            int L
+        ) {
+            return _layer_transfer_entropy_delay_L<int>(
+                layers,
+                [&](parsing::SyntaxTreeNode* node)->int{return std::get<0>(node->value);},
+                L,
+                [&](long key, int index)->long{
+                    if(index == 100){return (key >> 32) & 0xFFFF;}
+                    if(index == 010){return (key >> 16) & 0xFFFF;}
+                    if(index == 001){return (key) & 0xFFFF;}
+                    if(index == 110){return (key >> 16) & 0xFFFFFFFFL;}
+                    if(index == 011){return key & 0xFFFFFFFFL;}
+                    if(index == 101){return (key & 0xFFFF) | ((key >> 32) & 0xFFFF);}
+                    if(index == 111){return key;}
+                    return -1;
+                },
+                [](int val)->long{return val;},
+                [](int val2, int val1)->long {return (((long)val2) << 16) | val1;},
+                [](int val3, int val2, int val1)->long 
+                    {return (((long)val2) << 32)  | 
+                            (((long)val2) << 16) | 
+                            val1;
+                    }
+            );
+        }
+
+        template<typename T>
         static double _layer_transfer_entropy_delay_L(
             std::vector<std::vector<parsing::SyntaxTreeNode*>> layers, 
             std::function<T(parsing::SyntaxTreeNode*)> value_selector, 
             int L,
-            IndexingFunction indexing_fn
+            std::function<long(long, int)> indexing_fn,
+            std::function<long(T)> encode_1_value,
+            std::function<long(T, T)> encode_2_values,
+            std::function<long(T, T, T)> encode_3_values
         ) {
             if (L <= 0) return 0.0;
             
@@ -49,7 +81,7 @@ namespace statistics{
                             T e_y_1 = value_selector(node_y_1);
                             T e_y = value_selector(node_y);
 
-                            long encoded_3 = encode_3_value(e_y, e_y_1, e_x);
+                            long encoded_3 = encode_3_values(e_y, e_y_1, e_x);
                             long encoded_2_y_x = encode_2_values(e_y_1, e_x);
                             long encoded_2_y_y = encode_2_values(e_y, e_y_1);
 
@@ -74,22 +106,21 @@ namespace statistics{
                 for (auto& possibility_record : y_1) Z += possibility_record.second;
                 for (auto& possibility_record : y_1) possibility_record.second /= Z;
 
-                // Using user-defined indexing function to extract parts of the encoding
                 for (auto& possibility_record_y_y_x : joint_y_y_x) {
                     long key = possibility_record_y_y_x.first;
-                    y_condition_y_x[key] = possibility_record_y_y_x.second / joint_y_x[indexing_fn(key, 2, 3)];
+                    y_condition_y_x[key] = possibility_record_y_y_x.second / joint_y_x[indexing_fn(key, 011)];
                 }
 
                 for (auto& possibility_record_y_y : joint_y_y) {
                     long key = possibility_record_y_y.first;
-                    y_condition_y[key] = possibility_record_y_y.second / y_1[indexing_fn(key, 1, 2)];
+                    y_condition_y[key] = possibility_record_y_y.second / y_1[indexing_fn(key, 001)];
                 }
 
                 // Calculating entropy contribution
                 for (auto& possibility_record : joint_y_y_x) {
                     long key = possibility_record.first;
                     double p_y_given_xy = y_condition_y_x[key];
-                    double p_y_given_y = y_condition_y[indexing_fn(key, 1, 2)];
+                    double p_y_given_y = y_condition_y[indexing_fn(key, 110)];
                     if (p_y_given_xy > 0 && p_y_given_y > 0) {
                         entropy += possibility_record.second * std::log2(p_y_given_xy / p_y_given_y);
                     }
@@ -207,7 +238,7 @@ namespace statistics{
 
         template<typename T> 
         static std::vector<std::vector<T>> 
-        bfs_get_all_layers_value(pcfg* grammar, parsing::SyntaxTreeNode* root, std::function<T(const std::tuple<uint32_t, uint32_t, uint32_t, int, double, int>&)> value_selector){
+        bfs_get_all_layers_value(pcfg* grammar, parsing::SyntaxTreeNode* root, std::function<T(parsing::SyntaxTreeNode*)> value_selector){
             std::vector<std::vector<T>> layers;
             std::queue<parsing::SyntaxTreeNode*> node_queue;
             
@@ -227,7 +258,7 @@ namespace statistics{
                     parsing::SyntaxTreeNode* first_node = node_queue.front();
                     node_queue.pop();
 
-                    layer.emplace_back(value_selector(first_node->value)); // the A'id in A->BC/
+                    layer.emplace_back(value_selector(first_node)); // the A'id in A->BC/
                     // std::cout << "push - " << value_selector(first_node->value) << std::endl;
                     if(first_node->left != nullptr){
                         node_queue.push(first_node->left);
@@ -271,6 +302,8 @@ namespace statistics{
             auto is_black = [&black_set](parsing::SyntaxTreeNode* node) -> bool {
                 return node == nullptr || black_set.find(node) != black_set.end();
             };
+            std::vector<int> path_values;  
+
 
             while (!stack.empty()) {
                 parsing::SyntaxTreeNode* peek_node = stack.back();

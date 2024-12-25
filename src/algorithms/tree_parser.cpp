@@ -4,7 +4,7 @@
 #include "macros.def"
 namespace parsing
 {
-    void SyntaxTreeNodeSerializer::_serialize_helper(SyntaxTreeNode* root, std::ostringstream& oss) {
+    void SyntaxTreeSerializer::_serialize_helper(SyntaxTreeNode* root, std::ostringstream& oss) {
         if (root == nullptr) {
             oss << "# ";
             return;
@@ -21,13 +21,13 @@ namespace parsing
         _serialize_helper(root->right, oss);
     };
 
-    std::string SyntaxTreeNodeSerializer::serialize_tree(SyntaxTreeNode* root){
+    std::string SyntaxTreeSerializer::serialize_tree(SyntaxTreeNode* root){
         std::ostringstream oss;
         _serialize_helper(root, oss);
         return oss.str();
     };
 
-    void SyntaxTreeNodeSerializer::serialize_tree_to_file(const std::string& filepath, SyntaxTreeNode* root){
+    void SyntaxTreeSerializer::serialize_tree_to_file(const std::string& filepath, SyntaxTreeNode* root){
         std::string serialized_tree = serialize_tree(root);
         std::ofstream output_file_stream(filepath);
         if(!output_file_stream){
@@ -36,7 +36,7 @@ namespace parsing
         output_file_stream << serialized_tree;
     }
 
-    SyntaxTreeNode* SyntaxTreeNodeSerializer::deserialize_tree_from_file(const std::string& filepath){
+    SyntaxTreeNode* SyntaxTreeSerializer::deserialize_tree_from_file(const std::string& filepath){
         std::ifstream infile(filepath);
         if (!infile.is_open()) {
             throw std::runtime_error("Could not open file: " + filepath);
@@ -49,12 +49,12 @@ namespace parsing
         return deserialize_tree(oss.str());
     }
 
-    SyntaxTreeNode* SyntaxTreeNodeSerializer::deserialize_tree(const std::string& tree){
+    SyntaxTreeNode* SyntaxTreeSerializer::deserialize_tree(const std::string& tree){
         std::istringstream iss(tree);
         return deserialize_tree(iss);
     }
 
-    SyntaxTreeNode* SyntaxTreeNodeSerializer::deserialize_tree(std::istringstream& tree_iss){
+    SyntaxTreeNode* SyntaxTreeSerializer::deserialize_tree(std::istringstream& tree_iss){
         std::string token;
         if (!(tree_iss >> token) || token == "#") { // Check for null pointer
             return nullptr;
@@ -76,10 +76,10 @@ namespace parsing
     }
 
 
-    std::shared_ptr<frfl::logger::Logger> SyntaxTreeNodeParser::logger = 
-            frfl::logger::Loggers::build_logger<frfl::logger::StdLogger>("SyntaxTreeNodeParser");
+    std::shared_ptr<frfl::logger::Logger> SyntaxTreeParser::logger = 
+            frfl::logger::Loggers::build_logger<frfl::logger::StdLogger>("SyntaxTreeParser");
 
-    SyntaxTreeNode* SyntaxTreeNodeParser::_parsing_helper(double* alpha, int MS, uint32_t symbol_id, int span_from, int span_to, pcfg* grammar, uint32_t* sequence){
+    SyntaxTreeNode* SyntaxTreeParser::_parsing_helper(double* alpha, int MS, uint32_t symbol_id, int span_from, int span_to, pcfg* grammar, uint32_t* sequence){
         int N = grammar->N();
         // std::cout << "in parser sym = " << symbol_id << " span_from = " << 
         //     span_from << " span_to = " << span_to << std::endl;
@@ -197,7 +197,7 @@ namespace parsing
         return merged_SyntaxTreeNode;
     }
 
-    SyntaxTreeNode* SyntaxTreeNodeParser::merge_trees(uint32_t sym_A, int gid, uint32_t sym_B, uint32_t sym_C, int k, double p, SyntaxTreeNode* left, SyntaxTreeNode* right){
+    SyntaxTreeNode* SyntaxTreeParser::merge_trees(uint32_t sym_A, int gid, uint32_t sym_B, uint32_t sym_C, int k, double p, SyntaxTreeNode* left, SyntaxTreeNode* right){
         // std::cout << "merge " << sym_B << " " << sym_C << " -> " << sym_A << std::endl;
         assert((sym_B == 0xFFFF && !left) || std::get<0>(left->value) == sym_B);
         assert((sym_C == 0xFFFF && !right) || std::get<0>(right->value) == sym_C);
@@ -209,7 +209,7 @@ namespace parsing
     }
 
     // parse a sequence into syntax tree
-    SyntaxTreeNode* SyntaxTreeNodeParser::parse(pcfg* grammar, std::vector<uint32_t> sequence, double* alpha, 
+    SyntaxTreeNode* SyntaxTreeParser::parse(pcfg* grammar, std::vector<uint32_t> sequence, double* alpha, 
             std::vector<std::tuple<uint32_t, uint32_t>> inside_order_1_rule_iteration_path){
         int sequence_length = sequence.size();
         inside_algorithm(sequence.data(), 

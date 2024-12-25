@@ -192,6 +192,9 @@ namespace statistics{
         oss << "skewness" << ": " << skewness << std::endl;
         oss << "density" << ": " << density << std::endl;
         oss << "symbol_entropy" << ": " << symbol_entropy << std::endl;
+        std::vector<std::vector<parsing::SyntaxTreeNode*>> layers = 
+            bfs_get_all_layers_value<parsing::SyntaxTreeNode*>(grammar, node, [](parsing::SyntaxTreeNode* node)->parsing::SyntaxTreeNode*{return node;});
+        double layer_average_derivation_entropy = calculate_layer_average_derivation_entropy(node, layers);
         return oss.str();
     }
 
@@ -340,8 +343,8 @@ namespace statistics{
         std::vector<std::vector<int>> layers = bfs_get_all_layers_value<int>(
             grammar, 
             tree, 
-            [](const std::tuple<uint32_t, uint32_t, uint32_t, int, double, int>& value){
-                return std::get<0>(value); 
+            [](parsing::SyntaxTreeNode* node){
+                return std::get<0>(node->value); 
             }
         );
 
@@ -371,8 +374,8 @@ namespace statistics{
         auto layers = bfs_get_all_layers_value<int>(
             grammar, 
             tree, 
-            [](const std::tuple<uint32_t, uint32_t, uint32_t, int, double, int>& value) {
-                return std::get<5>(value);
+            [](parsing::SyntaxTreeNode* node) {
+                return std::get<5>(node->value);
             }
         );
         

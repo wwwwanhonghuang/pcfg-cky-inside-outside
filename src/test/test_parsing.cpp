@@ -93,7 +93,7 @@ int main(int argc, char* argv[])
             continue;
         }
 
-        parsing::SyntaxTreeNode* root = parsing::SyntaxTreeNodeParser::parse(grammar, sentence, alpha, inside_order_1_rule_iteration_path);
+        parsing::SyntaxTreeNode* root = parsing::SyntaxTreeParser::parse(grammar, sentence, alpha, inside_order_1_rule_iteration_path);
         if (!root) {
             std::cout << "Failed to parse sentence at index " << i << std::endl;
             continue;

@@ -78,11 +78,11 @@ int main(int argc, char* argv[])
         }
 
         // std::cout << "sentences length = " << sentence.size() << std::endl;
-        parsing::SyntaxTreeNode* root = parsing::SyntaxTreeNodeParser::parse(grammar, sentence, alpha, inside_order_1_rule_iteration_path);
+        parsing::SyntaxTreeNode* root = parsing::SyntaxTreeParser::parse(grammar, sentence, alpha, inside_order_1_rule_iteration_path);
         
         // std::cout << "parse finished" << std::endl;
         if(serialize_to_files){
-            parsing::SyntaxTreeNodeSerializer::serialize_tree_to_file(tree_serialization_path + std::string("/sentence_") + 
+            parsing::SyntaxTreeSerializer::serialize_tree_to_file(tree_serialization_path + std::string("/sentence_") + 
                 std::to_string(i + 1) + std::string(".txt"), root);
         }
         
