@@ -169,6 +169,19 @@ syntax_analysis/fast:
 .PHONY : syntax_analysis/fast
 
 #=============================================================================
+# Target rules for targets named test_parsing
+
+# Build rule for target.
+test_parsing: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_parsing
+.PHONY : test_parsing
+
+# fast build rule for target.
+test_parsing/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_parsing.dir/build.make CMakeFiles/test_parsing.dir/build
+.PHONY : test_parsing/fast
+
+#=============================================================================
 # Target rules for targets named unit_tests
 
 # Build rule for target.
@@ -560,6 +573,33 @@ src/syntax_analysis.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/syntax_analysis.dir/build.make CMakeFiles/syntax_analysis.dir/src/syntax_analysis.cpp.s
 .PHONY : src/syntax_analysis.cpp.s
 
+src/test/test_parsing.o: src/test/test_parsing.cpp.o
+.PHONY : src/test/test_parsing.o
+
+# target to build an object file
+src/test/test_parsing.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/shared_lib.dir/build.make CMakeFiles/shared_lib.dir/src/test/test_parsing.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_parsing.dir/build.make CMakeFiles/test_parsing.dir/src/test/test_parsing.cpp.o
+.PHONY : src/test/test_parsing.cpp.o
+
+src/test/test_parsing.i: src/test/test_parsing.cpp.i
+.PHONY : src/test/test_parsing.i
+
+# target to preprocess a source file
+src/test/test_parsing.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/shared_lib.dir/build.make CMakeFiles/shared_lib.dir/src/test/test_parsing.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_parsing.dir/build.make CMakeFiles/test_parsing.dir/src/test/test_parsing.cpp.i
+.PHONY : src/test/test_parsing.cpp.i
+
+src/test/test_parsing.s: src/test/test_parsing.cpp.s
+.PHONY : src/test/test_parsing.s
+
+# target to generate assembly for a file
+src/test/test_parsing.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/shared_lib.dir/build.make CMakeFiles/shared_lib.dir/src/test/test_parsing.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_parsing.dir/build.make CMakeFiles/test_parsing.dir/src/test/test_parsing.cpp.s
+.PHONY : src/test/test_parsing.cpp.s
+
 src/utils/application_io.o: src/utils/application_io.cpp.o
 .PHONY : src/utils/application_io.o
 
@@ -837,6 +877,7 @@ help:
 	@echo "... phase_convert_executable"
 	@echo "... shared_lib"
 	@echo "... syntax_analysis"
+	@echo "... test_parsing"
 	@echo "... unit_tests"
 	@echo "... src/algorithms/alg_inside_outside_main.o"
 	@echo "... src/algorithms/alg_inside_outside_main.i"
@@ -883,6 +924,9 @@ help:
 	@echo "... src/syntax_analysis.o"
 	@echo "... src/syntax_analysis.i"
 	@echo "... src/syntax_analysis.s"
+	@echo "... src/test/test_parsing.o"
+	@echo "... src/test/test_parsing.i"
+	@echo "... src/test/test_parsing.s"
 	@echo "... src/utils/application_io.o"
 	@echo "... src/utils/application_io.i"
 	@echo "... src/utils/application_io.s"

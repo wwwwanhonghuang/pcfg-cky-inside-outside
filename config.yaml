@@ -23,12 +23,12 @@ phase_convert:
 
 syntax_analysis:
   grammar_file: "data/grammar-trained.pcfg"
-  input: "data/pre-epileptic_integrated_all_d2_s4_converted.txt"
+  input: "data/normal_integrated_all_d2_s4_converted.txt"
   log_intervals: 1
-  log_path: "data/logs/preepileptic/"
-  report_path: "data/reports/preepileptic/"
-  serialize_to_files: true
-  tree_serialization_path: "data/serialized_tree/preepileptic/"
+  log_path: "data/logs/normal/"
+  report_path: "data/reports/normal/"
+  serialize_to_files: false
+  tree_serialization_path: "data/serialized_tree/normal/"
 
 test_parsing:
   grammar_file: "data/grammar-trained.pcfg"

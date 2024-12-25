@@ -4,7 +4,7 @@
 #include "macros.def"
 namespace parsing
 {
-    void SyntaxTreeSerializer::_serialize_helper(SyntaxTree* root, std::ostringstream& oss) {
+    void SyntaxTreeNodeSerializer::_serialize_helper(SyntaxTreeNode* root, std::ostringstream& oss) {
         if (root == nullptr) {
             oss << "# ";
             return;
@@ -21,13 +21,13 @@ namespace parsing
         _serialize_helper(root->right, oss);
     };
 
-    std::string SyntaxTreeSerializer::serialize_tree(SyntaxTree* root){
+    std::string SyntaxTreeNodeSerializer::serialize_tree(SyntaxTreeNode* root){
         std::ostringstream oss;
         _serialize_helper(root, oss);
         return oss.str();
     };
 
-    void SyntaxTreeSerializer::serialize_tree_to_file(const std::string& filepath, SyntaxTree* root){
+    void SyntaxTreeNodeSerializer::serialize_tree_to_file(const std::string& filepath, SyntaxTreeNode* root){
         std::string serialized_tree = serialize_tree(root);
         std::ofstream output_file_stream(filepath);
         if(!output_file_stream){
@@ -36,7 +36,7 @@ namespace parsing
         output_file_stream << serialized_tree;
     }
 
-    SyntaxTree* SyntaxTreeSerializer::deserialize_tree_from_file(const std::string& filepath){
+    SyntaxTreeNode* SyntaxTreeNodeSerializer::deserialize_tree_from_file(const std::string& filepath){
         std::ifstream infile(filepath);
         if (!infile.is_open()) {
             throw std::runtime_error("Could not open file: " + filepath);
@@ -49,12 +49,12 @@ namespace parsing
         return deserialize_tree(oss.str());
     }
 
-    SyntaxTree* SyntaxTreeSerializer::deserialize_tree(const std::string& tree){
+    SyntaxTreeNode* SyntaxTreeNodeSerializer::deserialize_tree(const std::string& tree){
         std::istringstream iss(tree);
         return deserialize_tree(iss);
     }
 
-    SyntaxTree* SyntaxTreeSerializer::deserialize_tree(std::istringstream& tree_iss){
+    SyntaxTreeNode* SyntaxTreeNodeSerializer::deserialize_tree(std::istringstream& tree_iss){
         std::string token;
         if (!(tree_iss >> token) || token == "#") { // Check for null pointer
             return nullptr;
@@ -68,7 +68,7 @@ namespace parsing
 
         tree_iss >> id2 >> id3 >> id4 >> id5 >> id6;
 
-        SyntaxTree* node = new SyntaxTree(std::make_tuple(id1, id2, id3, id4, id5, id6));
+        SyntaxTreeNode* node = new SyntaxTreeNode(std::make_tuple(id1, id2, id3, id4, id5, id6));
 
         node->left = deserialize_tree(tree_iss);
         node->right = deserialize_tree(tree_iss);
@@ -76,10 +76,10 @@ namespace parsing
     }
 
 
-    std::shared_ptr<frfl::logger::Logger> SyntaxTreeParser::logger = 
-            frfl::logger::Loggers::build_logger<frfl::logger::StdLogger>("SyntaxTreeParser");
+    std::shared_ptr<frfl::logger::Logger> SyntaxTreeNodeParser::logger = 
+            frfl::logger::Loggers::build_logger<frfl::logger::StdLogger>("SyntaxTreeNodeParser");
 
-    SyntaxTree* SyntaxTreeParser::_parsing_helper(double* alpha, int MS, uint32_t symbol_id, int span_from, int span_to, pcfg* grammar, uint32_t* sequence){
+    SyntaxTreeNode* SyntaxTreeNodeParser::_parsing_helper(double* alpha, int MS, uint32_t symbol_id, int span_from, int span_to, pcfg* grammar, uint32_t* sequence){
         int N = grammar->N();
         // std::cout << "in parser sym = " << symbol_id << " span_from = " << 
         //     span_from << " span_to = " << span_to << std::endl;
@@ -104,7 +104,7 @@ namespace parsing
         // terminate case
         if(IS_TERMINATE(symbol_id)){
             // std::cout << " !!! - terminate: " << symbol_id << std::endl;
-            SyntaxTree* node = new SyntaxTree();
+            SyntaxTreeNode* node = new SyntaxTreeNode();
             node->value = std::make_tuple(symbol_id, 0xFFFF, 0xFFFF, span_from, 1.0f, 0xFFFF); 
             node->right = nullptr;
             node->left = nullptr;   
@@ -181,27 +181,27 @@ namespace parsing
         // no spliting.
         if(span_from == span_to){
             // std::cout << "  best_symbol_B = " << best_symbol_B << std::endl;
-            SyntaxTree* node = new SyntaxTree();
+            SyntaxTreeNode* node = new SyntaxTreeNode();
             node->value = std::make_tuple(sym_A, best_symbol_B, best_symbol_C, span_from, best_v, best_gid); 
             node->right = nullptr;
-            SyntaxTree* tree_left = 
+            SyntaxTreeNode* tree_left = 
                 _parsing_helper(alpha, MS, best_symbol_B, span_from, span_to, grammar, sequence);
             node->left = tree_left;        
             return node;
         }
         
         // split span at best k.
-        SyntaxTree* tree_1 = _parsing_helper(alpha, MS, best_symbol_B, span_from, best_k, grammar, sequence);
-        SyntaxTree* tree_2 = _parsing_helper(alpha, MS, best_symbol_C, best_k + 1, span_to, grammar, sequence);
-        SyntaxTree* merged_SyntaxTree = merge_trees(symbol_id, best_gid, best_symbol_B, best_symbol_C, best_k, best_v, tree_1, tree_2);
-        return merged_SyntaxTree;
+        SyntaxTreeNode* tree_1 = _parsing_helper(alpha, MS, best_symbol_B, span_from, best_k, grammar, sequence);
+        SyntaxTreeNode* tree_2 = _parsing_helper(alpha, MS, best_symbol_C, best_k + 1, span_to, grammar, sequence);
+        SyntaxTreeNode* merged_SyntaxTreeNode = merge_trees(symbol_id, best_gid, best_symbol_B, best_symbol_C, best_k, best_v, tree_1, tree_2);
+        return merged_SyntaxTreeNode;
     }
 
-    SyntaxTree* SyntaxTreeParser::merge_trees(uint32_t sym_A, int gid, uint32_t sym_B, uint32_t sym_C, int k, double p, SyntaxTree* left, SyntaxTree* right){
+    SyntaxTreeNode* SyntaxTreeNodeParser::merge_trees(uint32_t sym_A, int gid, uint32_t sym_B, uint32_t sym_C, int k, double p, SyntaxTreeNode* left, SyntaxTreeNode* right){
         // std::cout << "merge " << sym_B << " " << sym_C << " -> " << sym_A << std::endl;
         assert((sym_B == 0xFFFF && !left) || std::get<0>(left->value) == sym_B);
         assert((sym_C == 0xFFFF && !right) || std::get<0>(right->value) == sym_C);
-        SyntaxTree* result = new SyntaxTree();
+        SyntaxTreeNode* result = new SyntaxTreeNode();
         result->left = left;
         result->right = right;
         result->value = std::make_tuple(sym_A, sym_B, sym_C, k, p, gid);
@@ -209,7 +209,7 @@ namespace parsing
     }
 
     // parse a sequence into syntax tree
-    SyntaxTree* SyntaxTreeParser::parse(pcfg* grammar, std::vector<uint32_t> sequence, double* alpha, 
+    SyntaxTreeNode* SyntaxTreeNodeParser::parse(pcfg* grammar, std::vector<uint32_t> sequence, double* alpha, 
             std::vector<std::tuple<uint32_t, uint32_t>> inside_order_1_rule_iteration_path){
         int sequence_length = sequence.size();
         inside_algorithm(sequence.data(), 
@@ -226,7 +226,7 @@ namespace parsing
         int argmax_nonterminate_id = 0;
         double max_inside_value = 0;
         assert(alpha[sequence.size() - 1] > -INFINITY);
-        SyntaxTree* node = _parsing_helper(alpha, MAX_SEQUENCE_LENGTH, 0, 0, sequence.size() - 1, grammar, sequence.data());
+        SyntaxTreeNode* node = _parsing_helper(alpha, MAX_SEQUENCE_LENGTH, 0, 0, sequence.size() - 1, grammar, sequence.data());
         return node;
     }
 } // namespace parsing

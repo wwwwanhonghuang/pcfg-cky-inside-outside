@@ -39,7 +39,7 @@ void kernel_update_parameters(double* f, double* count, double* mu, double* beta
         uint32_t*
         grammar_table, double* alpha, 
         int sequence_length, int n_syms, int N, int T, int MS, int n_grammars
-        #ifdef USE_CUDA
+        #ifndef USE_CUDA
             , pcfg* grammar
         #endif
         , bool do_update

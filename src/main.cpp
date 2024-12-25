@@ -21,7 +21,6 @@
 #include "constants.h"
 #include "utils/math.hpp"
 
-
 int main(int argc, char* argv[])
 {
     std::string configuration_file_path = "config.yaml";
@@ -141,8 +140,7 @@ int main(int argc, char* argv[])
                 printer.print_inside_outside_table(alpha,  grammar->N(), grammar->T(), sequence_length, MS, grammar);
                 std::cout << "assert failed: Log possibility should less than or equal to 0." << std::endl;
                 assert(false);
-            }
-            
+            }            
 
             #if PRINT_STEPS == 1
                 std::cout << "Inside Algorithm Finished." << std::endl;
@@ -151,7 +149,6 @@ int main(int argc, char* argv[])
             #if PRINT_INSIDE == 1
                 printer.print_inside_outside_table(alpha,  grammar->N(), grammar->T(), sequence_length, MAX_SEQUENCE_LENGTH, grammar);
             #endif
-
 
             #if PRINT_STEPS == 1
                 std::cout << "2. Proceeding Outside Algorithm..." << std::endl;
@@ -212,9 +209,7 @@ int main(int argc, char* argv[])
                 alpha,
                 sequence_length, grammar->n_syms(), grammar->N(), grammar->T(),
                 MS, grammar->cnt_grammar
-                #ifdef DEBUG_INSIDE_ALGORITHM
                     , grammar
-                #endif 
                 , update_parameter_immediately
             );
 

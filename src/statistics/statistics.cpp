@@ -7,22 +7,134 @@
 #include <vector>
 #include <deque>
 
+
 namespace statistics{
-    int Statistician::calculateHeight(parsing::SyntaxTree* node) {
+    int Statistician::calculateHeight(parsing::SyntaxTreeNode* node) {
         if (node == nullptr) return 0;
         return 1 + std::max(calculateHeight(node->left), calculateHeight(node->right));
     }
 
-    double Statistician::calculate_tree_symbol_entropy(parsing::SyntaxTree* node){
+    double Statistician::calculate_layer_average_derivation_entropy(parsing::SyntaxTreeNode* node, const std::vector<std::vector<parsing::SyntaxTreeNode*>> layers){
+        return _calculate_layer_average_entropy<int>(node, layers, [&](parsing::SyntaxTreeNode* node)->int{return std::get<0>(node->value);});
+    }
+
+    double Statistician::calculate_layer_average_symbol_entropy(parsing::SyntaxTreeNode* node, const std::vector<std::vector<parsing::SyntaxTreeNode*>> layers) {
+        return _calculate_layer_average_entropy<int>(node, layers, [&](parsing::SyntaxTreeNode* node)->int{return std::get<5>(node->value);});
+    }
+
+    double Statistician::calculate_path_average_symbol_entropy(parsing::SyntaxTreeNode* node) {
+        double total_entropy = 0.0;
+        int path_count = 0;
+
+        if (node == nullptr) return total_entropy;
+
+        std::vector<parsing::SyntaxTreeNode*> stack;
+        stack.push_back(node);
+        std::unordered_set<parsing::SyntaxTreeNode*> black_set;
+
+        auto is_black = [&black_set](parsing::SyntaxTreeNode* node) -> bool {
+            return node == nullptr || black_set.find(node) != black_set.end();
+        };
+
+        while (!stack.empty()) {
+            parsing::SyntaxTreeNode* peek_node = stack.back();
+
+            // If it's a leaf node, calculate the entropy for the current path
+            if (peek_node->is_leaf()) {
+                std::vector<int> values;
+
+                values.resize(stack.size());
+
+                std::transform(stack.begin(), stack.end(), values.begin(), [&](parsing::SyntaxTreeNode* node)->int{return std::get<0>(node->value);});
+
+                total_entropy += _sequence_entropy(values);
+                path_count++;
+                stack.pop_back();
+                black_set.emplace(peek_node);
+                continue;
+            }
+
+            // Traverse the left child if not visited
+            if (!is_black(peek_node->left)) {
+                stack.push_back(peek_node->left);
+            }
+            // Otherwise, traverse the right child if not visited
+            else if (!is_black(peek_node->right)) {
+                stack.push_back(peek_node->right);
+            } 
+            // If both children are visited, mark the current node as processed
+            else {
+                black_set.emplace(peek_node);
+                stack.pop_back();
+            }
+        }
+
+        // Prevent division by zero if no paths were processed
+        return path_count > 0 ? total_entropy / path_count : 0.0;
+    }
+
+    double Statistician::calculate_path_average_derivation_entropy(parsing::SyntaxTreeNode* node) {
+        double total_entropy = 0.0;
+        int path_count = 0;
+
+        if (node == nullptr) return total_entropy;
+
+        std::vector<parsing::SyntaxTreeNode*> stack;
+        stack.push_back(node);
+        std::unordered_set<parsing::SyntaxTreeNode*> black_set;
+
+        auto is_black = [&black_set](parsing::SyntaxTreeNode* node) -> bool {
+            return node == nullptr || black_set.find(node) != black_set.end();
+        };
+
+        while (!stack.empty()) {
+            parsing::SyntaxTreeNode* peek_node = stack.back();
+
+            // If it's a leaf node, calculate the entropy for the current path
+            if (peek_node->is_leaf()) {
+                std::vector<int> values;
+
+                values.resize(stack.size());
+
+                std::transform(stack.begin(), stack.end(), values.begin(), [&](parsing::SyntaxTreeNode* node)->int{return std::get<5>(node->value);});
+
+                total_entropy += _sequence_entropy(values);
+                path_count++;
+                stack.pop_back();
+                black_set.emplace(peek_node);
+                continue;
+            }
+
+            // Traverse the left child if not visited
+            if (!is_black(peek_node->left)) {
+                stack.push_back(peek_node->left);
+            }
+            // Otherwise, traverse the right child if not visited
+            else if (!is_black(peek_node->right)) {
+                stack.push_back(peek_node->right);
+            } 
+            // If both children are visited, mark the current node as processed
+            else {
+                black_set.emplace(peek_node);
+                stack.pop_back();
+            }
+        }
+
+        // Prevent division by zero if no paths were processed
+        return path_count > 0 ? total_entropy / path_count : 0.0;
+    }
+
+
+    double Statistician::calculate_tree_symbol_entropy(parsing::SyntaxTreeNode* node){
         std::vector<int> symbols;
         double entropy = 0.0;
         std::unordered_map<int, int> symbol_counter;
-        std::queue<parsing::SyntaxTree*> tree_node_queue;
+        std::queue<parsing::SyntaxTreeNode*> tree_node_queue;
 
         tree_node_queue.push(node);
 
         while(!tree_node_queue.empty()){
-            parsing::SyntaxTree* current_node = tree_node_queue.front();
+            parsing::SyntaxTreeNode* current_node = tree_node_queue.front();
             tree_node_queue.pop();
             int symbol_id = std::get<0>(current_node->value);
 
@@ -52,25 +164,25 @@ namespace statistics{
         return entropy;
     }
 
-    int Statistician::calculateTotalDepth(parsing::SyntaxTree* node, int depth = 0) {
+    int Statistician::calculateTotalDepth(parsing::SyntaxTreeNode* node, int depth = 0) {
         if (node == nullptr) return 0;
         return depth + calculateTotalDepth(node->left, depth + 1) + 
             calculateTotalDepth(node->right, depth + 1);
     }
 
-    int Statistician::countNodes(parsing::SyntaxTree* node) {
+    int Statistician::countNodes(parsing::SyntaxTreeNode* node) {
         if (node == nullptr) return 0;
         return 1 + countNodes(node->left) + countNodes(node->right);
     }
 
-    double Statistician::averagePathLength(parsing::SyntaxTree* node) {
+    double Statistician::averagePathLength(parsing::SyntaxTreeNode* node) {
         int totalDepth = calculateTotalDepth(node);
         int totalNodes = countNodes(node);
         return static_cast<double>(totalDepth) / totalNodes;
     }
 
     // Metric : Redundancy (Measuring Subtree Similarity)
-    bool Statistician::areSubtreesSimilar(parsing::SyntaxTree* node1, parsing::SyntaxTree* node2) {
+    bool Statistician::areSubtreesSimilar(parsing::SyntaxTreeNode* node1, parsing::SyntaxTreeNode* node2) {
         if (node1 == nullptr && node2 == nullptr) return true;
         if (node1 == nullptr || node2 == nullptr) return false;
         return (node1->value == node2->value) && 
@@ -78,7 +190,7 @@ namespace statistics{
             areSubtreesSimilar(node1->right, node2->right);
     }
 
-    int Statistician::calculateRedundancy(parsing::SyntaxTree* node) {
+    int Statistician::calculateRedundancy(parsing::SyntaxTreeNode* node) {
         if (node == nullptr) return 0;
         int redundancy = 0;
         if (areSubtreesSimilar(node->left, node->right)) redundancy = 1;
@@ -86,13 +198,13 @@ namespace statistics{
     }
 
     // Metric : Traversal Time (Steps taken to traverse)
-    int Statistician::countTraversalSteps(parsing::SyntaxTree* node) {
+    int Statistician::countTraversalSteps(parsing::SyntaxTreeNode* node) {
         if (node == nullptr) return 0;
         return 1 + countTraversalSteps(node->left) + countTraversalSteps(node->right);
     }
 
     // Metric : Skewness (Imbalance of the tree)
-    double Statistician::calculateSkewness(parsing::SyntaxTree* node) {
+    double Statistician::calculateSkewness(parsing::SyntaxTreeNode* node) {
         if (node == nullptr) return 0.0;
         int leftHeight = calculateHeight(node->left);
         int rightHeight = calculateHeight(node->right);
@@ -104,14 +216,14 @@ namespace statistics{
         return std::pow(2, height) - 1;  // Full binary tree max nodes
     }
 
-    double Statistician::calculateDensity(parsing::SyntaxTree* node) {
+    double Statistician::calculateDensity(parsing::SyntaxTreeNode* node) {
         int nodeCount = countNodes(node);
         int treeHeight = calculateHeight(node);
         int maxNodes = calculateMaxNodes(treeHeight);
         return static_cast<double>(nodeCount) / maxNodes;
     }
 
-    std::string Statistician::report_all_statistics(parsing::SyntaxTree* node,
+    std::string Statistician::report_all_statistics(parsing::SyntaxTreeNode* node,
     double* alpha, std::vector<uint32_t> sentence, 
                                 pcfg* grammar, int max_delays = 5){
         std::ostringstream oss;
@@ -269,17 +381,17 @@ namespace statistics{
         return _sequence_delay_L_mutual_entropy(derivations, L);
     }
 
-    std::vector<uint32_t> Statistician::to_derivations_by_preorder_iteration(parsing::SyntaxTree* node){
-        std::deque<parsing::SyntaxTree*> stack;
+    std::vector<uint32_t> Statistician::to_derivations_by_preorder_iteration(parsing::SyntaxTreeNode* node){
+        std::deque<parsing::SyntaxTreeNode*> stack;
         std::vector<uint32_t> result;
         if(node == nullptr)
             return result;
         stack.push_back(node);
 
-        std::unordered_set<parsing::SyntaxTree*> visited;
+        std::unordered_set<parsing::SyntaxTreeNode*> visited;
 
         while(!stack.empty()){
-            parsing::SyntaxTree* current = stack.back();
+            parsing::SyntaxTreeNode* current = stack.back();
             
             if(visited.find(current) != visited.end()){
                 result.push_back(std::get<5>(current->value));
@@ -298,18 +410,28 @@ namespace statistics{
         return result;
     }
 
-    int Statistician::tree_depth(parsing::SyntaxTree* node){
+    int Statistician::tree_depth(parsing::SyntaxTreeNode* node){
         if(node == nullptr) 
             return 0;
         int left_right_max_depth = std::max(tree_depth(node->left), tree_depth(node->right));
         return left_right_max_depth + 1;
     }
 
-    double Statistician::L_layer_symbol_tree_mutual_entropy(pcfg* grammar, parsing::SyntaxTree* tree, int L){
+
+    // static double L_layer_symbol_tree_transitional_entropy(pcfg* grammar, parsing::SyntaxTreeNode* tree, int L) {
+
+    // }
+
+    // static double L_layer_derivation_tree_transitional_entropy(pcfg* grammar, parsing::SyntaxTreeNode* tree, int L) {
+
+    // }
+
+
+    double Statistician::L_layer_symbol_tree_mutual_entropy(pcfg* grammar, parsing::SyntaxTreeNode* tree, int L){
         if (tree == nullptr) {
             throw std::invalid_argument("Tree cannot be null");
         }
-        std::vector<std::vector<int>> layers = dfs_get_all_layers_value<int>(
+        std::vector<std::vector<int>> layers = bfs_get_all_layers_value<int>(
             grammar, 
             tree, 
             [](const std::tuple<uint32_t, uint32_t, uint32_t, int, double, int>& value){
@@ -335,12 +457,12 @@ namespace statistics{
         return calculate_delay_L_layer_mutual_information(grammar, layers, L);
     }
 
-    double Statistician::L_layer_derivation_tree_mutual_entropy(pcfg* grammar, parsing::SyntaxTree* tree, int L){
+    double Statistician::L_layer_derivation_tree_mutual_entropy(pcfg* grammar, parsing::SyntaxTreeNode* tree, int L){
         if (tree == nullptr) {
             throw std::invalid_argument("Tree cannot be null");
         }
         
-        auto layers = dfs_get_all_layers_value<int>(
+        auto layers = bfs_get_all_layers_value<int>(
             grammar, 
             tree, 
             [](const std::tuple<uint32_t, uint32_t, uint32_t, int, double, int>& value) {

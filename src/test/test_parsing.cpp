@@ -33,10 +33,10 @@ void create_path_if_not_exists(const std::string& path){
         }
     }
 };
-void extract_leaf_nodes(parsing::SyntaxTree* node, std::vector<uint32_t>& leaf_nodes);
-void test_leaf_order(parsing::SyntaxTree* tree, const std::vector<uint32_t>& input_sequence);
+void extract_leaf_nodes(parsing::SyntaxTreeNode* node, std::vector<uint32_t>& leaf_nodes);
+void test_leaf_order(parsing::SyntaxTreeNode* tree, const std::vector<uint32_t>& input_sequence);
 
-void test_leaf_order(parsing::SyntaxTree* tree, const std::vector<uint32_t>& input_sequence) {
+void test_leaf_order(parsing::SyntaxTreeNode* tree, const std::vector<uint32_t>& input_sequence) {
     std::vector<uint32_t> leaf_nodes;
     extract_leaf_nodes(tree, leaf_nodes);
 
@@ -44,7 +44,7 @@ void test_leaf_order(parsing::SyntaxTree* tree, const std::vector<uint32_t>& inp
     std::cout << "Test passed: Leaf nodes match input sequence.\n";
 };
 
-void extract_leaf_nodes(parsing::SyntaxTree* node, std::vector<uint32_t>& leaf_nodes) {
+void extract_leaf_nodes(parsing::SyntaxTreeNode* node, std::vector<uint32_t>& leaf_nodes) {
     if (!node) return;
     if (node->is_leaf()) {
         leaf_nodes.push_back(std::get<0>(node->value)); // Assuming `token_id` holds the terminal symbol
@@ -93,7 +93,7 @@ int main(int argc, char* argv[])
             continue;
         }
 
-        parsing::SyntaxTree* root = parsing::SyntaxTreeParser::parse(grammar, sentence, alpha, inside_order_1_rule_iteration_path);
+        parsing::SyntaxTreeNode* root = parsing::SyntaxTreeNodeParser::parse(grammar, sentence, alpha, inside_order_1_rule_iteration_path);
         if (!root) {
             std::cout << "Failed to parse sentence at index " << i << std::endl;
             continue;
