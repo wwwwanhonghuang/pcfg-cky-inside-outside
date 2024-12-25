@@ -17,6 +17,89 @@
 namespace statistics{
     class Statistician{
     public:
+        template<typename T, typename IndexingFunction>
+        static double _layer_transfer_entropy_delay_L(
+            std::vector<std::vector<parsing::SyntaxTreeNode*>> layers, 
+            std::function<T(parsing::SyntaxTreeNode*)> value_selector, 
+            int L,
+            IndexingFunction indexing_fn
+        ) {
+            if (L <= 0) return 0.0;
+            
+            double entropy = 0.0;
+
+            for (int layer_id = 0; layer_id < layers.size() - L; layer_id++) {
+                std::unordered_map<long, double> joint_y_y_x;
+                std::unordered_map<long, double> joint_y_x;
+                std::unordered_map<long, double> joint_y_y;
+
+                std::unordered_map<long, double> y_condition_y_x;
+                std::unordered_map<long, double> y_condition_y;
+                std::unordered_map<long, double> y_1;
+
+                auto& layer = layers[layer_id];
+                auto& layer_delay_L = layers[layer_id + L];
+                auto& layer_delay_L_1 = layers[layer_id + L - 1];
+
+                // Counting occurrences
+                for (auto node_x : layer) {
+                    for (auto node_y_1 : layer_delay_L_1) {
+                        for (auto node_y : layer_delay_L) {
+                            T e_x = value_selector(node_x);
+                            T e_y_1 = value_selector(node_y_1);
+                            T e_y = value_selector(node_y);
+
+                            long encoded_3 = encode_3_value(e_y, e_y_1, e_x);
+                            long encoded_2_y_x = encode_2_values(e_y_1, e_x);
+                            long encoded_2_y_y = encode_2_values(e_y, e_y_1);
+
+                            joint_y_y_x[encoded_3]++;
+                            joint_y_x[encoded_2_y_x]++;
+                            joint_y_y[encoded_2_y_y]++;
+                            y_1[e_y_1]++;
+                        }
+                    }
+                }
+
+                // Normalizing the counts
+                double Z = 0;
+                for (auto& possibility_record : joint_y_y_x) Z += possibility_record.second;
+                for (auto& possibility_record : joint_y_y_x) possibility_record.second /= Z;
+
+                Z = 0;
+                for (auto& possibility_record : joint_y_x) Z += possibility_record.second;
+                for (auto& possibility_record : joint_y_x) possibility_record.second /= Z;
+
+                Z = 0;
+                for (auto& possibility_record : y_1) Z += possibility_record.second;
+                for (auto& possibility_record : y_1) possibility_record.second /= Z;
+
+                // Using user-defined indexing function to extract parts of the encoding
+                for (auto& possibility_record_y_y_x : joint_y_y_x) {
+                    long key = possibility_record_y_y_x.first;
+                    y_condition_y_x[key] = possibility_record_y_y_x.second / joint_y_x[indexing_fn(key, 2, 3)];
+                }
+
+                for (auto& possibility_record_y_y : joint_y_y) {
+                    long key = possibility_record_y_y.first;
+                    y_condition_y[key] = possibility_record_y_y.second / y_1[indexing_fn(key, 1, 2)];
+                }
+
+                // Calculating entropy contribution
+                for (auto& possibility_record : joint_y_y_x) {
+                    long key = possibility_record.first;
+                    double p_y_given_xy = y_condition_y_x[key];
+                    double p_y_given_y = y_condition_y[indexing_fn(key, 1, 2)];
+                    if (p_y_given_xy > 0 && p_y_given_y > 0) {
+                        entropy += possibility_record.second * std::log2(p_y_given_xy / p_y_given_y);
+                    }
+                }
+            }
+
+            return entropy;
+        }
+
+
         template<typename T>
         static double _sequence_entropy(std::vector<T> sequence){
             std::map<uint32_t, uint32_t> counter;
@@ -175,7 +258,7 @@ namespace statistics{
 
         
         template<typename T>
-        double _calculate_path_average_entropy(parsing::SyntaxTreeNode* node, std::function<T(parsing::SyntaxTreeNode*)> value_extractor) {
+        static double _calculate_path_average_entropy(parsing::SyntaxTreeNode* node, std::function<T(parsing::SyntaxTreeNode*)> value_extractor) {
             double total_entropy = 0.0;
             int path_count = 0;
 

@@ -15,113 +15,19 @@ namespace statistics{
     }
 
     double Statistician::calculate_layer_average_derivation_entropy(parsing::SyntaxTreeNode* node, const std::vector<std::vector<parsing::SyntaxTreeNode*>> layers){
-        return _calculate_layer_average_entropy<int>(node, layers, [&](parsing::SyntaxTreeNode* node)->int{return std::get<0>(node->value);});
+        return _calculate_layer_average_entropy<int>(node, layers, [&](parsing::SyntaxTreeNode* _node)->int{return std::get<0>(_node->value);});
     }
 
     double Statistician::calculate_layer_average_symbol_entropy(parsing::SyntaxTreeNode* node, const std::vector<std::vector<parsing::SyntaxTreeNode*>> layers) {
-        return _calculate_layer_average_entropy<int>(node, layers, [&](parsing::SyntaxTreeNode* node)->int{return std::get<5>(node->value);});
+        return _calculate_layer_average_entropy<int>(node, layers, [&](parsing::SyntaxTreeNode* _node)->int{return std::get<5>(_node->value);});
     }
 
     double Statistician::calculate_path_average_symbol_entropy(parsing::SyntaxTreeNode* node) {
-        double total_entropy = 0.0;
-        int path_count = 0;
-
-        if (node == nullptr) return total_entropy;
-
-        std::vector<parsing::SyntaxTreeNode*> stack;
-        stack.push_back(node);
-        std::unordered_set<parsing::SyntaxTreeNode*> black_set;
-
-        auto is_black = [&black_set](parsing::SyntaxTreeNode* node) -> bool {
-            return node == nullptr || black_set.find(node) != black_set.end();
-        };
-
-        while (!stack.empty()) {
-            parsing::SyntaxTreeNode* peek_node = stack.back();
-
-            // If it's a leaf node, calculate the entropy for the current path
-            if (peek_node->is_leaf()) {
-                std::vector<int> values;
-
-                values.resize(stack.size());
-
-                std::transform(stack.begin(), stack.end(), values.begin(), [&](parsing::SyntaxTreeNode* node)->int{return std::get<0>(node->value);});
-
-                total_entropy += _sequence_entropy(values);
-                path_count++;
-                stack.pop_back();
-                black_set.emplace(peek_node);
-                continue;
-            }
-
-            // Traverse the left child if not visited
-            if (!is_black(peek_node->left)) {
-                stack.push_back(peek_node->left);
-            }
-            // Otherwise, traverse the right child if not visited
-            else if (!is_black(peek_node->right)) {
-                stack.push_back(peek_node->right);
-            } 
-            // If both children are visited, mark the current node as processed
-            else {
-                black_set.emplace(peek_node);
-                stack.pop_back();
-            }
-        }
-
-        // Prevent division by zero if no paths were processed
-        return path_count > 0 ? total_entropy / path_count : 0.0;
+        return _calculate_path_average_entropy<int>(node, [&](parsing::SyntaxTreeNode* _node)->int{return std::get<0>(_node->value);});
     }
 
     double Statistician::calculate_path_average_derivation_entropy(parsing::SyntaxTreeNode* node) {
-        double total_entropy = 0.0;
-        int path_count = 0;
-
-        if (node == nullptr) return total_entropy;
-
-        std::vector<parsing::SyntaxTreeNode*> stack;
-        stack.push_back(node);
-        std::unordered_set<parsing::SyntaxTreeNode*> black_set;
-
-        auto is_black = [&black_set](parsing::SyntaxTreeNode* node) -> bool {
-            return node == nullptr || black_set.find(node) != black_set.end();
-        };
-
-        while (!stack.empty()) {
-            parsing::SyntaxTreeNode* peek_node = stack.back();
-
-            // If it's a leaf node, calculate the entropy for the current path
-            if (peek_node->is_leaf()) {
-                std::vector<int> values;
-
-                values.resize(stack.size());
-
-                std::transform(stack.begin(), stack.end(), values.begin(), [&](parsing::SyntaxTreeNode* node)->int{return std::get<5>(node->value);});
-
-                total_entropy += _sequence_entropy(values);
-                path_count++;
-                stack.pop_back();
-                black_set.emplace(peek_node);
-                continue;
-            }
-
-            // Traverse the left child if not visited
-            if (!is_black(peek_node->left)) {
-                stack.push_back(peek_node->left);
-            }
-            // Otherwise, traverse the right child if not visited
-            else if (!is_black(peek_node->right)) {
-                stack.push_back(peek_node->right);
-            } 
-            // If both children are visited, mark the current node as processed
-            else {
-                black_set.emplace(peek_node);
-                stack.pop_back();
-            }
-        }
-
-        // Prevent division by zero if no paths were processed
-        return path_count > 0 ? total_entropy / path_count : 0.0;
+        return _calculate_path_average_entropy<int>(node, [&](parsing::SyntaxTreeNode* _node)->int{return std::get<5>(_node -> value);});
     }
 
 
