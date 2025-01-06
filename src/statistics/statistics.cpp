@@ -7,7 +7,6 @@
 #include <vector>
 #include <deque>
 
-
 namespace statistics{
     int Statistician::calculate_height(parsing::SyntaxTreeNode* node) {
         if (node == nullptr) return 0;
@@ -15,19 +14,19 @@ namespace statistics{
     }
 
     double Statistician::calculate_layer_average_derivation_entropy(parsing::SyntaxTreeNode* node, const std::vector<std::vector<parsing::SyntaxTreeNode*>> layers){
-        return _calculate_layer_average_entropy<int>(node, layers, [&](parsing::SyntaxTreeNode* _node)->int{return std::get<5>(_node->value);});
+        return _calculate_layer_average_entropy<int>(node, layers, [&](parsing::SyntaxTreeNode* _node)->int{return std::get<TREE_VALUE_INDEX_DERIVATION>(_node->value);});
     }
 
     double Statistician::calculate_layer_average_symbol_entropy(parsing::SyntaxTreeNode* node, const std::vector<std::vector<parsing::SyntaxTreeNode*>> layers) {
-        return _calculate_layer_average_entropy<int>(node, layers, [&](parsing::SyntaxTreeNode* _node)->int{return std::get<0>(_node->value);});
+        return _calculate_layer_average_entropy<int>(node, layers, [&](parsing::SyntaxTreeNode* _node)->int{return std::get<TREE_VALUE_INDEX_SYMBOL>(_node->value);});
     }
 
     double Statistician::calculate_path_average_symbol_entropy(parsing::SyntaxTreeNode* node) {
-        return _calculate_path_average_entropy<int>(node, [&](parsing::SyntaxTreeNode* _node)->int{return std::get<0>(_node->value);});
+        return _calculate_path_average_entropy<int>(node, [&](parsing::SyntaxTreeNode* _node)->int{return std::get<TREE_VALUE_INDEX_SYMBOL>(_node->value);});
     }
 
     double Statistician::calculate_path_average_derivation_entropy(parsing::SyntaxTreeNode* node) {
-        return _calculate_path_average_entropy<int>(node, [&](parsing::SyntaxTreeNode* _node)->int{return std::get<5>(_node -> value);});
+        return _calculate_path_average_entropy<int>(node, [&](parsing::SyntaxTreeNode* _node)->int{return std::get<TREE_VALUE_INDEX_DERIVATION>(_node -> value);});
     }
 
 
@@ -42,7 +41,7 @@ namespace statistics{
         while(!tree_node_queue.empty()){
             parsing::SyntaxTreeNode* current_node = tree_node_queue.front();
             tree_node_queue.pop();
-            int symbol_id = std::get<0>(current_node->value);
+            int symbol_id = std::get<TREE_VALUE_INDEX_SYMBOL>(current_node->value);
 
             if(symbol_id != 0xFFFF){
                 symbols.push_back(symbol_id);
@@ -120,16 +119,15 @@ namespace statistics{
         return static_cast<double>(leftHeight - rightHeight);  // Positive skew means left-heavy
     }
 
-    // Metric : Tree Density (How full the tree is)
-    int Statistician::calculateMaxNodes(int height) {
-        return std::pow(2, height) - 1;  // Full binary tree max nodes
+    int Statistician::calculate_max_nodes(int height) {
+        return std::pow(2, height) - 1;
     }
 
     double Statistician::calculateDensity(parsing::SyntaxTreeNode* node) {
         int node_count = count_nodes(node);
         int tree_height = calculate_height(node);
-        int maxNodes = calculateMaxNodes(tree_height);
-        return static_cast<double>(node_count) / maxNodes;
+        int max_nodes = calculate_max_nodes(tree_height);
+        return static_cast<double>(node_count) / max_nodes;
     }
 
     std::string Statistician::report_all_statistics(parsing::SyntaxTreeNode* node,
@@ -156,12 +154,13 @@ namespace statistics{
             double derivation_delay_d_mutual_entropy = derivation_delay_L_mutual_entropy(derivations, d);
             oss << "derivation_delay_" << d << "_mutual_entropy: " << derivation_delay_d_mutual_entropy << std::endl;
         }
+        
         // std::cout << "  - derivation_delay_L_mutual_entropy all outputted." << std::endl;
-
         for(int d = 1; d <= max_delays; d++){
             double word_delay_d_transitional_entropy = word_transitional_entropy_delay_L(sentence, d);
             oss << "word_delay_" << d << "_transitional_entropy: " << word_delay_d_transitional_entropy << std::endl;
         }
+
         for(int d = 1; d <= max_delays; d++){
             double derivation_delay_d_transitional_entropy = derivation_transitional_entropy_delay_L(derivations, d);
             oss << "derivation_delay_" << d << "_transitional_entropy: " << derivation_delay_d_transitional_entropy << std::endl;
@@ -226,9 +225,7 @@ namespace statistics{
         double path_average_derivation_entropy = calculate_path_average_derivation_entropy(node);
         oss << "layer_average_derivation_entropy" << ": " << layer_average_derivation_entropy << std::endl;
         oss << "path_average_derivation_entropy" << ": " << path_average_derivation_entropy << std::endl;
-        std::cout << layers.size() << std::endl;
-        std::cout << layer_average_derivation_entropy << std::endl;
-        abort();
+
         double layer_average_symbol_entropy = calculate_layer_average_symbol_entropy(node, layers);
         double path_average_symbol_entropy = calculate_path_average_symbol_entropy(node);
         oss << "layer_average_symbol_entropy" << ": " << layer_average_symbol_entropy << std::endl;
@@ -241,8 +238,7 @@ namespace statistics{
         std::vector<std::vector<int>> derivations_of_layers = 
             bfs_get_all_layers_value<int>(grammar, 
             node, [](parsing::SyntaxTreeNode* node)->int{return std::get<5>(node->value);});
-            
-       
+
         double average_layer_symbol_skewness = calculate_average_skewness(symbols_of_layers);
         double average_layer_derivation_skewness = calculate_average_skewness(derivations_of_layers);
         oss << "average_layer_symbol_skewness" << ": " << average_layer_symbol_skewness << std::endl;
@@ -256,7 +252,7 @@ namespace statistics{
         return oss.str();        
     }
 
-    double Statistician::derivation_entropy(std::vector<uint32_t> derivations){  // vector of derivations (grammar IDs)
+    double Statistician::derivation_entropy(std::vector<uint32_t> derivations){
         return _sequence_entropy(derivations);
     }
 
@@ -264,17 +260,13 @@ namespace statistics{
         return _sequence_entropy(words);
     }
 
-    double Statistician::derivation_transitional_entropy_delay_L(std::vector<uint32_t> derivations, int L){  // vector of derivations (grammar IDs)
+    double Statistician::derivation_transitional_entropy_delay_L(std::vector<uint32_t> derivations, int L){
         return _sequence_delay_L_transitional_entropy(derivations, L);
     }
 
     double Statistician::word_transitional_entropy_delay_L(std::vector<uint32_t> words, int L){
         return _sequence_delay_L_transitional_entropy(words, L);
     }
-
-
-    
-
 
     double Statistician::mutual_information(const std::vector<uint32_t>& seq_X, const std::vector<uint32_t>& seq_Y) {
         if(seq_X.size() != seq_Y.size()){
@@ -337,7 +329,7 @@ namespace statistics{
             parsing::SyntaxTreeNode* current = stack.back();
             
             if(visited.find(current) != visited.end()){
-                result.push_back(std::get<5>(current->value));
+                result.push_back(std::get<TREE_VALUE_INDEX_DERIVATION>(current->value));
                 visited.erase(current);
                 stack.pop_back();
             }else{
@@ -360,7 +352,6 @@ namespace statistics{
         return left_right_max_depth + 1;
     }
 
-
     double Statistician::L_layer_symbol_tree_mutual_entropy(pcfg* grammar, parsing::SyntaxTreeNode* tree, int L){
         if (tree == nullptr) {
             throw std::invalid_argument("Tree cannot be null");
@@ -369,7 +360,7 @@ namespace statistics{
             grammar, 
             tree, 
             [](parsing::SyntaxTreeNode* node){
-                return std::get<0>(node->value); 
+                return std::get<TREE_VALUE_INDEX_SYMBOL>(node->value); 
             }
         );
         
@@ -385,7 +376,7 @@ namespace statistics{
             grammar, 
             tree, 
             [](parsing::SyntaxTreeNode* node) {
-                return std::get<5>(node->value);
+                return std::get<TREE_VALUE_INDEX_DERIVATION>(node->value);
             }
         );
         
@@ -417,27 +408,12 @@ namespace statistics{
             }
         }
         
-        // normalize probabilities
         double total_probability = 0.0;
         for (auto&& p : p_s) {
             total_probability += std::exp(p);
         }
 
-        // calculate entropy
-        double entropy = 0.0;
-        if (total_probability > 0) {
-            for (double p : p_s) {
-                
-                p = std::exp(p);
-                
-                if (p > 0) {
-                    double normalized_p = p / total_probability;
-                    entropy += normalized_p * std::log(normalized_p);
-                }
-            }
-            entropy = -entropy;
-        }
-        return entropy;
+        return calculate_entropy_from_probabilities(p_s);
     }
 }
 

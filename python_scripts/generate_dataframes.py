@@ -31,24 +31,19 @@ def parse_file(file_path):
                     except ValueError:
                         parsed_data[key.strip()] = np.nan
 
-    # Convert the dictionary to a DataFrame
     df = pd.DataFrame(parsed_data.items(), columns=["Key", "Value"])
-
     return df
 
 data_folder = "../data"
 report_base_path = {
-    "seizures": os.path.join(data_folder, "reports", "seizures"),
-    "normal": os.path.join(data_folder, "reports", "normal"),
-    "preepileptic": os.path.join(data_folder, "reports", "preepileptic"),
+    #"seizures": os.path.join(data_folder, "reports", "seizures"),
+    #"normal": os.path.join(data_folder, "reports", "normal"),
+    "pre-epileptic": os.path.join(data_folder, "reports", "pre-epileptic"),
 }
 
 def integrate_and_save_dataframe_data(reports, save_path="/data1/"):
-    # Concatenate all dataframes for the specified area_type
     dataframes = reports
     combined_dataframe = pd.concat(dataframes)
-
-    # Save the combined dataframe to a CSV file
     combined_dataframe.to_csv(save_path, index=False)
 
 reports = []

@@ -181,14 +181,13 @@ namespace statistics{
         static double calculate_entropy_from_element_sequence(const std::vector<T>& sequence)
         {
             std::unordered_map<T, int> count_map;
-            // Count the occurrences of each element
+
             for (int element : sequence) {
                 count_map[element]++;
             }
             double entropy = 0.0;
             int total_count = sequence.size();
             
-            // Calculate probabilities and entropy
             for (auto& entry : count_map) {
                 double probability = static_cast<double>(entry.second) / total_count;
                 entropy -= probability * log(probability);
@@ -309,7 +308,6 @@ namespace statistics{
             return entropy;
         }
 
-        // entropy
         static double derivation_entropy(std::vector<uint32_t> derivations);
 
         static double word_entropy(std::vector<uint32_t> words);
@@ -614,22 +612,17 @@ namespace statistics{
 
         static double calculate_average_path_length(parsing::SyntaxTreeNode* node, std::vector<std::vector<parsing::SyntaxTreeNode*>>& paths);
 
-        // Metric : Redundancy (Measuring Subtree Similarity)
         static bool areSubtreesSimilar(parsing::SyntaxTreeNode* node1, parsing::SyntaxTreeNode* node2);
 
         static int calculateRedundancy(parsing::SyntaxTreeNode* node);
 
-        // Metric : Entropy (Tree Disorder/Complexity)
         static double calculateEntropy(parsing::SyntaxTreeNode* node);
 
-        // Metric : Traversal Time (Steps taken to traverse)
         static int countTraversalSteps(parsing::SyntaxTreeNode* node);
 
-        // Metric : Skewness (Imbalance of the tree)
         static double calculateSkewness(parsing::SyntaxTreeNode* node);
 
-        // Metric : Tree Density (How full the tree is)
-        static int calculateMaxNodes(int height);
+        static int calculate_max_nodes(int height);
 
         static double calculateDensity(parsing::SyntaxTreeNode* node);
 
