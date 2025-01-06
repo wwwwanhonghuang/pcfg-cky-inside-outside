@@ -525,29 +525,125 @@ src/phase_convert.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/phase_convert_executable.dir/build.make CMakeFiles/phase_convert_executable.dir/src/phase_convert.cpp.s
 .PHONY : src/phase_convert.cpp.s
 
-src/statistics/statistics.o: src/statistics/statistics.cpp.o
-.PHONY : src/statistics/statistics.o
+src/statistics/entropy_utils.o: src/statistics/entropy_utils.cpp.o
+.PHONY : src/statistics/entropy_utils.o
 
 # target to build an object file
-src/statistics/statistics.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/shared_lib.dir/build.make CMakeFiles/shared_lib.dir/src/statistics/statistics.cpp.o
-.PHONY : src/statistics/statistics.cpp.o
+src/statistics/entropy_utils.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/shared_lib.dir/build.make CMakeFiles/shared_lib.dir/src/statistics/entropy_utils.cpp.o
+.PHONY : src/statistics/entropy_utils.cpp.o
 
-src/statistics/statistics.i: src/statistics/statistics.cpp.i
-.PHONY : src/statistics/statistics.i
+src/statistics/entropy_utils.i: src/statistics/entropy_utils.cpp.i
+.PHONY : src/statistics/entropy_utils.i
 
 # target to preprocess a source file
-src/statistics/statistics.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/shared_lib.dir/build.make CMakeFiles/shared_lib.dir/src/statistics/statistics.cpp.i
-.PHONY : src/statistics/statistics.cpp.i
+src/statistics/entropy_utils.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/shared_lib.dir/build.make CMakeFiles/shared_lib.dir/src/statistics/entropy_utils.cpp.i
+.PHONY : src/statistics/entropy_utils.cpp.i
 
-src/statistics/statistics.s: src/statistics/statistics.cpp.s
-.PHONY : src/statistics/statistics.s
+src/statistics/entropy_utils.s: src/statistics/entropy_utils.cpp.s
+.PHONY : src/statistics/entropy_utils.s
 
 # target to generate assembly for a file
-src/statistics/statistics.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/shared_lib.dir/build.make CMakeFiles/shared_lib.dir/src/statistics/statistics.cpp.s
-.PHONY : src/statistics/statistics.cpp.s
+src/statistics/entropy_utils.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/shared_lib.dir/build.make CMakeFiles/shared_lib.dir/src/statistics/entropy_utils.cpp.s
+.PHONY : src/statistics/entropy_utils.cpp.s
+
+src/statistics/statistics_main.o: src/statistics/statistics_main.cpp.o
+.PHONY : src/statistics/statistics_main.o
+
+# target to build an object file
+src/statistics/statistics_main.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/shared_lib.dir/build.make CMakeFiles/shared_lib.dir/src/statistics/statistics_main.cpp.o
+.PHONY : src/statistics/statistics_main.cpp.o
+
+src/statistics/statistics_main.i: src/statistics/statistics_main.cpp.i
+.PHONY : src/statistics/statistics_main.i
+
+# target to preprocess a source file
+src/statistics/statistics_main.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/shared_lib.dir/build.make CMakeFiles/shared_lib.dir/src/statistics/statistics_main.cpp.i
+.PHONY : src/statistics/statistics_main.cpp.i
+
+src/statistics/statistics_main.s: src/statistics/statistics_main.cpp.s
+.PHONY : src/statistics/statistics_main.s
+
+# target to generate assembly for a file
+src/statistics/statistics_main.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/shared_lib.dir/build.make CMakeFiles/shared_lib.dir/src/statistics/statistics_main.cpp.s
+.PHONY : src/statistics/statistics_main.cpp.s
+
+src/statistics/tree_feature_statistics.o: src/statistics/tree_feature_statistics.cpp.o
+.PHONY : src/statistics/tree_feature_statistics.o
+
+# target to build an object file
+src/statistics/tree_feature_statistics.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/shared_lib.dir/build.make CMakeFiles/shared_lib.dir/src/statistics/tree_feature_statistics.cpp.o
+.PHONY : src/statistics/tree_feature_statistics.cpp.o
+
+src/statistics/tree_feature_statistics.i: src/statistics/tree_feature_statistics.cpp.i
+.PHONY : src/statistics/tree_feature_statistics.i
+
+# target to preprocess a source file
+src/statistics/tree_feature_statistics.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/shared_lib.dir/build.make CMakeFiles/shared_lib.dir/src/statistics/tree_feature_statistics.cpp.i
+.PHONY : src/statistics/tree_feature_statistics.cpp.i
+
+src/statistics/tree_feature_statistics.s: src/statistics/tree_feature_statistics.cpp.s
+.PHONY : src/statistics/tree_feature_statistics.s
+
+# target to generate assembly for a file
+src/statistics/tree_feature_statistics.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/shared_lib.dir/build.make CMakeFiles/shared_lib.dir/src/statistics/tree_feature_statistics.cpp.s
+.PHONY : src/statistics/tree_feature_statistics.cpp.s
+
+src/statistics/tree_informatics_feature_statistics.o: src/statistics/tree_informatics_feature_statistics.cpp.o
+.PHONY : src/statistics/tree_informatics_feature_statistics.o
+
+# target to build an object file
+src/statistics/tree_informatics_feature_statistics.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/shared_lib.dir/build.make CMakeFiles/shared_lib.dir/src/statistics/tree_informatics_feature_statistics.cpp.o
+.PHONY : src/statistics/tree_informatics_feature_statistics.cpp.o
+
+src/statistics/tree_informatics_feature_statistics.i: src/statistics/tree_informatics_feature_statistics.cpp.i
+.PHONY : src/statistics/tree_informatics_feature_statistics.i
+
+# target to preprocess a source file
+src/statistics/tree_informatics_feature_statistics.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/shared_lib.dir/build.make CMakeFiles/shared_lib.dir/src/statistics/tree_informatics_feature_statistics.cpp.i
+.PHONY : src/statistics/tree_informatics_feature_statistics.cpp.i
+
+src/statistics/tree_informatics_feature_statistics.s: src/statistics/tree_informatics_feature_statistics.cpp.s
+.PHONY : src/statistics/tree_informatics_feature_statistics.s
+
+# target to generate assembly for a file
+src/statistics/tree_informatics_feature_statistics.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/shared_lib.dir/build.make CMakeFiles/shared_lib.dir/src/statistics/tree_informatics_feature_statistics.cpp.s
+.PHONY : src/statistics/tree_informatics_feature_statistics.cpp.s
+
+src/statistics/tree_utils.o: src/statistics/tree_utils.cpp.o
+.PHONY : src/statistics/tree_utils.o
+
+# target to build an object file
+src/statistics/tree_utils.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/shared_lib.dir/build.make CMakeFiles/shared_lib.dir/src/statistics/tree_utils.cpp.o
+.PHONY : src/statistics/tree_utils.cpp.o
+
+src/statistics/tree_utils.i: src/statistics/tree_utils.cpp.i
+.PHONY : src/statistics/tree_utils.i
+
+# target to preprocess a source file
+src/statistics/tree_utils.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/shared_lib.dir/build.make CMakeFiles/shared_lib.dir/src/statistics/tree_utils.cpp.i
+.PHONY : src/statistics/tree_utils.cpp.i
+
+src/statistics/tree_utils.s: src/statistics/tree_utils.cpp.s
+.PHONY : src/statistics/tree_utils.s
+
+# target to generate assembly for a file
+src/statistics/tree_utils.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/shared_lib.dir/build.make CMakeFiles/shared_lib.dir/src/statistics/tree_utils.cpp.s
+.PHONY : src/statistics/tree_utils.cpp.s
 
 src/syntax_analysis.o: src/syntax_analysis.cpp.o
 .PHONY : src/syntax_analysis.o
@@ -918,9 +1014,21 @@ help:
 	@echo "... src/phase_convert.o"
 	@echo "... src/phase_convert.i"
 	@echo "... src/phase_convert.s"
-	@echo "... src/statistics/statistics.o"
-	@echo "... src/statistics/statistics.i"
-	@echo "... src/statistics/statistics.s"
+	@echo "... src/statistics/entropy_utils.o"
+	@echo "... src/statistics/entropy_utils.i"
+	@echo "... src/statistics/entropy_utils.s"
+	@echo "... src/statistics/statistics_main.o"
+	@echo "... src/statistics/statistics_main.i"
+	@echo "... src/statistics/statistics_main.s"
+	@echo "... src/statistics/tree_feature_statistics.o"
+	@echo "... src/statistics/tree_feature_statistics.i"
+	@echo "... src/statistics/tree_feature_statistics.s"
+	@echo "... src/statistics/tree_informatics_feature_statistics.o"
+	@echo "... src/statistics/tree_informatics_feature_statistics.i"
+	@echo "... src/statistics/tree_informatics_feature_statistics.s"
+	@echo "... src/statistics/tree_utils.o"
+	@echo "... src/statistics/tree_utils.i"
+	@echo "... src/statistics/tree_utils.s"
 	@echo "... src/syntax_analysis.o"
 	@echo "... src/syntax_analysis.i"
 	@echo "... src/syntax_analysis.s"

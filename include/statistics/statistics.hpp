@@ -602,7 +602,7 @@ namespace statistics{
         static double word_delay_L_mutual_entropy(std::vector<uint32_t> words, int L);
 
         static std::string report_all_statistics(parsing::SyntaxTreeNode* node, 
-            double* alpha, std::vector<uint32_t> sentence, pcfg* grammar, int max_delays);
+            double* alpha, std::vector<uint32_t> sentence, pcfg* grammar, int max_delays, int max_span_length);
 
         // Metric : Average Path Length
         static int calculate_height(parsing::SyntaxTreeNode* node);
@@ -624,7 +624,7 @@ namespace statistics{
 
         static int calculate_max_nodes(int height);
 
-        static double calculateDensity(parsing::SyntaxTreeNode* node);
+        static double calculate_density(parsing::SyntaxTreeNode* node);
 
         static double calculate_tree_symbol_entropy(parsing::SyntaxTreeNode* node);
 

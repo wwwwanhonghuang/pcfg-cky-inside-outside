@@ -88,7 +88,7 @@ int main(int argc, char* argv[])
         
         // std::cout << "serialize finished" << std::endl;
 
-        std::string statistics_report = statistics::Statistician::report_all_statistics(root, alpha, sentence, grammar, 5);
+        std::string statistics_report = statistics::Statistician::report_all_statistics(root, alpha, sentence, grammar, 5, 100);
         // std::cout << "report statistics finished" << std::endl;
 
         std::string report_filename = report_path + std::string("/sentence_") + std::to_string(i + 1) + std::string(".report");
