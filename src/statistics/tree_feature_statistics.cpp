@@ -5,8 +5,6 @@ namespace statistics{
         return _calculate_layer_average_entropy<int>(node, layers, [&](parsing::SyntaxTreeNode* _node)->int{return std::get<TREE_VALUE_INDEX_DERIVATION>(_node->value);});
     }
     
-    
-
     double Statistician::calculate_average_path_length(parsing::SyntaxTreeNode* node, std::vector<std::vector<parsing::SyntaxTreeNode*>>& paths) {
         int total_depth = calculate_total_depth(node, paths);
         return static_cast<double>(total_depth) / paths.size();
@@ -21,7 +19,6 @@ namespace statistics{
         return total_length;
     }
 
-
     double Statistician::calculate_layer_average_symbol_entropy(parsing::SyntaxTreeNode* node, const std::vector<std::vector<parsing::SyntaxTreeNode*>> layers) {
         return _calculate_layer_average_entropy<int>(node, layers, [&](parsing::SyntaxTreeNode* _node)->int{return std::get<TREE_VALUE_INDEX_SYMBOL>(_node->value);});
     }
@@ -31,10 +28,10 @@ namespace statistics{
     }
 
     double Statistician::calculate_path_average_derivation_entropy(parsing::SyntaxTreeNode* node) {
-        return _calculate_path_average_entropy<int>(node, [&](parsing::SyntaxTreeNode* _node)->int{return std::get<TREE_VALUE_INDEX_DERIVATION>(_node -> value);});
+        return _calculate_path_average_entropy<int>(node, [&](parsing::SyntaxTreeNode* _node)->
+            int{return std::get<TREE_VALUE_INDEX_DERIVATION>(_node -> value);});
     }
 
-    
     double Statistician::calculate_tree_symbol_entropy(parsing::SyntaxTreeNode* node){
         std::vector<int> symbols;
         double entropy = 0.0;
@@ -75,5 +72,3 @@ namespace statistics{
         return entropy;
     }
 }
-
-   

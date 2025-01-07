@@ -2,37 +2,37 @@
 #include <vector>
 
 namespace statistics{
-    
     int Statistician::calculate_height(parsing::SyntaxTreeNode* node) {
         if (node == nullptr) return 0;
         return 1 + std::max(calculate_height(node->left), calculate_height(node->right));
     }
+
     int Statistician::count_nodes(parsing::SyntaxTreeNode* node) {
         if (node == nullptr) return 0;
         return 1 + count_nodes(node->left) + count_nodes(node->right);
     }
 
-    bool Statistician::areSubtreesSimilar(parsing::SyntaxTreeNode* node1, parsing::SyntaxTreeNode* node2) {
+    bool Statistician::are_subtree_similar(parsing::SyntaxTreeNode* node1, parsing::SyntaxTreeNode* node2) {
         if (node1 != nullptr && node2 != nullptr) return true;
         if (node1 == nullptr || node2 == nullptr) return false;
         return (node1->value == node2->value) && 
-            areSubtreesSimilar(node1->left, node2->left) &&
-            areSubtreesSimilar(node1->right, node2->right);
+            are_subtree_similar(node1->left, node2->left) &&
+            are_subtree_similar(node1->right, node2->right);
     }
 
-    int Statistician::calculateRedundancy(parsing::SyntaxTreeNode* node) {
+    int Statistician::calculate_redundancy(parsing::SyntaxTreeNode* node) {
         if (node == nullptr) return 0;
         int redundancy = 0;
-        if (areSubtreesSimilar(node->left, node->right)) redundancy = 1;
-        return redundancy + calculateRedundancy(node->left) + calculateRedundancy(node->right);
+        if (are_subtree_similar(node->left, node->right)) redundancy = 1;
+        return redundancy + calculate_redundancy(node->left) + calculate_redundancy(node->right);
     }
 
-    int Statistician::countTraversalSteps(parsing::SyntaxTreeNode* node) {
+    int Statistician::count_traversal_steps(parsing::SyntaxTreeNode* node) {
         if (node == nullptr) return 0;
-        return 1 + countTraversalSteps(node->left) + countTraversalSteps(node->right);
+        return 1 + count_traversal_steps(node->left) + count_traversal_steps(node->right);
     }
 
-    double Statistician::calculateSkewness(parsing::SyntaxTreeNode* node) {
+    double Statistician::calculate_skewness(parsing::SyntaxTreeNode* node) {
         if (node == nullptr) return 0.0;
         int leftHeight = calculate_height(node->left);
         int rightHeight = calculate_height(node->right);
@@ -49,6 +49,7 @@ namespace statistics{
         int max_nodes = calculate_max_nodes(tree_height);
         return static_cast<double>(node_count) / max_nodes;
     }
+    
     int Statistician::tree_depth(parsing::SyntaxTreeNode* node){
         if(node == nullptr) 
             return 0;
@@ -84,6 +85,4 @@ namespace statistics{
         }
         return result;
     }
-
-
 }

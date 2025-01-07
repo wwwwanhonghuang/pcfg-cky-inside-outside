@@ -77,20 +77,15 @@ int main(int argc, char* argv[])
             continue;
         }
 
-        // std::cout << "sentences length = " << sentence.size() << std::endl;
         parsing::SyntaxTreeNode* root = parsing::SyntaxTreeParser::parse(grammar, sentence, alpha, inside_order_1_rule_iteration_path);
         
-        // std::cout << "parse finished" << std::endl;
         if(serialize_to_files){
             parsing::SyntaxTreeSerializer::serialize_tree_to_file(tree_serialization_path + std::string("/sentence_") + 
                 std::to_string(i + 1) + std::string(".txt"), root);
         }
-        
-        // std::cout << "serialize finished" << std::endl;
 
         std::string statistics_report = statistics::Statistician::report_all_statistics(root, alpha, sentence, grammar, 5, 100);
-        // std::cout << "report statistics finished" << std::endl;
-
+        
         std::string report_filename = report_path + std::string("/sentence_") + std::to_string(i + 1) + std::string(".report");
         std::ofstream report_file_output_stream(report_filename);
 

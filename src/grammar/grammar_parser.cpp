@@ -170,7 +170,6 @@ pcfg* _build_grammar_table(pcfg* grammar, uint32_t* non_terminate_grammars, uint
 
         if(i >= 1){
             uint32_t addr_diff = non_terminate_grammars[i] - non_terminate_grammars[i - 1];
-            // std::cout << "addr diff = " << addr_diff << std::endl;
             #ifdef _STRICK_CHECK
                 if(addr_diff != BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS * grammar->grammar_items_map.at(grammar->reversed_nonterminate_map[i - 1]).size()){
                     std::cout << "check grammar item memory arrangement failed." << std::endl;
@@ -296,7 +295,6 @@ pcfg* _build_grammar_table(pcfg* grammar, uint32_t* non_terminate_grammars, uint
         #ifdef _STRICK_CHECK
         if(i >= 1){
             uint32_t item_diff = non_terminate_grammars[i] - non_terminate_grammars[i - 1];
-            // std::cout << "addr diff = " << addr_diff << std::endl;
                 if(item_diff != grammar->grammar_items_map.at(grammar->reversed_nonterminate_map[i]).size()){
                     std::cout << "check grammar item memory arrangement failed." << std::endl;
                     delete[] non_terminate_grammars;
@@ -403,8 +401,6 @@ pcfg* _build_preterminate_grammar_lookup_table(pcfg* grammar, uint32_t* non_term
                             return nullptr;
                         }
                     }
-                    // std::cout << "Found rule: " << rule.left << " -> " << rule.right1 << " in hash table." << "p=" << 
-                    // hashtable[position + 1].float32_value << " in " << position << std::endl;
                 }
 
                 offset += BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS; // Move to the next entry

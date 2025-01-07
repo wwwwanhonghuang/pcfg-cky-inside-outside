@@ -81,8 +81,6 @@ namespace parsing
 
     SyntaxTreeNode* SyntaxTreeParser::_parsing_helper(double* alpha, int MS, uint32_t symbol_id, int span_from, int span_to, pcfg* grammar, uint32_t* sequence){
         int N = grammar->N();
-        // std::cout << "in parser sym = " << symbol_id << " span_from = " << 
-        //     span_from << " span_to = " << span_to << std::endl;
 
         if(span_from > span_to || IS_EPSILON(symbol_id)){
             return nullptr;
@@ -98,12 +96,8 @@ namespace parsing
             return nullptr;
         }
         
-        // std::cout << "symbol_id = " << symbol_id << " span_from " << span_from << " span_to "
-        //     << span_to << std::endl;
-        
         // terminate case
         if(IS_TERMINATE(symbol_id)){
-            // std::cout << " !!! - terminate: " << symbol_id << std::endl;
             SyntaxTreeNode* node = new SyntaxTreeNode();
             node->value = std::make_tuple(symbol_id, 0xFFFF, 0xFFFF, span_from, 1.0f, 0xFFFF); 
             node->right = nullptr;
@@ -130,7 +124,6 @@ namespace parsing
             uint32_t sym_C = encode_symbol & 0xFFFF;
             double possibility = *(double*)(grammar->grammar_table + current_offset + 1);
             uint32_t gid = (int)(current_offset / BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS);
-            // std::cout << " - for " << sym_A << " -> " << sym_B << ", " << sym_C << std::endl;
             
             // An impossible case: span length = 1, however sym_C is not the empty (epsilon) in rule A -> BC.
             // Skip when encounter this condition.
@@ -143,13 +136,6 @@ namespace parsing
             if(!IS_EPSILON(sym_C)){
                 for(int k = span_from; k < span_to; k++){
                     double v = possibility + ALPHA_GET(sym_B, span_from, k) + ALPHA_GET(sym_C, k + 1, span_to);
-                    
-                    // std::cout << "     -- in k = " << k
-                    //     << " alpha(" << sym_B << ", " << span_from << ", " << k << ")"
-                    //     << " = " << ALPHA_GET(sym_B, span_from, k)
-                    //     << " alpha(" << sym_C << ", " << k + 1 << ", " << span_to << ")"
-                    //     << " = " <<  ALPHA_GET(sym_C, k + 1, span_to)
-                    //     << " possibility = " << possibility << std::endl;
 
                     if(v > best_v){
                         best_v = v;
@@ -174,13 +160,9 @@ namespace parsing
             current_offset += BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS;
         }
 
-        // std::cout << "  best_symbol_B = " << best_symbol_B << std::endl;
-        // std::cout << "  best_symbol_C = " << best_symbol_C << std::endl;
         assert(best_symbol_B != 0xFFFF || best_symbol_C != 0xFFFF);
 
-        // no spliting.
         if(span_from == span_to){
-            // std::cout << "  best_symbol_B = " << best_symbol_B << std::endl;
             SyntaxTreeNode* node = new SyntaxTreeNode();
             node->value = std::make_tuple(sym_A, best_symbol_B, best_symbol_C, span_from, best_v, best_gid); 
             node->right = nullptr;
@@ -190,7 +172,6 @@ namespace parsing
             return node;
         }
         
-        // split span at best k.
         SyntaxTreeNode* tree_1 = _parsing_helper(alpha, MS, best_symbol_B, span_from, best_k, grammar, sequence);
         SyntaxTreeNode* tree_2 = _parsing_helper(alpha, MS, best_symbol_C, best_k + 1, span_to, grammar, sequence);
         SyntaxTreeNode* merged_SyntaxTreeNode = merge_trees(symbol_id, best_gid, best_symbol_B, best_symbol_C, best_k, best_v, tree_1, tree_2);
@@ -198,7 +179,6 @@ namespace parsing
     }
 
     SyntaxTreeNode* SyntaxTreeParser::merge_trees(uint32_t sym_A, int gid, uint32_t sym_B, uint32_t sym_C, int k, double p, SyntaxTreeNode* left, SyntaxTreeNode* right){
-        // std::cout << "merge " << sym_B << " " << sym_C << " -> " << sym_A << std::endl;
         assert((sym_B == 0xFFFF && !left) || std::get<0>(left->value) == sym_B);
         assert((sym_C == 0xFFFF && !right) || std::get<0>(right->value) == sym_C);
         SyntaxTreeNode* result = new SyntaxTreeNode();
@@ -208,7 +188,6 @@ namespace parsing
         return result;
     }
 
-    // parse a sequence into syntax tree
     SyntaxTreeNode* SyntaxTreeParser::parse(pcfg* grammar, std::vector<uint32_t> sequence, double* alpha, 
             std::vector<std::tuple<uint32_t, uint32_t>> inside_order_1_rule_iteration_path){
         int sequence_length = sequence.size();
@@ -229,7 +208,7 @@ namespace parsing
         SyntaxTreeNode* node = _parsing_helper(alpha, MAX_SEQUENCE_LENGTH, 0, 0, sequence.size() - 1, grammar, sequence.data());
         return node;
     }
-} // namespace parsing
+}
 
 namespace frfl::logger {
     std::unordered_map<std::string, std::shared_ptr<Logger>> Loggers::loggers;

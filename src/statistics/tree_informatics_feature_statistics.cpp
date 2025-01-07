@@ -1,6 +1,5 @@
 #include "statistics/statistics.hpp"
 namespace statistics{
-
     double Statistician::derivation_entropy(std::vector<uint32_t> derivations){
         return _sequence_entropy(derivations);
     }
@@ -52,6 +51,7 @@ namespace statistics{
     double Statistician::derivation_delay_L_mutual_entropy(std::vector<uint32_t> derivations, int L){
         return _sequence_delay_L_mutual_entropy(derivations, L);
     }
+
     double Statistician::L_layer_symbol_tree_mutual_entropy(pcfg* grammar, parsing::SyntaxTreeNode* tree, int L){
         if (tree == nullptr) {
             throw std::invalid_argument("Tree cannot be null");
@@ -112,7 +112,19 @@ namespace statistics{
         for (auto&& p : p_s) {
             total_probability += std::exp(p);
         }
-
-        return calculate_entropy_from_probabilities(p_s);
+        double entropy = 0.0;
+        if (total_probability > 0) {
+            for (double p : p_s) {
+                
+                p = std::exp(p);
+                
+                if (p > 0) {
+                    double normalized_p = p / total_probability; // Normalize p
+                    entropy += normalized_p * std::log(normalized_p); // log(p)
+                }
+            }
+            entropy = -entropy;
+        }
+        return entropy;
     }
 }

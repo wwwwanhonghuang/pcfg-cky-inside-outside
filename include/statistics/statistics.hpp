@@ -94,7 +94,6 @@ namespace statistics{
             for (const auto& pair : counts) {
                 distribution[pair.first] = static_cast<double>(pair.second) / total;
             }
-
             return distribution;
         }
         
@@ -146,10 +145,7 @@ namespace statistics{
             std::vector<std::vector<T>> layers, 
             int L
         ) {
-            return _layer_average_transfer_entropy_delay_L(
-                layers,
-                L
-            );
+            return _layer_average_transfer_entropy_delay_L(layers, L);
         }
 
         template <typename T>
@@ -157,10 +153,7 @@ namespace statistics{
             std::vector<std::vector<T>> layers, 
             int L
         ) {
-            return _layer_average_transfer_entropy_delay_L(
-                layers,
-                L
-            );
+            return _layer_average_transfer_entropy_delay_L(layers, L);
         }
 
         
@@ -177,6 +170,7 @@ namespace statistics{
 
             return entropy;
         }
+        
         template<typename T>
         static double calculate_entropy_from_element_sequence(const std::vector<T>& sequence)
         {
@@ -185,6 +179,7 @@ namespace statistics{
             for (int element : sequence) {
                 count_map[element]++;
             }
+
             double entropy = 0.0;
             int total_count = sequence.size();
             
@@ -226,10 +221,6 @@ namespace statistics{
         static double word_transitional_entropy_delay_L(std::vector<uint32_t> words, int L);
         static double derivation_transitional_entropy_delay_L(std::vector<uint32_t> derivations, int L);
         
-
-
-
-
         template<typename T>
         static double conditional_entropy_Z_given_XY(const std::vector<T>& z, const std::vector<T>& x, const std::vector<T>& y, int num_bins) {
             std::unordered_map<std::string, int> joint_counts;
@@ -258,6 +249,7 @@ namespace statistics{
             return joint_entropy_xyz - joint_entropy_yz;
         }
 
+        // no meanings
         template<typename T>
         static double _layer_average_transfer_entropy_delay_L(
             std::vector<std::vector<T>> layers, 
@@ -275,7 +267,6 @@ namespace statistics{
                 std::vector<T> Y_past(Y.begin(), Y.end() - lag);  // Past values of Y (up to time t-k)
                 std::vector<T> Y_future(Y.begin() + lag, Y.end()); // Future values of Y (at time t+1)
 
-
                 // H(Y_{t + 1} | Y_t^{t-k})
                 double H_Y_given_Y = conditional_entropy(Y_future, Y_past); 
 
@@ -285,7 +276,6 @@ namespace statistics{
             }
             return entropy / (layers.size() - L);
         }
-
 
         template<typename T>
         static double _sequence_entropy(std::vector<T> sequence){
@@ -347,8 +337,6 @@ namespace statistics{
                 x_entropy -= p * std::log(p);
             }
 
-            
-
             // Calculate entropy of Y, H(Y)
             for (const auto& entry : y_freq) {
                 double p = entry.second / total;
@@ -368,15 +356,12 @@ namespace statistics{
             // counting occurances
             for(int pre_layer_id = 0; pre_layer_id < size_layers - L; pre_layer_id++){
                 int delay_L_layer_id = pre_layer_id + L;
-                // std::cout << " -- " << pre_layer_id << " " << std::endl;
                 for(T prelayer_element: layers[pre_layer_id]){
                     // Count occurrences in the joint distribution
                     symbol_counter[prelayer_element]++;
 
                     for(auto&& postlayer_element: layers[delay_L_layer_id]){
                         uint64_t key = ((prelayer_element << 16) & 0xFFFF0000) | (postlayer_element & 0xFFFF);
-                        // std::cout << " --- pre = " << prelayer_element << 
-                        // "  --- post = " << postlayer_element << std::endl;
                         joint_counter[key]++;
                     }
                 }
@@ -447,14 +432,12 @@ namespace statistics{
             while(!node_queue.empty()){
                 std::vector<T> layer;
                 int size = node_queue.size();
-                // std::cout << "layer " << layer_id << ": " << std::endl;
                 layer_id++;
                 for(int i = 0; i < size; i++){
                     parsing::SyntaxTreeNode* first_node = node_queue.front();
                     node_queue.pop();
 
                     layer.emplace_back(value_selector(first_node)); // the A'id in A->BC/
-                    // std::cout << "push - " << value_selector(first_node->value) << std::endl;
                     if(first_node->left != nullptr){
                         node_queue.push(first_node->left);
                     }
@@ -558,7 +541,6 @@ namespace statistics{
             while (!stack.empty()) {
                 parsing::SyntaxTreeNode* peek_node = stack.back();
 
-                // If it's a leaf node, calculate the entropy for the current path
                 if (peek_node->is_leaf()) {
                     std::vector<T> values;
 
@@ -597,14 +579,12 @@ namespace statistics{
         static double L_layer_derivation_tree_mutual_entropy(pcfg* grammar, parsing::SyntaxTreeNode* tree, int L);
         static double L_layer_symbol_tree_mutual_entropy(pcfg* grammar, parsing::SyntaxTreeNode* tree, int L);
 
-        // !important
         static double prefix_L_parse_entropy(pcfg* grammar, double* alpha, int sequence_length, int end, int L, uint32_t* sequence);
         static double word_delay_L_mutual_entropy(std::vector<uint32_t> words, int L);
 
         static std::string report_all_statistics(parsing::SyntaxTreeNode* node, 
             double* alpha, std::vector<uint32_t> sentence, pcfg* grammar, int max_delays, int max_span_length);
 
-        // Metric : Average Path Length
         static int calculate_height(parsing::SyntaxTreeNode* node);
         static int calculate_total_depth(parsing::SyntaxTreeNode* node, std::vector<std::vector<parsing::SyntaxTreeNode*>>& paths);
 
@@ -612,15 +592,15 @@ namespace statistics{
 
         static double calculate_average_path_length(parsing::SyntaxTreeNode* node, std::vector<std::vector<parsing::SyntaxTreeNode*>>& paths);
 
-        static bool areSubtreesSimilar(parsing::SyntaxTreeNode* node1, parsing::SyntaxTreeNode* node2);
+        static bool are_subtree_similar(parsing::SyntaxTreeNode* node1, parsing::SyntaxTreeNode* node2);
 
-        static int calculateRedundancy(parsing::SyntaxTreeNode* node);
+        static int calculate_redundancy(parsing::SyntaxTreeNode* node);
 
         static double calculateEntropy(parsing::SyntaxTreeNode* node);
 
-        static int countTraversalSteps(parsing::SyntaxTreeNode* node);
+        static int count_traversal_steps(parsing::SyntaxTreeNode* node);
 
-        static double calculateSkewness(parsing::SyntaxTreeNode* node);
+        static double calculate_skewness(parsing::SyntaxTreeNode* node);
 
         static int calculate_max_nodes(int height);
 

@@ -18,24 +18,19 @@ namespace statistics{
         uint32_t* sequence = sentence.data();
         double entropy_of_derivations = derivation_entropy(derivations);
         oss << "derivation_entropy: " << entropy_of_derivations << std::endl;
-        // std::cout << "  - derivation_entropy outputted." << std::endl;
         double entropy_of_word = word_entropy(sentence);
         oss << "word_entropy: " << entropy_of_word << std::endl;
-        // std::cout << "  - word_entropy outputted." << std::endl;
 
         for(int d = 1; d <= max_delays; d++){
             double word_delay_d_mutual_entropy = word_delay_L_mutual_entropy(sentence, d);
             oss << "word_delay_" << d << "_mutual_entropy: " << word_delay_d_mutual_entropy << std::endl;
         }
-        // std::cout << "  - word_delay_L_mutual_entropy all outputted." << std::endl;
-
 
         for(int d = 1; d <= max_delays; d++){
             double derivation_delay_d_mutual_entropy = derivation_delay_L_mutual_entropy(derivations, d);
             oss << "derivation_delay_" << d << "_mutual_entropy: " << derivation_delay_d_mutual_entropy << std::endl;
         }
         
-        // std::cout << "  - derivation_delay_L_mutual_entropy all outputted." << std::endl;
         for(int d = 1; d <= max_delays; d++){
             double word_delay_d_transitional_entropy = word_transitional_entropy_delay_L(sentence, d);
             oss << "word_delay_" << d << "_transitional_entropy: " << word_delay_d_transitional_entropy << std::endl;
@@ -59,19 +54,16 @@ namespace statistics{
         int depth_of_tree = tree_depth(node);
         oss << "depth_of_tree: " << depth_of_tree << std::endl;
 
-        // std::cout << "  - depth_of_tree outputted." << std::endl;
         for(int d = 1; d <= max_delays; d++){
             double d_layer_symbol_tree__entropy = L_layer_symbol_tree_mutual_entropy(grammar, node, d);
             oss << d << "_layer_symbol_tree__entropy: " << d_layer_symbol_tree__entropy << std::endl;
         }
         
-        // std::cout << "  - L_layer_symbol_tree__entropy all outputted." << std::endl;
         for(int d = 1; d <= max_delays; d++){
             double d_layer_derivation_tree__entropy = L_layer_derivation_tree_mutual_entropy(grammar, node, d);
             oss << d << "_layer_derivation_tree__entropy: " << d_layer_derivation_tree__entropy << std::endl;
         }
 
-        // std::cout << "  - L_layer_derivation_tree__entropy all outputted." << std::endl;
         for (int span_length = 2; span_length < std::min(max_span_length, (int) sentence.size()); span_length++){
             for (int k = sentence.size() - 1; k >= span_length; k--){
                 double prefix_parse_entropy = prefix_L_parse_entropy(grammar, alpha, sentence.size(), k, span_length, sequence);
@@ -83,10 +75,10 @@ namespace statistics{
             get_paths<parsing::SyntaxTreeNode*>(node, [](parsing::SyntaxTreeNode* node)->parsing::SyntaxTreeNode*{return node;});
 
         double average_path_length = calculate_average_path_length(node, paths);
-        int redundancy = calculateRedundancy(node);
+        int redundancy = calculate_redundancy(node);
         double symbol_entropy = calculate_tree_symbol_entropy(node);
-        int traversal_steps = countTraversalSteps(node);
-        double tree_skewness = calculateSkewness(node);
+        int traversal_steps = count_traversal_steps(node);
+        double tree_skewness = calculate_skewness(node);
         double skewness = calculate_skewness(derivations);
         double density = calculate_density(node);
         oss << "average_path_length" << ": " << average_path_length << std::endl;
@@ -131,13 +123,6 @@ namespace statistics{
        
         return oss.str();        
     }
-
-
-    
-
-    
-
-    
 }
 
 #endif
