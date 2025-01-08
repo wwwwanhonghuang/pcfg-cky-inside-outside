@@ -74,7 +74,7 @@ int main(int argc, char* argv[])
 
     // 4. load corpus.
     std::cout << "Load sentences..." << std::endl;
-    std::vector<std::vector<uint32_t>> sentences = parse_input_file(input_filename, grammar, limit_n_sentences);
+    std::vector<std::vector<uint32_t>> sentences = parse_input_file(input_filename, grammar, limit_n_sentences, MAX_SEQUENCE_LENGTH);
     std::cout << "Load sentences finished. Total instances:" << sentences.size() << std::endl;
     if (sentences.empty()) {
         std::cerr << "Error: No sentences loaded." << std::endl;

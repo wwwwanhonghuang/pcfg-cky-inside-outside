@@ -67,8 +67,7 @@ void kernel_outside_main(double* mu, double* beta, const uint32_t* sequence,
                     uint32_t sym_BC = *(grammar_table + gid * BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS);
                     uint32_t _sym_B = (sym_BC >> 16) & 0xFFFF;
                     uint32_t _sym_C = (sym_BC) & 0xFFFF;
-                    std::cout << "gid:: " << gid << " " << _sym_A << "->" << _sym_B << ", " 
-                        << _sym_C << std::endl;
+                 
                     double possibility = *(double*)(grammar_table + gid * BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS + 1);
 
                     ASSERT_POSSIBILITY(possibility);
