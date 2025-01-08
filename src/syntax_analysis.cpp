@@ -36,11 +36,17 @@ void create_path_if_not_exists(const std::string& path){
 
 int main(int argc, char* argv[])
 {
-    YAML::Node config = YAML::LoadFile("config.yaml");
+    std::string config_file = "config.yaml";
+
+    if (argc > 1) {
+        config_file = argv[1];
+    }
     if (!config.IsDefined()) {
         std::cout << "Error: config.yaml could not be loaded!" << std::endl;
         return 1;
     }
+    YAML::Node config = YAML::LoadFile(config_file);
+
 
     std::string grammar_filename = config["syntax_analysis"]["grammar_file"].as<std::string>();
     std::string input_filename = config["syntax_analysis"]["input"].as<std::string>();
