@@ -21,8 +21,8 @@ endif()
 include_directories(include)
 
 # Find Boost (for unit testing)
-find_package(Boost REQUIRED COMPONENTS unit_test_framework)
-include_directories(${Boost_INCLUDE_DIRS})
+# find_package(Boost REQUIRED COMPONENTS unit_test_framework)
+# include_directories(${Boost_INCLUDE_DIRS})
 
 # Add definitions based on options
 add_definitions(-DCOMPUTING_IN_LOG_SPACE)
@@ -57,7 +57,7 @@ list(FILTER SRC_FILES EXCLUDE REGEX "src/syntax_analysis.cpp")
 
 # Object files library
 add_library(shared_lib STATIC ${SRC_FILES})
-target_link_libraries(shared_lib ${Boost_LIBRARIES})
+# target_link_libraries(shared_lib ${Boost_LIBRARIES})
 
 # Main executable targets
 add_executable(main_executable src/main.cpp)
@@ -83,7 +83,7 @@ endif()
 # Test executable target
 file(GLOB TEST_SRCS "unit_test/*.cpp")
 add_executable(unit_tests ${TEST_SRCS})
-target_link_libraries(unit_tests shared_lib ${Boost_LIBRARIES})
+# target_link_libraries(unit_tests shared_lib ${Boost_LIBRARIES})
 
 # Custom target for running tests
 add_custom_target(run_tests
