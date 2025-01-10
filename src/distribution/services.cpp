@@ -24,8 +24,7 @@ void handle_client(int client_sock) {
             {
             case PARTITION_PREPARED: {
                 {
-                    partition_prepared_msg_ack_count.lock();
-                    partition_prepared_msg_ack_count.value ++;
+                    partition_prepared_msg_ack_count.access_with_function([](auto& v)->void{ v++;});
                     std::cout << "ACK " << PARTITION_PREPARED << " partition_prepared_msg_ack_count = " << 
                                 partition_prepared_msg_ack_count.value << std::endl;
                 }
@@ -43,16 +42,18 @@ void handle_client(int client_sock) {
                 std::cout << "[Client Service] client " <<  client_partition_id << " has completed epoch " << epoch <<
                             " reported result = " << client_result << std::endl;
                 {
-                    global_result.lock();
-                    global_result.value += client_result;
+                    global_result.access_with_function([&client_result](auto& v)->void{v += client_result;});
                 }
+
                 {
-                    epoch_completed_ack_count.lock();
-                    epoch_completed_ack_count.value[epoch]++;
-                    std::cout << "ACK " << EPOCH_COMPLETE << " epoch_completed_ack_count[" << epoch << 
-                            "] = " << epoch_completed_ack_count.value[epoch] << std::endl;
+                    epoch_completed_ack_count.access_with_function([&epoch](auto& map)->void{
+                        map[epoch]++;
+                    });
+                    std::cout << "ACK " << EPOCH_COMPLETE << " epoch_completed_ack_count[" << 
+                        epoch << "] = " << epoch_completed_ack_count.get()[epoch] << std::endl;
                 }
-                std::cout << "[Client Service] Notify one thread that waiting for barrier_cv" << std::endl;
+                
+                std::cout << "[Client Service] Notify one thread that waiting for epoch_completed_msg_cv" << std::endl;
                 epoch_completed_msg_cv.notify_one();
                 break;
             }
@@ -63,13 +64,13 @@ void handle_client(int client_sock) {
                 memcpy(&epoch, &msg_receive.data[0], sizeof(int));
                 std::cout << "[Client Service] client " <<  client_partition_id << " prepare proceed epoch " << epoch << std::endl;
                 {
-                    begin_epoch_msg_ack_count.lock();
-                    begin_epoch_msg_ack_count.value[epoch]++;
+                    begin_epoch_msg_ack_count.access_with_function([&epoch](auto& map)->void{map[epoch] ++;} );
+
                     std::cout << "ACK " << BEGIN_EPOCH << " begin_epoch_msg_ack_count[" << epoch <<
-                        "] = " << begin_epoch_msg_ack_count.value[epoch] << std::endl;
+                        "] = " << begin_epoch_msg_ack_count.get()[epoch] << std::endl;
                 }
                 
-                std::cout << "[Client Service] Notify one thread that waiting for barrier_cv" << std::endl;
+                std::cout << "[Client Service] Notify one thread that waiting for begin_epoch_msg_cv" << std::endl;
                 begin_epoch_msg_cv.notify_one();
                 break;
             }

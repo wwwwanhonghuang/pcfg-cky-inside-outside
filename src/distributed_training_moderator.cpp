@@ -101,15 +101,17 @@ void serverLoop(uint32_t port) {
 }
 
 void broadcast_message(const Message& message) {
-    client_map.lock();
-    for (const auto& [sock, client] : client_map.value) {
-        ssize_t bytes_sent = send(client.sock, &message, sizeof(message), 0);
-        if (bytes_sent < 0) {
-            perror(("Failed to send message to " + client.name).c_str());
-        } else{
-            std::cout << "\t[Broadcast Message] message type = " << message.msg_type << " broad cast to " << sock << std::endl;
+    client_map.access_with_function([&message](auto& map)->void{
+        for (const auto& [sock, client] : map) {
+            ssize_t bytes_sent = send(client.sock, &message, sizeof(message), 0);
+            if (bytes_sent < 0) {
+                perror(("Failed to send message to " + client.name).c_str());
+            } else{
+                std::cout << "\t[Broadcast Message] message type = " << message.msg_type 
+                << " broad cast to " << sock << std::endl;
+            }
         }
-    }
+    });
 }
 
 void connect_to_other_partitions(int& total_clients, int& connected_client, 
@@ -220,10 +222,10 @@ int main(int argc, char* argv[]) {
     std::cout << "[barrier passed] All partition prepared!" << std::endl;
 
     int epoch = 0;
-    const int MAX_EPOCHS = 2;
+    const int MAX_EPOCHS = 1;
     while(epoch < MAX_EPOCHS){
         std::cout << std::endl;
-        std::cout << "[Main Loop] partition " << program_name << " begin epoch " << epoch << std::endl;
+        std::cout << "[Main Loop] partition " << program_name << " at the beginning of epoch " << epoch << std::endl;
         
         
         // 5.1 Notify Application begin a new epoch.
@@ -283,8 +285,7 @@ int main(int argc, char* argv[]) {
 
         epoch ++;
         {
-            global_result.lock();
-            global_result.value = 0;
+            global_result.access_with_function([](auto& v)->void{global_result.value = 0;});
         }
 
         std::cout << std::endl;
