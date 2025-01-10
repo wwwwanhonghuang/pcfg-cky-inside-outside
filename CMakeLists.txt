@@ -8,7 +8,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_C_COMPILER clang)
 set(CMAKE_CXX_COMPILER clang++)
 
-# Option to enable or disable CUDA
+# Important Note: currently CUDA is unsupport
 option(USE_CUDA "Enable CUDA support" OFF)
 find_package(OpenMP REQUIRED)
 if(OpenMP_CXX_FOUND)
@@ -59,9 +59,9 @@ list(FILTER SRC_FILES EXCLUDE REGEX "src/syntax_analysis.cpp")
 add_library(shared_lib STATIC ${SRC_FILES})
 # target_link_libraries(shared_lib ${Boost_LIBRARIES})
 
-# Main executable targets
-add_executable(main_executable src/main.cpp)
-target_link_libraries(main_executable shared_lib yaml-cpp)
+# Train PCFG executable targets
+add_executable(train_pcfg src/main.cpp)
+target_link_libraries(train_pcfg shared_lib yaml-cpp)
 
 # Phase conversion executable
 add_executable(phase_convert_executable src/phase_convert.cpp)
@@ -93,10 +93,12 @@ add_custom_target(run_tests
 )
 
 # Output directories
-set_target_properties(main_executable phase_convert_executable syntax_analysis test_parsing PROPERTIES
+set_target_properties(train_pcfg phase_convert_executable syntax_analysis test_parsing PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
 )
 
+
+# Note: currently CUDA is unsupport
 if(USE_CUDA)
     set_target_properties(main_cuda_executable PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
@@ -106,5 +108,3 @@ endif()
 set_target_properties(shared_lib PROPERTIES
     ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib"
 )
-
-# Clean target (CMake has a built-in 'clean' target)
