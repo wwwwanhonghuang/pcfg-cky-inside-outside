@@ -1,0 +1,11 @@
+cluster:
+  clients:
+    - name: pcfg-train-1
+      ip: 127.0.0.1
+      port: 9240
+    - name: pcfg-train-2
+      ip: 127.0.0.1
+      port: 9241
+    - name: pcfg-train-3
+      ip: 127.0.0.1
+      port: 9242

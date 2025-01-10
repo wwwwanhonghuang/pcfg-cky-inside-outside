@@ -10,5 +10,6 @@ struct Client
     ClientStates state;
     int sock;
     std::string name;
+    int partition_id;
 };
 #endif

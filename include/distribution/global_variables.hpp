@@ -11,7 +11,9 @@
 namespace GlobalState {
     inline std::atomic<bool> keep_running(true);
 
-    inline MutexableVariable<std::unordered_map<int, Client>> client_map;
+    inline MutexableVariable<std::unordered_map<int, Client>> client_map;  // Maps sock -> Client
+    inline MutexableVariable<std::unordered_map<int, int>> partiton_id_to_sock;  // Maps sock -> Client
+
     inline MutexableVariable<int> global_result;
 
     inline std::condition_variable partition_prepared_msg_cv;
