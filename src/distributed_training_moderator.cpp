@@ -301,7 +301,7 @@ int main(int argc, char* argv[]) {
     std::cout << RED << "[!Important] Barrier 1: All partition arrive front pre-epoch-0." << RESET << std::endl;    
  
     int epoch = 0;
-    const int MAX_EPOCHS = 1;
+    const int MAX_EPOCHS = 3;
     const int package_per_epoch = total_clients * 4;
     while(epoch < MAX_EPOCHS){
         std::cout << std::endl;
@@ -405,8 +405,7 @@ int main(int argc, char* argv[]) {
 
         std::cout << RED << "[!Important] Inner Epoch" << epoch << 
             " Barrier 3: All partition confirmed integrated results of epoch " << epoch << "." 
-            << RESET << std::endl;    
-
+            << RESET << std::endl;
 
         epoch ++;
         {
@@ -414,7 +413,8 @@ int main(int argc, char* argv[]) {
         }
 
         std::cout << std::endl;
-        std::cout <<  GREEN << "========================= END OF EPOCH " << epoch 
+        std::cout <<  GREEN << "========================= END OF EPOCH " 
+                << epoch 
                 << "=========================" << RESET << std::endl;
     }
 
