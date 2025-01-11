@@ -1,5 +1,6 @@
 #ifndef CLIENT_HPP
 #define CLIENT_HPP
+#include <string>
 typedef enum {
     UNCONNECTED,
     CONNETED

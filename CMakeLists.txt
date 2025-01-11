@@ -5,8 +5,8 @@ project(MyProject)
 # Set the C++ standard and enable optional CUDA support
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-# set(CMAKE_C_COMPILER clang)
-# set(CMAKE_CXX_COMPILER clang++)
+set(CMAKE_C_COMPILER clang)
+set(CMAKE_CXX_COMPILER clang++)
 
 # Important Note: currently CUDA is unsupport
 find_package(OpenMP REQUIRED)
@@ -57,10 +57,10 @@ add_executable(test_parsing src/test/test_parsing.cpp)
 target_link_libraries(test_parsing shared_lib yaml-cpp)
 
 add_executable(distributed_training_main src/distributed_training_main.cpp)
-target_link_libraries(distributed_training_main shared_lib yaml-cpp distribution_lib)
+target_link_libraries(distributed_training_main yaml-cpp distribution_lib)
 
 add_executable(distributed_training_moderator src/distributed_training_moderator.cpp)
-target_link_libraries(distributed_training_moderator shared_lib yaml-cpp distribution_lib)
+target_link_libraries(distributed_training_moderator yaml-cpp distribution_lib)
 
 target_compile_options(distributed_training_main PRIVATE -O0)
 target_compile_options(distributed_training_moderator PRIVATE -O0)

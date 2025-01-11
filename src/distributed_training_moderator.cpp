@@ -23,8 +23,42 @@
 #include "distribution/global_variables.hpp"
 #include "distribution/services.hpp"
 #include "distribution/message_impl.h"
+#include "distribution/communication/package.hpp"
 
 using namespace GlobalState;
+
+
+class PackageManager {
+    private:
+        int current_acn = 0;
+        static std::unique_ptr<PackageManager> manager;
+        static std::mutex mtx;
+        PackageManager(){}
+        friend PackageManager* get_instance();
+
+    public:
+        PackageManager(const PackageManager&) = delete; // Delete copy constructor
+        PackageManager& operator=(const PackageManager&) = delete; // Delete copy assignment
+
+        static PackageManager* get_instance() {
+            if (!manager) {
+                std::lock_guard<std::mutex> lock(mtx);
+                if (!manager) {
+                    manager = std::unique_ptr<PackageManager>(new PackageManager());
+                }
+            }
+            return manager.get();
+        }
+    
+        Package pack_msg_to_package(Message& msg){
+            Package package;
+            package.acknowlege_number = current_acn++;
+            package.msg = msg;
+            return package;
+        }
+};
+std::unique_ptr<PackageManager> PackageManager::manager = nullptr;
+std::mutex PackageManager::mtx;
 
 void push_msg_to_shared_memory_rr(Message& msg, std::shared_ptr<SharedMemory> shared_memory){
     static int pos = 0;
@@ -173,6 +207,9 @@ void connect_to_other_partitions(int& total_clients, int& connected_client,
     std::cout << "All clients connected. " << std::endl;
 }
 
+#define RED     "\033[31m"      /* Red */
+#define RESET   "\033[0m"
+
 int main(int argc, char* argv[]) {
     if (argc < 2) {
         std::cerr << "Please provide the instance index (i).\n";
@@ -190,10 +227,11 @@ int main(int argc, char* argv[]) {
     int connected_client = 1;
     int client_index = 0;
 
-    connect_to_other_partitions(total_clients, connected_client, client_index, clients, partition_id, program_name);
-
+    connect_to_other_partitions(total_clients, connected_client, client_index, 
+        clients, partition_id, program_name);
 
     std::cout << "Open share memory. " << std::endl;
+
     int size = sizeof(MemoryStorage);
     auto shared_memory = std::make_shared<SharedMemory>(program_name.c_str(), CREATE_NEW, size);
     auto storage = (MemoryStorage*)shared_memory->get_data();
@@ -202,11 +240,13 @@ int main(int argc, char* argv[]) {
     Message network_component_prepared_msg = gen_network_component_prepared_msg(partition_id);
     push_msg_to_shared_memory_rr(network_component_prepared_msg, shared_memory);
 
+ 
     /* 2. Wait ACK from the application */
     while(storage->network_communicator_messages[0].status == EMPTY_SLOT){}
     std::cout << "application repied: " <<  
         storage->network_communicator_messages[0].data << std::endl;
     storage->network_communicator_messages[0].status = EMPTY_SLOT;
+
     
     /* 3. Broadcast partition prepared message to all other partitions. */
     std::cout << "Broadcast prepared message." << std::endl;
@@ -220,6 +260,10 @@ int main(int argc, char* argv[]) {
         partition_prepared_msg_cv.wait(lock, [&total_clients] { return partition_prepared_msg_ack_count.value == total_clients - 1; });
     }
     std::cout << "[barrier passed] All partition prepared!" << std::endl;
+
+    std::cout << RED << "[!Important] Barrier 1: All partition arrive front pre-epoch-0." << RESET << std::endl;    
+    std::cin.get();
+    abort();
 
     int epoch = 0;
     const int MAX_EPOCHS = 1;
