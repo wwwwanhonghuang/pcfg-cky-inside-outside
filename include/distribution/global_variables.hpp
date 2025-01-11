@@ -13,6 +13,7 @@ namespace GlobalState {
 
     inline MutexableVariable<std::unordered_map<int, Client>> client_map;  // Maps sock -> Client
     inline MutexableVariable<std::unordered_map<int, int>> partiton_id_to_sock;  // Maps sock -> Client
+    inline MutexableVariable<std::unordered_map<int, int>> sock_to_partition_id;  // Maps sock -> Client
 
     inline MutexableVariable<int> global_result;
 
@@ -27,6 +28,16 @@ namespace GlobalState {
 
     inline std::condition_variable application_cv;
     inline std::mutex application_mutex;
+
+    inline MutexableVariable<int> integrated_result;
+
+    inline std::condition_variable integrated_result_confirmation_cv;
+    inline MutexableVariable<std::unordered_map<int, int>> integrated_result_confirmation_ack_count;
+
+    
+    inline std::condition_variable integrated_result_prepared_cv;
+    inline MutexableVariable<std::unordered_map<int, int>> integrated_result_prepared_ack_count;
+    
 }
 
 #endif

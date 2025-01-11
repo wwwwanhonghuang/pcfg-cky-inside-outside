@@ -4,6 +4,15 @@
 #include <cstring>
 #include "common/message.h"
 
+Message gen_integrated_result_prepared_msg(int partition_id, int epoch){
+    Message msg;
+    msg.status = MESSAGE_WAITING; 
+    msg.msg_type = INTEGRATED_RESULT_PREPARED;
+    memcpy(&msg.data[4], &epoch, sizeof(int));
+    memcpy(&msg.data[4], &partition_id, sizeof(int));
+    return msg;
+};
+
 Message gen_network_component_prepared_msg(int partition_id){
     Message msg;
     msg.status = MESSAGE_WAITING; 
