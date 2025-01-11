@@ -45,20 +45,25 @@ inline void increase_package_seq(){
 
 
 
-void save_package(const Package& package) {
+inline void save_package(const Package& package) {
     saved_packages.value.push(package);
 }
 
-const Package& most_early_one() {
+inline const Package& most_early_one() {
     return saved_packages.value.top();
 }
 
-void remove_most_early_one() {
-    saved_packages.value.pop();
+inline void remove_most_early_one() {
+    saved_packages.access_with_function([](auto& queue)->void{
+        queue.pop();
+    });
 }
-bool has_saved_packages() {
+inline bool has_saved_packages() {
     return !saved_packages.value.empty();
 }
+
+
+std::mutex package_storage;
 
 void process(const Package& package){
     Message msg_receive = package.msg;
@@ -165,23 +170,50 @@ void handle_client(int client_sock, int partition_id) {
 
     while (true) {
         // Fetch the last processed package sequence number for this client
-        int expect_seq_number = get_expect_seq_number();
-        if(should_ignore(partition_id, client_sock, expect_seq_number)){
+        int seq_number_expect = get_expect_seq_number();
+        if(should_ignore(partition_id, client_sock, seq_number_expect)){
             increase_package_seq();
             std::cout << YELLOW << "partition " << partition_id 
             << " ignore package with seq = "
-            << expect_seq_number << RESET << std::endl;
+            << seq_number_expect << RESET << std::endl;
             continue;
         }
         // Process saved packages in order if they match the expected sequence
-        if (has_saved_packages()){
-            const Package& earliest_package = most_early_one();
-            if(earliest_package.sequence_number ==  expect_seq_number) {
-                process(most_early_one());
-                remove_most_early_one(); 
-                increase_package_seq();
+        std::lock_guard<std::mutex> lock(package_storage);
+
+        if (!saved_packages.value.empty()) {
+            // Capture current thread ID
+            auto thread_id = std::this_thread::get_id();
+            Package earliest_package = saved_packages.value.top();
+
+            // Check sequence number
+            if (earliest_package.sequence_number == seq_number_expect) {
+                std::cout << "Process package "
+                        << "seq = " << earliest_package.sequence_number
+                        << " from queue."
+                        << std::endl;
+
+                // Log current queue state
+                std::cout << " - " << thread_id << ": "
+                        << " queue size = " << saved_packages.value.size()
+                        << " expect seq num = " << seq_number_expect
+                        << std::endl;
+
+                // Remove the package from the queue
+                saved_packages.value.pop();
+
+                // Update the expected sequence number
+                expect_seq_number.value++;
+                std::cout << " - after " << thread_id << ": "
+                        << " queue size = " << saved_packages.value.size()
+                        << " expect seq num = " << expect_seq_number.value
+                        << std::endl;
+
+                // Process the package
+                process(earliest_package);
             }
         }
+
 
         Package package_receive;
 
@@ -199,14 +231,18 @@ void handle_client(int client_sock, int partition_id) {
                 << " msg_type = " << package_receive.msg.msg_type << "\n";
 
             int seq_num = package_receive.sequence_number;
-            expect_seq_number = get_expect_seq_number();
+            seq_number_expect = get_expect_seq_number();
 
-            if (seq_num == expect_seq_number) {
+            if (seq_num == seq_number_expect) {
                 // Process the package if it's the next in sequence
+                std::cout << "process package " 
+                    << "seq = " << package_receive.sequence_number << std::endl;
                 process(package_receive);
                 increase_package_seq();
             } else {
                 // Save the out-of-order package for later processing
+                std::cout << "save package " 
+                    << "seq = " << package_receive.sequence_number << std::endl;
                 save_package(package_receive);
             }
         }else if(bytes_read < 0) continue;

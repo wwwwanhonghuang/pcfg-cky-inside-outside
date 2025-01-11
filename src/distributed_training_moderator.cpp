@@ -271,9 +271,7 @@ int main(int argc, char* argv[]) {
     while(storage->network_communicator_messages[0].status == EMPTY_SLOT){}
     std::cout << "application repied: " <<  
         storage->network_communicator_messages[0].data << std::endl;
-    storage->network_communicator_messages[0].status = EMPTY_SLOT;
-
-    
+    storage->network_communicator_messages[0].status = EMPTY_SLOT;   
 
     connect_to_other_partitions(total_clients, connected_client, client_index, 
         clients, partition_id, program_name);
@@ -293,25 +291,20 @@ int main(int argc, char* argv[]) {
     std::cout << "[barrier passed] All partition prepared!" << std::endl;
 
     std::cout << RED << "[!Important] Barrier 1: All partition arrive front pre-epoch-0." << RESET << std::endl;    
-    
-    
-
-    std::cin.get();
-    abort();
-
-
+ 
     int epoch = 0;
     const int MAX_EPOCHS = 1;
     const int package_per_epoch = total_clients * 4;
     while(epoch < MAX_EPOCHS){
         std::cout << std::endl;
-        std::cout << "[Main Loop] partition " << program_name << " at the beginning of epoch " << epoch << std::endl;
+        std::cout << "[Main Loop] partition " << program_name 
+                  << " at the beginning of epoch " << epoch << std::endl;
         
         
         // 5.1 Notify Application begin a new epoch.
         Message epoch_begin_msg = gen_epoch_begin_message(epoch, partition_id);
         push_msg_to_shared_memory_rr(epoch_begin_msg, shared_memory);
-        broadcast_message(package_per_epoch * epoch, partition_id, epoch_begin_msg);
+        broadcast_message(package_per_epoch * epoch + total_clients * 1, partition_id, epoch_begin_msg);
         {
             std::unique_lock<std::mutex> lock = begin_epoch_msg_ack_count.lock();
             begin_epoch_msg_cv.wait(lock, [&total_clients, &epoch] { return begin_epoch_msg_ack_count.value[epoch] == total_clients - 1; });
@@ -319,8 +312,7 @@ int main(int argc, char* argv[]) {
         std::cout << RED << "[Main Loop] [barrier passed] All partition prepare to proceed epoch "
                   << RESET << epoch << "!" << std::endl;
         
-        std::cin.get();
-        abort();
+            
 
         // 5.2 Wait application finished.
         std::cout << "[Main Loop] wait application execution. " << std::endl;
@@ -338,6 +330,9 @@ int main(int argc, char* argv[]) {
             application_result << std::endl;
         
         storage->network_communicator_messages[0].status = EMPTY_SLOT;
+
+        std::cin.get();
+        abort();
 
         // 5.3 Broadcast epoch finished message.
         Message epoch_finished_msg = gen_epoch_finished_msg(partition_id, epoch, application_result);
@@ -365,6 +360,11 @@ int main(int argc, char* argv[]) {
         std::cout << RED << "[!Important] Inner Epoch" << epoch << 
             "Partition calculate integration result finished. Result == " << local_integrated_result
         << RESET << std::endl;
+
+        
+        std::cin.get();
+        abort();
+
 
         Message msg_integrated_result_notification = gen_notificate_integrate_result_msg(local_integrated_result);
         push_msg_to_shared_memory_rr(msg_integrated_result_notification, shared_memory);
