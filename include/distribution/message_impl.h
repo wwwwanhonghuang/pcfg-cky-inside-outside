@@ -8,7 +8,7 @@ Message gen_integrated_result_prepared_msg(int partition_id, int epoch){
     Message msg;
     msg.status = MESSAGE_WAITING; 
     msg.msg_type = INTEGRATED_RESULT_PREPARED;
-    memcpy(&msg.data[4], &epoch, sizeof(int));
+    memcpy(&msg.data[0], &epoch, sizeof(int));
     memcpy(&msg.data[4], &partition_id, sizeof(int));
     return msg;
 };
@@ -39,11 +39,13 @@ Message gen_epoch_finished_msg(int partition_id, int epoch, int result){
     return epoch_finished_msg;
 }
 
-Message gen_notificate_integrate_result_msg(int integrated_result){
+Message gen_notificate_integrate_result_msg(int integrated_result, int epoch){
     Message msg_integrated_result_notification;
     msg_integrated_result_notification.status = MESSAGE_WAITING;
     msg_integrated_result_notification.msg_type = NOTIFICATE_INTEGRATE_RESULT;
     memcpy(msg_integrated_result_notification.data, &integrated_result, sizeof(int));
+    memcpy(&msg_integrated_result_notification.data[4], &epoch, sizeof(int));
+
     return msg_integrated_result_notification;
 }
 

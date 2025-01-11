@@ -29,6 +29,7 @@
 
 #define RED     "\033[31m"      /* Red */
 #define RESET   "\033[0m"
+#define GREEN   "\033[32m"      /* Green */
 
 
 using namespace GlobalState;
@@ -295,8 +296,8 @@ int main(int argc, char* argv[]) {
         std::unique_lock<std::mutex> lock = partition_prepared_msg_ack_count.lock();
         partition_prepared_msg_cv.wait(lock, [&total_clients] { return partition_prepared_msg_ack_count.value == total_clients - 1; });
     }
+    
     std::cout << "[barrier passed] All partition prepared!" << std::endl;
-
     std::cout << RED << "[!Important] Barrier 1: All partition arrive front pre-epoch-0." << RESET << std::endl;    
  
     int epoch = 0;
@@ -363,15 +364,13 @@ int main(int argc, char* argv[]) {
             v = local_integrated_result;
         });
         std::cout << RED << "[!Important] Inner Epoch" << epoch << 
-            "Partition calculate integration result finished. Result == " << local_integrated_result
+            " Partition calculate integration result finished. Result == " << local_integrated_result
         << RESET << std::endl;
 
         
-        std::cin.get();
-        abort();
 
 
-        Message msg_integrated_result_notification = gen_notificate_integrate_result_msg(local_integrated_result);
+        Message msg_integrated_result_notification = gen_notificate_integrate_result_msg(local_integrated_result, epoch);
         push_msg_to_shared_memory_rr(msg_integrated_result_notification, shared_memory);
 
         // 5.6 Wait for ack from application
@@ -383,10 +382,10 @@ int main(int argc, char* argv[]) {
         }
         std::cout << "[Main Loop] Integrated result processed by application." << std::endl;
         std::cout << RED << "[!Important] Inner Epoch " << epoch << 
-            "Partition application processed integration results." << RESET << std::endl;
+            " Partition application processed integration results." << RESET << std::endl;
 
         Message msg_integrated_result_prepared = gen_integrated_result_prepared_msg(partition_id, epoch);
-        broadcast_message(msg_integrated_result_prepared);
+        broadcast_message(package_per_epoch * epoch + total_clients * 3, partition_id , msg_integrated_result_prepared);
         {
             auto lock = integrated_result_prepared_ack_count.lock();
             integrated_result_prepared_cv.wait(lock, [&total_clients, &epoch] { return integrated_result_prepared_ack_count.value[epoch] == total_clients - 1; });
@@ -395,19 +394,19 @@ int main(int argc, char* argv[]) {
             " Barrier 2: All partition prepared integrated results in epoch " << epoch << "." 
             << RESET << std::endl;    
 
-
-        broadcast_message(msg_integrated_result_notification);
+        broadcast_message(package_per_epoch * epoch + total_clients * 4, 
+                        partition_id, msg_integrated_result_notification);
         {
             auto lock = integrated_result_confirmation_ack_count.lock();
-            integrated_result_confirmation_cv.wait(lock, [&total_clients, &epoch] { return integrated_result_confirmation_ack_count.value[epoch] == total_clients - 1; });
+            integrated_result_confirmation_cv.wait(lock, [&total_clients, &epoch] { 
+                return integrated_result_confirmation_ack_count.value[epoch] == total_clients - 1; 
+            });
         }
 
         std::cout << RED << "[!Important] Inner Epoch" << epoch << 
             " Barrier 3: All partition confirmed integrated results of epoch " << epoch << "." 
             << RESET << std::endl;    
 
-        std::cin.get();
-        abort();
 
         epoch ++;
         {
@@ -415,6 +414,8 @@ int main(int argc, char* argv[]) {
         }
 
         std::cout << std::endl;
+        std::cout <<  GREEN << "========================= END OF EPOCH " << epoch 
+                << "=========================" << RESET << std::endl;
     }
 
     std::cin.get();

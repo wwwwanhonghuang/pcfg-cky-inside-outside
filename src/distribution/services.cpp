@@ -135,8 +135,18 @@ void process(const Package& package){
                     << " this partition's result " << result_this_partition << std::endl;
             assert(false);
         }
+        {
+            int epoch = -1;
+            memcpy(&epoch, &msg_receive.data[4], sizeof(int));
+            integrated_result_confirmation_ack_count.access_with_function([&epoch](auto& v)->void{v[epoch]++;} );
+
+            std::cout << "ACK NOTIFICATE_INTEGRATE_RESULT" 
+                << " integrated_result_confirmation_ack_count = " 
+                << integrated_result_confirmation_ack_count.get()[epoch]
+                << std::endl;
+        }
         std::cout << "[Client Service] Notify one thread that waiting for integrated_result_msg_cv" << std::endl;
-        begin_epoch_msg_cv.notify_one();
+        integrated_result_confirmation_cv.notify_one();
         break;
     }
     case INTEGRATED_RESULT_PREPARED: {
@@ -147,10 +157,9 @@ void process(const Package& package){
             memcpy(&client_partition_id, &msg_receive.data[4], sizeof(int));
             integrated_result_prepared_ack_count.access_with_function([&epoch](auto& map)->void{
                 map[epoch]++;
-                std::cout << "ACK INTEGRATED_RESULT_PREPARED" << " integrated_result_prepared_cv = " << 
-                        map[epoch] << std::endl;
+                std::cout << "ACK INTEGRATED_RESULT_PREPARED" << " integrated_result_prepared_cv [epoch " 
+                << epoch << "] = " << map[epoch] << std::endl;
             });
-        
         }
         integrated_result_prepared_cv.notify_one(); 
         break;
