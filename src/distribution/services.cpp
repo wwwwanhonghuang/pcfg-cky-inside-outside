@@ -153,6 +153,7 @@ void process(const Package& package){
         {
             int epoch = -1;
             int client_partition_id = -1;
+            
             memcpy(&epoch, &msg_receive.data[0], sizeof(int));
             memcpy(&client_partition_id, &msg_receive.data[4], sizeof(int));
             integrated_result_prepared_ack_count.access_with_function([&epoch](auto& map)->void{

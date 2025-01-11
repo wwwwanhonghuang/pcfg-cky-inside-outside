@@ -57,10 +57,10 @@ add_executable(test_parsing src/test/test_parsing.cpp)
 target_link_libraries(test_parsing shared_lib yaml-cpp)
 
 add_executable(distributed_training_main src/distributed_training_main.cpp)
-target_link_libraries(distributed_training_main yaml-cpp distribution_lib)
+target_link_libraries(distributed_training_main shared_lib yaml-cpp distribution_lib)
 
 add_executable(distributed_training_moderator src/distributed_training_moderator.cpp)
-target_link_libraries(distributed_training_moderator yaml-cpp distribution_lib)
+target_link_libraries(distributed_training_moderator shared_lib yaml-cpp distribution_lib)
 
 target_compile_options(distributed_training_main PRIVATE -O0)
 target_compile_options(distributed_training_moderator PRIVATE -O0)
