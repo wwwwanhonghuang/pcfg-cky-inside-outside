@@ -16,6 +16,7 @@
 #include <yaml-cpp/yaml.h>
 #include <condition_variable>
 #include <functional>
+#include <signal.h>
 #include "distribution/common/message.h"
 #include "distribution/shared_memory.hpp"
 #include "distribution/communication/client.hpp"
@@ -31,6 +32,10 @@
 
 
 using namespace GlobalState;
+volatile sig_atomic_t terminate = 0;
+void signal_handler(int signum) {
+    terminate = 1;
+}
 
 class PackageManager {
     private:
@@ -104,7 +109,7 @@ void serverLoop(uint32_t port, int partition_id) {
 
     std::cout << "Server is listening on port " << port << "\n";
 
-    while (keep_running) {
+    while (keep_running && !terminate) {
         // Set the socket to non-blocking
         fd_set read_fds;
         struct timeval timeout = {1, 0}; // 1-second timeout
@@ -244,6 +249,7 @@ int main(int argc, char* argv[]) {
         std::cerr << "Please provide the instance index (i).\n";
         return 1;
     }
+    
 
     int partition_id = std::stoi(argv[1]);
     YAML::Node config = YAML::LoadFile("cluster.yaml");
@@ -255,6 +261,7 @@ int main(int argc, char* argv[]) {
     int total_clients = clients.size();
     int connected_client = 1;
     int client_index = 0;
+    
 
     std::cout << "Open share memory. " << std::endl;
 
@@ -331,13 +338,12 @@ int main(int argc, char* argv[]) {
         
         storage->network_communicator_messages[0].status = EMPTY_SLOT;
 
-        std::cin.get();
-        abort();
+       
 
         // 5.3 Broadcast epoch finished message.
         Message epoch_finished_msg = gen_epoch_finished_msg(partition_id, epoch, application_result);
         std::cout << "[Main Loop] Prepare and broadcast epoch " << epoch << "finished message." << std::endl;
-        broadcast_message(package_per_epoch * epoch + total_clients, partition_id,
+        broadcast_message(package_per_epoch * epoch + total_clients * 2, partition_id,
             epoch_finished_msg);
 
         // 5.4 Wait clients until all clients finish current epoch.
@@ -349,9 +355,8 @@ int main(int argc, char* argv[]) {
         std::cout << "[Main Loop] Integrated Result = " << global_result.get()  << " + " <<
                 application_result << "!" << std::endl;
 
-        std::cout << RED << "[!Important] Inner Epoch" << epoch << 
-            " Barrier 1: All partition arrive front pre-epoch-0." << RESET << std::endl;    
-      
+       
+
         // 5.5 Notify the application the integrated results.
         int local_integrated_result = global_result.get() + application_result;
         integrated_result.access_with_function([&local_integrated_result](auto& v)->void{

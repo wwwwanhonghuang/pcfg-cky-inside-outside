@@ -17,6 +17,7 @@
 #include <cassert>
 using namespace GlobalState;
 
+
 #define GREEN   "\033[32m"      /* Green */
 #define YELLOW  "\033[33m"      /* Yellow */
 #define BLUE    "\033[34m"      /* Blue */
