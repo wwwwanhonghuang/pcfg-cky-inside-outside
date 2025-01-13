@@ -32,24 +32,14 @@
 #define SHARED_MEMORY_NAME "/shared_mem"
 int result = 0;
 
-#ifndef ENABLE_GRAMMAR_VECTORIZATION_OPTIMIZATION
-    #define PT_INCREASE pt += BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS
-#else
-    #define PT_INCREASE pt++
-#endif
-#ifndef ENABLE_GRAMMAR_VECTORIZATION_OPTIMIZATION
-    #define SYMBOL_AND_POSSIBILITY_EXTRACTION(B, C, P) \
-                    uint32_t symbols = grammar->grammar_table[pt]; \
-                    double P = *(double*)(grammar->grammar_table + pt + 1); \
-                    uint32_t B = (symbols >> 16) & 0xFFFF; \
-                    uint32_t C = symbols & 0xFFFF;
-#else
-    #define SYMBOL_AND_POSSIBILITY_EXTRACTION(B, C, P) \
-                    uint32_t symbols = grammar_table[(n_grammars + 1) * 0 + pt]; \
-                    double P = *(double*)(grammar_table + (n_grammars + 1) * 4 + pt * 2); \
-                    uint32_t B = grammar_table[(n_grammars + 1) * 1 + pt]; \
-                    uint32_t C = grammar_table[(n_grammars + 1) * 2 + pt];
-#endif
+#define PT_INCREASE pt += BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS
+
+#define SYMBOL_AND_POSSIBILITY_EXTRACTION(B, C, P) \
+                uint32_t symbols = grammar->grammar_table[pt]; \
+                double P = *(double*)(grammar->grammar_table + pt + 1); \
+                uint32_t B = (symbols >> 16) & 0xFFFF; \
+                uint32_t C = symbols & 0xFFFF;
+
 
 #define ACK(MSG_TYPE) (MSG_TYPE | (1 << 31))
 #define CLEAR_MSG(MSG) MSG.status = EMPTY_SLOT;
@@ -94,15 +84,9 @@ void execution(int epoch, int partition_id){
 }
 
 inline double _calculate_new_possibility(double S, double f_gid) {
-    if(std::abs(f_gid) < std::log(grammar_minimal_possibility))
-        f_gid = std::log(grammar_minimal_possibility);
     double result = f_gid - S;
-    std::cout << f_gid << " - " << S << " = " << result << " ?? " <<
-     std::isnan(result) << std::endl;
-
-    return f_gid - S;
+    return result;
 }
-
 
 int current_epoch = 0;
 
@@ -355,8 +339,7 @@ int main(int argc, char* argv[])
                 for(uint32_t pt = grammar_pointer_current; pt < grammar_pointer_next; PT_INCREASE){
                     double f_gid = integrated_f[gid];
                     
-                    LOG_SUM_EXP_SET(S, 
-                            (std::exp(f_gid - 0) < grammar_minimal_possibility ? std::log(grammar_minimal_possibility) : f_gid));
+                    LOG_SUM_EXP_SET(S, f_gid);
                     gid ++;
                 }
 
@@ -367,10 +350,7 @@ int main(int argc, char* argv[])
                 for(uint32_t pt = grammar_pointer_current; pt < grammar_pointer_next; PT_INCREASE){
                     SYMBOL_AND_POSSIBILITY_EXTRACTION(sym_B, sym_C, possibility);
                     double f_gid = integrated_f[gid];
-                    double new_possibility = 
-                        _calculate_new_possibility(S, 
-                            (std::abs(f_gid - 0) < std::log(grammar_minimal_possibility) ?
-                                std::log(grammar_minimal_possibility) : f_gid));
+                    double new_possibility = _calculate_new_possibility(S, f_gid);
                     *(double*)(grammar->grammar_table + pt + 1) = new_possibility;
                     
 
