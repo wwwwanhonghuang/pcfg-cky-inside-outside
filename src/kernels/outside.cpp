@@ -32,18 +32,18 @@ void kernel_outside_main(double* mu, double* beta, const uint32_t* sequence,
     /* base case: S is the root of the whole sequence with possibility log 1.0. */
     BETA(0, 0, sequence_length - 1) = 0.0;
 
-    /* all cases:
-                    1. B->AC      <1>
-                    2. B->CA      <1>
-                    3. B->A       <2>
+    /* all cases need be consider:
+                    1. B->AC      <See Part 1>
+                    2. B->CA      <See Part 1>
+                    3. B->A       <See Part 2>
                     4. B->C       (x)
-                    5. B->w_A C   <3>
-                    6. B->w_C A   <1>
-                    7. B->A w_C   <1>
-                    8. B->C w_A   <3>
-                    9. B->w_A w_C <3>
-                    10. B->w_Cw_A <3>
-                    11. B->w_A    <4>
+                    5. B->w_A C   <See Part 3>
+                    6. B->w_C A   <See Part 1>
+                    7. B->A w_C   <See Part 1>
+                    8. B->C w_A   <See Part 3>
+                    9. B->w_A w_C <See Part 3>
+                    10. B->w_Cw_A <See Part 3>
+                    11. B->w_A    <See Part 4>
                     12. B->w_C    (x)
         , where w_A w_C are terminates.
     */
@@ -61,7 +61,7 @@ void kernel_outside_main(double* mu, double* beta, const uint32_t* sequence,
             for(int i = 0; i < sequence_length - span_length + 1; i++){
                 int j = i + span_length - 1;
                 
-                // 1. 2. 6. 7.
+                // Part 1 (A is a nonterminate, and in an order-2 rule): 1. 2. 6. 7.
                 for(int gid = 0; gid < n_grammars; gid++){
                     uint32_t _sym_A = grammar->symbol_A_vector[gid];
                     uint32_t sym_BC = *(grammar_table + gid * BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS);
@@ -104,8 +104,8 @@ void kernel_outside_main(double* mu, double* beta, const uint32_t* sequence,
                             double beta_B = BETA(sym_B, i, k);
 
                             LOG_SUM_EXP_SET(BETA(sym_A, i, j),  possibility + alpha_C + beta_B);
+                            
                             ASSERT_POSSIBILITY(BETA(sym_A, i, j))
-
                             ASSERT_POSSIBILITY(alpha_C);
                             ASSERT_POSSIBILITY(beta_B);                   
 
@@ -113,7 +113,8 @@ void kernel_outside_main(double* mu, double* beta, const uint32_t* sequence,
                     }
                 }
 
-                // 3.
+                // Part 2 (A is a nonterminate, and in an length-1 rule): 3.
+                // iterate the right hand side (rhs) length-1 rules.
                 for(std::vector<std::tuple<uint32_t, uint32_t>>::reverse_iterator it = inside_order_1_rule_iteration_path.rbegin(); 
                     // B -> A, A is a nonterminate.
                     it != inside_order_1_rule_iteration_path.rend(); ++it) {
@@ -121,17 +122,13 @@ void kernel_outside_main(double* mu, double* beta, const uint32_t* sequence,
                     uint32_t gid = std::get<0>(rule_id);
                     uint32_t sym_B = std::get<1>(rule_id);
 
-                    #ifndef ENABLE_GRAMMAR_VECTORIZATION_OPTIMIZATION
-                        uint32_t* addr = (grammar_table + gid * BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS);
-                        uint32_t sym_A = ((*addr) >> 16) & 0xFFFF;
-                        double possibility = *(double*)(addr + 1);
-                    #else
-                        uint32_t sym_A = grammar_table[(n_grammars + 1) * 1 + gid];
-                        double possibility = *(double*)(grammar_table + (n_grammars + 1) * 4 + gid * 2);
-                    #endif
+                    uint32_t* addr = (grammar_table + gid * BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS);
+                    uint32_t sym_A = ((*addr) >> 16) & 0xFFFF;
+                    double possibility = *(double*)(addr + 1);
+                 
 
                     double alpha_B = ALPHA_GET(sym_B, i, j);
-                    double beta_B = BETA(sym_B, i, j); // POSSIBILITY_ADD(BETA(sym_B, i, j), buffer_beta[sym_B * MS + i]);
+                    double beta_B = BETA(sym_B, i, j); 
 
                     ASSERT_POSSIBILITY(possibility);
                     ASSERT_POSSIBILITY(alpha_B);
@@ -143,13 +140,11 @@ void kernel_outside_main(double* mu, double* beta, const uint32_t* sequence,
                         We doesn't need to iterate split point k, as there only one symbol in the right side
                         of this rule. 'continue;' is uesed to skip k iterations. */
                     
-
                     LOG_SUM_EXP_SET(BETA(sym_A, i, j), possibility + beta_B);
                     ASSERT_POSSIBILITY(BETA(sym_A, i, j));
                 }
 
-                // 5. 8. 9. 10.
-                // Case 2: A is terminate 
+                // Part 3 (A is terminate, and in an order-2 rule) : 5. 8. 9. 10.
                 for(int gid = 0; gid < n_grammars; gid++){
                     int j = i + span_length - 1; // Ending index of the span
                     uint32_t _sym_A = grammar->symbol_A_vector[gid];
@@ -166,9 +161,8 @@ void kernel_outside_main(double* mu, double* beta, const uint32_t* sequence,
                     if(IS_EPSILON(sym_C)) continue;
 
                     // 5. B -> w_A C
-                    if(IS_TERMINATE(sym_A) && IS_NONTERMINATE(sym_C) && (i == j)){
+                    if(IS_TERMINATE(sym_A) && IS_NONTERMINATE(sym_C) && (i == j)){ // !important, (i == j) is needed.
                         for(int k = j + 1; k < sequence_length; k++){
-
                             LOG_SUM_EXP_SET(BETA(sym_A, i, j), BETA(sym_B, i, k) + ALPHA(sym_C, j + 1, k) + possibility);
                             ASSERT_POSSIBILITY(possibility);
                             ASSERT_POSSIBILITY(BETA(sym_A, i, j)); 
@@ -210,14 +204,12 @@ void kernel_outside_main(double* mu, double* beta, const uint32_t* sequence,
                     }
                 }
 
-                // 11.
+                // Part 4 (A is a terminate, and in an right hand side (RHS) order-1 rule): 11.
                 for(std::vector<std::tuple<uint32_t, uint32_t>>::reverse_iterator it = inside_order_1_rule_iteration_path.rbegin(); 
-                    // B -> A
                     it != inside_order_1_rule_iteration_path.rend(); ++it) {
                     std::tuple<uint32_t, uint32_t> rule_id = *it;
                     uint32_t gid = std::get<0>(rule_id);
                     uint32_t sym_B = std::get<1>(rule_id);
-
                     uint32_t* addr = (grammar_table + gid * BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS);
                     uint32_t sym_A = ((*addr) >> 16) & 0xFFFF;
                     double possibility = *(double*)(addr + 1);
@@ -227,16 +219,17 @@ void kernel_outside_main(double* mu, double* beta, const uint32_t* sequence,
                     double beta_B = BETA(sym_B, i, j); // buffer_beta[sym_B * MS + i]);
                     ASSERT_POSSIBILITY(alpha_B);
                     ASSERT_POSSIBILITY(beta_B);
-                    if(i != j) break;
-                    if(IS_NONTERMINATE(sym_A)) continue; 
-                    // B->w_A
-                    
 
+                    if(i != j) break; // i must equal to j
+                    
+                    if(IS_NONTERMINATE(sym_A)) continue; 
+                    
+                    // B->w_A
                     LOG_SUM_EXP_SET(BETA(sym_A, i, j),  possibility + beta_B);
                     ASSERT_POSSIBILITY(BETA(sym_A, i, j));
                     ASSERT_POSSIBILITY(possibility + beta_B);
                 }
-            } // parallel for end.
+            }
         }
     }
 
@@ -244,18 +237,23 @@ void kernel_outside_main(double* mu, double* beta, const uint32_t* sequence,
     for (int span_length = 1; span_length < sequence_length + 1; span_length++) {
         #pragma omp parallel
         {
+            // iterate each span length
             #pragma omp for
             for (int i = 0; i <= sequence_length - span_length; i++) {
                 int j = i + span_length - 1; // Ending index of the span
+                // iterate each grammar
                 for(int gid = 0; gid < n_grammars; gid++){
                     uint32_t sym_A = grammar->symbol_A_vector[gid];
                     uint32_t sym_BC = *(grammar_table + gid * BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS);
                     uint32_t sym_B = (sym_BC >> 16) & 0xFFFF;
                     uint32_t sym_C = (sym_BC) & 0xFFFF;
+
+                    // split the span [i, j]
                     for (int k = i; k <= j; k++) {
-                    
                         double possibility = *(double*)(grammar_table + gid * BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS + 1);
 
+                        /* impossible cases. k is the end of span. In A->BC, the B span [i, k]. In this cases, 
+                        for C, is must be empty (epsilon) */
                         if(k == j && !IS_EPSILON(sym_C)) continue;
 
                         double beta_A_i_j = BETA(sym_A, i, j);

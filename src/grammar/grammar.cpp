@@ -10,13 +10,13 @@ pcfg_grammar_item parse_grammar_single_line(std::string line){
     int length = line.size();
     int pos = 0;
 
+    // a simple automata like processing approach to parse grammar rules. n    n9 
     while(pos < length){
         char ch = line[pos];
         switch(state){
             case 1:
                 if(ch == '-'){
-                    state = 11;
-
+                    state = 11; 
                 }else{
                     left += {ch};
                 }
@@ -159,6 +159,11 @@ PCFGItemIterator PCFGItemIterator::end() const{
 }
 #endif
 
+// build iteration order of preterminate rules, using topological sort.
+// As we allow non-CNF PCFG, the order of processing preterminate rules is essential to ensure inside-outside
+// table correctly updation for span [i, i] that dominated by a 
+// certain nonterminate A.
+
 std::vector<std::tuple<uint32_t, uint32_t>> generate_inside_perterminate_iteration_paths(pcfg* grammar){
     int n_syms = grammar->N() + grammar->T();
     int N = grammar->N();
@@ -169,6 +174,7 @@ std::vector<std::tuple<uint32_t, uint32_t>> generate_inside_perterminate_iterati
     std::vector<std::tuple<uint32_t, uint32_t>> results;
     std::map<uint32_t, uint32_t> gid_map = {};
 
+    /* build dependency graph of preterminate rules */
     for(std::tuple<uint32_t, uint32_t, uint32_t, double, uint32_t> item : 
             PCFGItemIterator(N, (uint32_t*) grammar->grammar_index, (uint32_t*)grammar->grammar_table)){
         uint32_t sym_A = std::get<0>(item);
@@ -176,7 +182,7 @@ std::vector<std::tuple<uint32_t, uint32_t>> generate_inside_perterminate_iterati
         uint32_t sym_C = std::get<2>(item);
         double possibility = std::get<3>(item);
         uint32_t gid = std::get<4>(item);
-        if(!IS_EPSILON(sym_C)) continue;
+        if(!IS_EPSILON(sym_C)) continue; // we consider only preterminate rules.
         dependency_graph[sym_A * n_syms + sym_B] = 1;
         gid_map[((sym_A << 16) & 0xFFFF0000) | (sym_B & 0x0000FFFF)] = gid;
         edges++;
@@ -230,9 +236,8 @@ std::vector<std::tuple<uint32_t, uint32_t>> generate_inside_perterminate_iterati
         uint32_t sym_A = (syms >> 16) & 0xFFFF;
         assert(IS_EPSILON(syms & (0xFFFF)));
         #else
-        assert(IS_EPSILON((uint32_t*)grammar->grammar_table + (n_grammar + 1) * 4 + gid * 2));
+            assert(IS_EPSILON((uint32_t*)grammar->grammar_table + (n_grammar + 1) * 4 + gid * 2));
         #endif
-        
     }
     
     return results;

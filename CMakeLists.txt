@@ -69,17 +69,7 @@ target_compile_options(syntax_analysis PRIVATE -O3)
 target_compile_options(phase_convert_executable PRIVATE -O3)
 target_compile_options(train_pcfg PRIVATE -O3)
 
-# Test executable target
-file(GLOB TEST_SRCS "unit_test/*.cpp")
-add_executable(unit_tests ${TEST_SRCS})
-# target_link_libraries(unit_tests shared_lib ${Boost_LIBRARIES})
 
-# Custom target for running tests
-add_custom_target(run_tests
-    COMMAND unit_tests
-    DEPENDS unit_tests
-    COMMENT "Running unit tests..."
-)
 
 # Output directories
 set_target_properties(train_pcfg phase_convert_executable syntax_analysis test_parsing distributed_training_main distributed_training_moderator PROPERTIES

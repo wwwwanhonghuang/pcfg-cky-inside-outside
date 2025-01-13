@@ -24,21 +24,27 @@ void kernel_expect_count(double* count, double* mu, double* beta, const uint32_t
                          ,uint32_t* symbol_A_vector
 
     ){
+
+    // initialize counts
     memset(count, 0, n_grammars * sizeof(double));
     for (int i = 0; i < n_grammars; i++) {
         count[i] = -INFINITY;
     }
 
-
     /* 0 is the id of S symbol. This expression assign alpha['S', 0, sequence_length - 1] to Z */
     double Z = ALPHA(0, 0, sequence_length - 1); 
 
+    /* we need consider span_length = 1, which can be produce by a certain order-1 (form of A -> B, where A in N, B in (N + T)) 
+       rule chain. */
     for(int span_length = 1; span_length <= sequence_length; span_length++){
+        // iterate all span with length 'span_length'
         #pragma omp parallel for
         for(int i = 0; i < sequence_length - span_length + 1; i++){
             int j = i + span_length - 1;
+            // local buffer to reduce frequently mutex operations.
             std::vector<double> local_buffer_count(n_grammars, INIT_POSSIBILITY);
 
+            // iterate all grammars
             for(std::tuple<uint32_t, uint32_t, uint32_t, double, uint32_t> item : PCFGItemIterator(N, grammar_index, grammar_table)){
                 uint32_t sym_A = std::get<0>(item);
                 uint32_t sym_B = std::get<1>(item);
@@ -47,9 +53,11 @@ void kernel_expect_count(double* count, double* mu, double* beta, const uint32_t
                 uint32_t gid = std::get<4>(item);
                 double mu_val = MU(gid, i, j);
                 
+                // increase the count of gramma (ID = gid)
                 LOG_SUM_EXP_SET(local_buffer_count[gid], mu_val);
             }
 
+            // write back local buffer.
             for(int gid = 0; gid < n_grammars; gid++){
                 #pragma omp critical
                 {

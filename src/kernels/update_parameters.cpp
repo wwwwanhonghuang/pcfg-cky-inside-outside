@@ -12,25 +12,14 @@ inline double _calculate_new_possibility(double S, double f_gid) {
     return f_gid - S;
 }
 
-#ifndef ENABLE_GRAMMAR_VECTORIZATION_OPTIMIZATION
-    #define SYMBOL_AND_POSSIBILITY_EXTRACTION(B, C, P) \
-                    uint32_t symbols = grammar_table[pt]; \
-                    double P = *(double*)(grammar_table + pt + 1); \
-                    uint32_t B = (symbols >> 16) & 0xFFFF; \
-                    uint32_t C = symbols & 0xFFFF;
-#else
-    #define SYMBOL_AND_POSSIBILITY_EXTRACTION(B, C, P) \
-                    uint32_t symbols = grammar_table[(n_grammars + 1) * 0 + pt]; \
-                    double P = *(double*)(grammar_table + (n_grammars + 1) * 4 + pt * 2); \
-                    uint32_t B = grammar_table[(n_grammars + 1) * 1 + pt]; \
-                    uint32_t C = grammar_table[(n_grammars + 1) * 2 + pt];
-#endif
+#define SYMBOL_AND_POSSIBILITY_EXTRACTION(B, C, P) \
+                uint32_t symbols = grammar_table[pt]; \
+                double P = *(double*)(grammar_table + pt + 1); \
+                uint32_t B = (symbols >> 16) & 0xFFFF; \
+                uint32_t C = symbols & 0xFFFF;
 
-#ifndef ENABLE_GRAMMAR_VECTORIZATION_OPTIMIZATION
-    #define PT_INCREASE pt += BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS
-#else
-    #define PT_INCREASE pt++
-#endif
+
+#define PT_INCREASE pt += BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS
 
 void kernel_update_parameters(double* f, double* count, double* mu, double* beta,
         const uint32_t* sequence, 
@@ -39,9 +28,7 @@ void kernel_update_parameters(double* f, double* count, double* mu, double* beta
         uint32_t*
         grammar_table, double* alpha, 
         int sequence_length, int n_syms, int N, int T, int MS, int n_grammars
-        #ifndef USE_CUDA
-            , pcfg* grammar
-        #endif
+        , pcfg* grammar
         , bool do_update
 ){
         int gid = 0;
@@ -62,7 +49,7 @@ void kernel_update_parameters(double* f, double* count, double* mu, double* beta
             std::cout << "STATUS: parameter update." << std::endl;
             gid = 0;
             for(int sym_A = 0; sym_A < N; sym_A++){
-                    double S = INIT_POSSIBILITY;
+                    double S = INIT_POSSIBILITY; // normalization factor
 
                     uint32_t grammar_pointer_current = *(grammar_index + sym_A);
                     uint32_t grammar_pointer_next = *(grammar_index + sym_A + 1);
@@ -86,12 +73,10 @@ void kernel_update_parameters(double* f, double* count, double* mu, double* beta
                                 (std::abs(f_gid - 0) < std::log(grammar_minimal_possibility) ?
                                  std::log(grammar_minimal_possibility) : f_gid));
                         
-                        #ifndef ENABLE_GRAMMAR_VECTORIZATION_OPTIMIZATION
-                            *(double*)(grammar_table + pt + 1) = new_possibility;
-                        #else
-                            *(double*)(grammar_table + (n_grammars + 1) * 4 + pt * 2) = new_possibility; 
-                        #endif
 
+                        // update grammar possibility
+                        *(double*)(grammar_table + pt + 1) = new_possibility;
+ 
                         if(IS_EPSILON(sym_C) && IS_TERMINATE(sym_B)){
                             uint64_t key = encode_key(sym_A, sym_B);
                             reverse_grammar_hashtable_set_value(
@@ -100,7 +85,6 @@ void kernel_update_parameters(double* f, double* count, double* mu, double* beta
                         gid++;
                     }
             }    
-        }
-        
+        }  
     }
 #endif

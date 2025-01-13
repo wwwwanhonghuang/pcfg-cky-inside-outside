@@ -56,8 +56,7 @@ double* inside_algorithm(const uint32_t* sequence,
     if(n_syms >= 65536) return nullptr;
 
     // 1. zerolization alpha.
-    kernel_inside_alpha_zerolization
-    (alpha, N, MS);
+    kernel_inside_alpha_zerolization(alpha, N, MS);
 
     // 2. fill alpha (base case).
     kernel_inside_base_fill_alpha(sequence, pretermination_lookuptable, grammar_index, grammar_table, alpha, 
@@ -72,15 +71,15 @@ double* inside_algorithm(const uint32_t* sequence,
     kernel_inside_computeSpanKernel(sequence, pretermination_lookuptable, grammar_index, grammar_table, alpha, 
         sequence_length, n_syms, N, T, MS, n_grammars,
         inside_order_1_rule_iteration_path,
-        #ifdef ENABLE_GRAMMAR_VECTORIZATION_OPTIMIZATION
+        #ifdef ENABLE_GRAMMAR_VECTORIZATION_OPTIMIZATION 
             grammar->symbol_A_vector
         #else
-            (uint32_t*)0
+            (uint32_t*) 0
         #endif
         #ifndef USE_CUDA
             , grammar
         #endif
-        );
+    );
 
     return alpha;
 };

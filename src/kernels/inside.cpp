@@ -20,6 +20,7 @@ void kernel_inside_base_fill_alpha(
         , pcfg* grammar
         #endif
 ){
+        /* set all preterminate possibility */
         #pragma omp parallel for
         for(int sym_A = 0; sym_A < N; sym_A ++){
             for(int i = 0; i < sequence_length; i++){
@@ -31,6 +32,8 @@ void kernel_inside_base_fill_alpha(
             }
         }
         
+
+        // consider all order-1 rule chain that can produce the word sequence[i].
         bool changed = false;
         std::unordered_set<uint32_t> nonterminate_remains; 
         
@@ -40,7 +43,9 @@ void kernel_inside_base_fill_alpha(
 
         for(int _i = 0; _i < N; _i++){
             int size = nonterminate_remains.size();
+            // for all words
             for(int i = 0; i < sequence_length; i++){
+                // for all grammar
                 for(std::tuple<uint32_t, uint32_t, uint32_t, double, uint32_t> item : 
                                                         PCFGItemIterator(N, grammar_index, grammar_table)){
                     uint32_t sym_A = std::get<0>(item);
@@ -51,6 +56,13 @@ void kernel_inside_base_fill_alpha(
                     if(!IS_EPSILON(sym_C) || IS_TERMINATE(sym_B)) continue;
                     double alpha_B = ALPHA(sym_B, i, i);
                     
+                    /*/ if nonterminate _i can produce word i with larger possibility, update ALPHA(sym_A, i, i) 
+                     Because we ensure all rule possibility < 1, sym_A further updation cannot become larger,
+                     as the updation is apply multiplication with another rule's possibility. So sym_A can 
+                     safely remove from consideration.
+                     Visually,  If we find a chain A -> B -> word_i that make the alpha(A, i, i) larger.
+                     we cannot find another chain A -> ... -> A -> B -> word_i that has larger possibiity than chain A -> B -> word_i
+                    */
                     if(alpha_B + possibility > alpha_get(alpha, sym_A, i, i, MS)){
                         ALPHA(sym_A, i, i) = alpha_B + possibility;
                         nonterminate_remains.erase(sym_A);
@@ -58,10 +70,11 @@ void kernel_inside_base_fill_alpha(
                 }
                 
             }
+
+            // Early termination condition: no any nonterminates be removed after an entire iteration of sentence.
             if(nonterminate_remains.size() == size) break;
         }
 }
-
 
 void kernel_inside_computeSpanKernel(const uint32_t* sequence, uint32_t* pretermination_lookuptable, 
         uint32_t* grammar_index, uint32_t* grammar_table, double* alpha, 
@@ -77,6 +90,7 @@ void kernel_inside_computeSpanKernel(const uint32_t* sequence, uint32_t* preterm
             {
                 #pragma omp for
                 for (int i = 0; i <= sequence_length - span_length; i++) {
+                    /* iterate grammars to process order-2 rules A->B C cases.*/
                     for(int gid = 0; gid < n_grammars; gid++){
                         int j = i + span_length - 1; // Ending index of the span
                         uint32_t sym_A = grammar->symbol_A_vector[gid];
@@ -102,7 +116,7 @@ void kernel_inside_computeSpanKernel(const uint32_t* sequence, uint32_t* preterm
                         }
                     }
 
-                    // A->B
+                    /* process A->B cases. We are not in CNF. We need consider this cases. */
                     for(std::tuple<uint32_t, uint32_t>& rule_id: inside_order_1_rule_iteration_path) {
                         int j = i + span_length - 1; // Ending index of the span
                         uint32_t gid = std::get<0>(rule_id);
@@ -116,10 +130,13 @@ void kernel_inside_computeSpanKernel(const uint32_t* sequence, uint32_t* preterm
                             uint32_t sym_B = grammar_table[(n_grammars + 1) * 1 + gid];
                             double possibility = *(double*)(grammar_table + (n_grammars + 1) * 4 + gid * 2);
                         #endif
+
+                        /* we are in log form of possibility. We ensure that the log possibility should <= 0 */
                         assert(possibility < 1e-9);
                         assert(ALPHA(sym_A, i, j) < 1e-9);
                         assert(ALPHA_GET(sym_B, i, j) < 1e-9);
 
+                        // add the possibility that "from B apply the rule A->B, then be reduced to A".
                         LOG_SUM_EXP_SET(ALPHA(sym_A, i, j), ALPHA_GET(sym_B, i, j) + possibility);
                         if(ALPHA(sym_A, i, j) >= 1e-9){
                             std::cout << ALPHA(sym_A, i, j)  << std::endl;
