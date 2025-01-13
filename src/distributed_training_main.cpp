@@ -7,6 +7,7 @@
 #include <iostream>
 #include <yaml-cpp/yaml.h>
 #include <cmath>
+#include <filesystem>
 
 #include "macros.def"
 #include "utils/tensor.hpp"
@@ -26,11 +27,61 @@
 #include <memory>
 #include "distribution/shared_memory.hpp"
 #include <string>
+#include "kernels/update_parameters.cuh"
+
 #define SHARED_MEMORY_NAME "/shared_mem"
 int result = 0;
 
+#ifndef ENABLE_GRAMMAR_VECTORIZATION_OPTIMIZATION
+    #define PT_INCREASE pt += BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS
+#else
+    #define PT_INCREASE pt++
+#endif
+#ifndef ENABLE_GRAMMAR_VECTORIZATION_OPTIMIZATION
+    #define SYMBOL_AND_POSSIBILITY_EXTRACTION(B, C, P) \
+                    uint32_t symbols = grammar->grammar_table[pt]; \
+                    double P = *(double*)(grammar->grammar_table + pt + 1); \
+                    uint32_t B = (symbols >> 16) & 0xFFFF; \
+                    uint32_t C = symbols & 0xFFFF;
+#else
+    #define SYMBOL_AND_POSSIBILITY_EXTRACTION(B, C, P) \
+                    uint32_t symbols = grammar_table[(n_grammars + 1) * 0 + pt]; \
+                    double P = *(double*)(grammar_table + (n_grammars + 1) * 4 + pt * 2); \
+                    uint32_t B = grammar_table[(n_grammars + 1) * 1 + pt]; \
+                    uint32_t C = grammar_table[(n_grammars + 1) * 2 + pt];
+#endif
+
 #define ACK(MSG_TYPE) (MSG_TYPE | (1 << 31))
 #define CLEAR_MSG(MSG) MSG.status = EMPTY_SLOT;
+
+
+void write_grammar_to_file(const std::string& grammar_file_path, pcfg* grammar) {
+    std::filesystem::path file_path(grammar_file_path);
+    std::filesystem::path directory_path = file_path.parent_path();
+    
+    if (!directory_path.empty() && !std::filesystem::exists(directory_path)) {
+        try {
+            std::filesystem::create_directories(directory_path);
+            std::cout << "Directory created: " << directory_path << std::endl;
+        } catch (const std::filesystem::filesystem_error& e) {
+            std::cerr << "Error creating directory: " << e.what() << std::endl;
+            return;
+        }
+    }
+
+    try {
+        std::ofstream logfile_ostream(grammar_file_path);
+        if (!logfile_ostream.is_open()) {
+            std::cerr << "Failed to open file: " << grammar_file_path << std::endl;
+            return;
+        }
+        print_grammar(grammar, logfile_ostream);
+        std::cout << "Grammar written to file: " << grammar_file_path << std::endl;
+    } catch (const std::ios_base::failure& e) {
+        std::cerr << "File operation error: " << e.what() << std::endl;
+    }
+}
+
 
 void execution(int epoch, int partition_id){
     std::cout << "partition " << partition_id << 
@@ -42,7 +93,18 @@ void execution(int epoch, int partition_id){
     }
 }
 
+inline double _calculate_new_possibility(double S, double f_gid) {
+    if(std::abs(f_gid) < std::log(grammar_minimal_possibility))
+        f_gid = std::log(grammar_minimal_possibility);
+    double result = f_gid - S;
+    std::cout << f_gid << " - " << S << " = " << result << " ?? " <<
+     std::isnan(result) << std::endl;
 
+    return f_gid - S;
+}
+
+
+int current_epoch = 0;
 
 int main(int argc, char* argv[])
 {
@@ -53,6 +115,7 @@ int main(int argc, char* argv[])
         return 1;
     }
 
+    int partition_id = std::stoi(argv[1]);
     std::string program_name = std::string("pcfg-train-") +
             std::string(argv[1]);
 
@@ -67,8 +130,10 @@ int main(int argc, char* argv[])
     if(argc > 2){
         configuration_file_path = std::string(argv[2]);
     }
-/* END of Extend HEADER */
+    /* END of Extend HEADER */
 
+    std::cout << "configuration file path:: " << configuration_file_path << std::endl;
+    std::cout << "partition id: " << partition_id << std::endl;
 
     std::cout << "read configuration file " << configuration_file_path << std::endl;
     YAML::Node config = YAML::LoadFile(configuration_file_path);
@@ -127,7 +192,7 @@ int main(int argc, char* argv[])
    
     std::vector<std::vector<uint32_t>> train_set = std::move(sentences);
     int sentence_from = 0;
-    int sentence_to = 999;
+    int sentence_to = 9;
 
     int n_sequences = sentences.size();
     int n_sequences_train = train_set.size();
@@ -135,13 +200,15 @@ int main(int argc, char* argv[])
     std::cout << "Train set size of this partition " << n_sequences_train << std::endl;
     std::cout << "Total numbers of sentences = " << n_sequences << std::endl;
 
+    std::cout << "tr;'ain sentence from " << sentence_from << " to " << sentence_to << std::endl;
+    
     int T = 0;
     int MS = MAX_SEQUENCE_LENGTH;
     cky_printer printer;
 
-
     while(true){
-        auto& msg = storage->application_messages[pos];
+        auto& msg = 
+            storage->application_messages[pos];
         pos = (pos + 1) % 1;
         if(msg.status == EMPTY_SLOT) continue;
         std::cout << "get msg, type = " << msg.msg_type << std::endl;
@@ -150,30 +217,36 @@ int main(int argc, char* argv[])
         case PARTITION_PREPARED:{
             std::cout << "response msg PARTITION_PREPARED" << std::endl;
             CLEAR_MSG(msg);
-            const std::string& response = "Hi! This is a response for msg 100";
+            const std::string& response = 
+                std::string("Hi! This is a response for msg PARTITION_PREPARED. ")
+            +   std::string("This partition responsible for sentence ")
+            +   std::to_string(sentence_from)
+            +   std::to_string(sentence_to);
             
             Message response_msg;
             response_msg.status = MESSAGE_WAITING; 
             response_msg.msg_type = ACK(PARTITION_PREPARED);
-            memcpy(response_msg.data, response.c_str(), response.size() + 1);
+            
+            memcpy(response_msg.data, &grammar->cnt_grammar, sizeof(int));
+            memcpy(response_msg.data + 4, response.c_str(), response.size() + 1);
             memcpy(&storage->network_communicator_messages[0], &response_msg, sizeof(response_msg));
             break;
         }
         case BEGIN_EPOCH:{
             CLEAR_MSG(msg);
             int epoch = -1;
+            int partition_id = 0; 
             memcpy(&epoch, &msg.data[0], sizeof(int));
             
             /* Execution Block */
             for(int i = sentence_from; i < sentence_to; i++){
                 const std::vector<uint32_t>& sentence = train_set[i];
                 
-                progress_bar(i + 1, n_sequences_train);
+                progress_bar(i + 1, sentence_to);
                 
                 int N = grammar->N();
                 const uint32_t* sequence = sentence.data();
                 int sequence_length = sentence.size();
-
                 
                 inside_algorithm(sequence, 
                     (uint32_t*)(grammar->preterminate_rule_lookup_table),
@@ -190,9 +263,7 @@ int main(int argc, char* argv[])
                     printer.print_inside_outside_table(alpha,  grammar->N(), grammar->T(), sequence_length, MS, grammar);
                     std::cout << "assert failed: Log possibility should less than or equal to 0." << std::endl;
                     assert(false);
-                }            
-
-                
+                }
 
                 outside_algorithm(mu, beta, sequence, 
                     (uint32_t*)(grammar->preterminate_rule_lookup_table),
@@ -203,9 +274,6 @@ int main(int argc, char* argv[])
                     inside_order_1_rule_iteration_path
                     ,grammar
                 );
-                
-               
-
 
                 kernel_expect_count(count, mu, beta, sequence, 
                     (uint32_t*)(grammar->preterminate_rule_lookup_table),
@@ -218,7 +286,6 @@ int main(int argc, char* argv[])
                     , grammar->symbol_A_vector
                 );
                 
-                
                 bool update_parameter_immediately = 
                 (i == n_sequences_train - 1) || 
                 ((batch_size_for_parameter_update > 0) && (i % batch_size_for_parameter_update) == 0) ? true : false;
@@ -230,35 +297,102 @@ int main(int argc, char* argv[])
                     alpha,
                     sequence_length, grammar->n_syms(), grammar->N(), grammar->T(),
                     MS, grammar->cnt_grammar
-                        , grammar
-                    , false
-                );
-
-
+                        , grammar, false);
             }
 
-            // clear memory f at the end of an epoch.
-            std::fill(f, f + grammar->cnt_grammar, -INFINITY);
             
             /* Execution Block */
-            
-            
-            
-            std::cout << "response msg BEGIN_EPOCH. result = " << result << std::endl;
+
+            std::cout << "response msg BEGIN_EPOCH. result = " 
+                << result << std::endl;
 
             Message response_msg;
             response_msg.status = MESSAGE_WAITING; 
             response_msg.msg_type = ACK(BEGIN_EPOCH);
-            memcpy(response_msg.data, &result, sizeof(int));
-            memcpy(&storage->network_communicator_messages[0], &response_msg, sizeof(response_msg));
+            
+
+            std::cout << "Client Results: " << std::endl;
+            for(int gid = 0; gid < grammar->cnt_grammar; gid++){
+                std::cout << "\tf[" << gid << "] = " << f[gid] << std::endl; 
+            }
+
+            memcpy(response_msg.data, 
+                &grammar->cnt_grammar, sizeof(int));
+
+            memcpy(response_msg.data + sizeof(int), 
+                f, grammar->cnt_grammar * sizeof(double));
+
+            memcpy(&storage->network_communicator_messages[0], &response_msg, 
+                sizeof(response_msg));
+            // clear memory f at the end of an epoch.
+            std::fill(f, f + grammar->cnt_grammar, -INFINITY);
+            
             break;
         }
         case NOTIFICATE_INTEGRATE_RESULT: {
             CLEAR_MSG(msg);
-            int integrated_result = -1;
-            memcpy(&integrated_result, &msg.data[0], sizeof(int));
-            std::cout << "Get integrated result = " << integrated_result << std::endl;
-            result = integrated_result;
+            double* integrated_f = new double[grammar->cnt_grammar]();
+            int epoch = -1;
+            memcpy(integrated_f, msg.data, sizeof(double) * grammar->cnt_grammar);
+            memcpy(&epoch, msg.data + sizeof(double) * grammar->cnt_grammar, sizeof(int));
+
+            std::cout << "Get integrated grammar results." << std::endl;
+            for(int gid = 0; gid < grammar->cnt_grammar; gid++){
+                std::cout << "\tintegrated_f[" << gid << "] = " << integrated_f[gid] << std::endl;
+            }
+            
+            /* grammar parameter updation code here */
+            std::cout << "STATUS: parameter update." << std::endl;
+            int gid = 0;
+            int N = grammar->N();
+            for(int sym_A = 0; sym_A < N; sym_A++){
+                std::cout << " -- sym_A = " << sym_A << std::endl;
+                double S = INIT_POSSIBILITY;
+
+                uint32_t grammar_pointer_current = *(grammar->grammar_index + sym_A);
+                uint32_t grammar_pointer_next = *(grammar->grammar_index + sym_A + 1);
+                int gid_begin = gid;
+                for(uint32_t pt = grammar_pointer_current; pt < grammar_pointer_next; PT_INCREASE){
+                    double f_gid = integrated_f[gid];
+                    
+                    LOG_SUM_EXP_SET(S, 
+                            (std::exp(f_gid - 0) < grammar_minimal_possibility ? std::log(grammar_minimal_possibility) : f_gid));
+                    gid ++;
+                }
+
+                grammar_pointer_current = *(grammar->grammar_index + sym_A);
+                grammar_pointer_next = *(grammar->grammar_index + sym_A + 1);
+                gid = gid_begin;
+
+                for(uint32_t pt = grammar_pointer_current; pt < grammar_pointer_next; PT_INCREASE){
+                    SYMBOL_AND_POSSIBILITY_EXTRACTION(sym_B, sym_C, possibility);
+                    double f_gid = integrated_f[gid];
+                    double new_possibility = 
+                        _calculate_new_possibility(S, 
+                            (std::abs(f_gid - 0) < std::log(grammar_minimal_possibility) ?
+                                std::log(grammar_minimal_possibility) : f_gid));
+                    *(double*)(grammar->grammar_table + pt + 1) = new_possibility;
+                    
+
+                    if(IS_EPSILON(sym_C) && IS_TERMINATE(sym_B)){
+                        uint64_t key = encode_key(sym_A, sym_B);
+                        reverse_grammar_hashtable_set_value(
+                            grammar->preterminate_rule_lookup_table, 
+                            grammar->cnt_grammar * BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS, 
+                            key, new_possibility);
+                    }
+                    gid++;
+                }
+            }
+            /* grammar parameter updation code here */
+            std::cout << "STATUS: parameter updated." << std::endl;
+            std::string grammar_file_path = "./logs/grammar_log_partition_" +
+                std::to_string(partition_id) + "_epoch_" + std::to_string(epoch) + ".pcfg";
+            std::cout << "STATUS: save grammar file to " << grammar_file_path << std::endl;
+
+            write_grammar_to_file(grammar_file_path, grammar);
+            std::cout << "STATUS: response to communicator."  << std::endl;
+
             Message response_msg;
             response_msg.status = MESSAGE_WAITING; 
             response_msg.msg_type = ACK(NOTIFICATE_INTEGRATE_RESULT);
@@ -270,13 +404,12 @@ int main(int argc, char* argv[])
         }
     }
 
-
-    
     // 7. log results.
     std::cout << std::endl << "All finished" << std::endl;
     print_grammar(grammar);
     
-    std::ofstream logfile_ostream = std::ofstream("./logs/log_final_" + std::to_string(sentences.size()) + ".pcfg");
+    std::ofstream logfile_ostream = std::ofstream("./logs/log_final_" + 
+                std::to_string(sentences.size()) + ".pcfg");
     print_grammar(grammar, logfile_ostream);
 
     delete[] alpha;

@@ -76,9 +76,11 @@ void process(const Package& package){
     {
     case PARTITION_PREPARED: {
         {
-            partition_prepared_msg_ack_count.access_with_function([](auto& v)->void{ v++;});
+            partition_prepared_msg_ack_count.
+                access_with_function([](auto& v)->void{ v++;});
+            
             std::cout << "ACK PARTITION_PREPARED" << " partition_prepared_msg_ack_count = " << 
-                        partition_prepared_msg_ack_count.value << std::endl;
+                partition_prepared_msg_ack_count.value << std::endl;
         }
         partition_prepared_msg_cv.notify_one(); 
         break;
@@ -86,15 +88,25 @@ void process(const Package& package){
     case EPOCH_COMPLETE: {
         int epoch = -1;
         int client_partition_id = -1;
-        int client_result = -1;
+        assert(cnt_grammar > 0);
+        double client_result[cnt_grammar];
         memcpy(&client_partition_id, msg_receive.data, sizeof(int));
         memcpy(&epoch, &msg_receive.data[4], sizeof(int));
-        memcpy(&client_result, &msg_receive.data[8], sizeof(int));
+        memcpy(&client_result, &msg_receive.data[8], sizeof(double) * cnt_grammar);
+        
 
-        std::cout << "[Client Service] client " <<  client_partition_id << " has completed epoch " << epoch <<
-                    " reported result = " << client_result << std::endl;
+        std::cout << "[Client Service] client " <<  client_partition_id << 
+                    " has completed epoch " << epoch << std::endl;
+        std::cout << "\tClient Report Result:" << std::endl;
+        for(int gid = 0; gid < cnt_grammar; gid++){
+            std::cout << "\tf[" << gid << "] = " << *(client_result + gid) << std::endl;
+        }
         {
-            global_result.access_with_function([&client_result](auto& v)->void{v += client_result;});
+            GlobalState::global_result.access_with_function([&client_result](auto& v)->void{
+                for(int i = 0; i < cnt_grammar; i++){
+                    v[i] += *(client_result + i);
+                }
+            });
         }
 
         {
@@ -127,17 +139,21 @@ void process(const Package& package){
         break;
     }
     case NOTIFICATE_INTEGRATE_RESULT: {
-        int client_result = 0;
-        int result_this_partition = integrated_result.get();
+        std::vector<double> client_result;
+        std::vector<double> result_this_partition = integrated_result.get();
         memcpy(&client_result, &msg_receive.data[0], sizeof(int));
-        if(client_result != result_this_partition){
-            std::cout << "Error: client reported result " << client_result << " not equal to "
-                    << " this partition's result " << result_this_partition << std::endl;
-            assert(false);
-        }
+
         {
+            double* client_integrated_results = new double[cnt_grammar];
             int epoch = -1;
-            memcpy(&epoch, &msg_receive.data[4], sizeof(int));
+            memcpy(client_integrated_results, &msg_receive.data[0], sizeof(double) * cnt_grammar);
+            memcpy(&epoch, msg_receive.data + sizeof(double) * cnt_grammar, sizeof(int));
+
+            // check consistancy
+            for(int gid = 0; gid < cnt_grammar; gid++){
+                assert(GlobalState::integrated_result.get()[gid] == client_integrated_results[gid]);
+            }
+
             integrated_result_confirmation_ack_count.access_with_function([&epoch](auto& v)->void{v[epoch]++;} );
 
             std::cout << "ACK NOTIFICATE_INTEGRATE_RESULT" 

@@ -25,10 +25,12 @@
 #include "distribution/message_impl.h"
 #include "distribution/communication/package.hpp"
 #include "distribution/package_manager.hpp"
+#include <cassert>
 
 #define RED     "\033[31m"      /* Red */
 #define RESET   "\033[0m"
 #define GREEN   "\033[32m"      /* Green */
+#define BOLD_BLUE   "\033[1;34m"      /* Bold Blue */
 
 
 using namespace GlobalState;
@@ -229,6 +231,7 @@ int main(int argc, char* argv[]) {
     int connected_client = 1;
     int client_index = 0;
     
+    
 
     std::cout << "Open share memory. " << std::endl;
 
@@ -244,13 +247,15 @@ int main(int argc, char* argv[]) {
     /* 2. Wait ACK from the application */
     while(storage->network_communicator_messages[0].status == EMPTY_SLOT){}
     std::cout << "application repied: " <<  
-        storage->network_communicator_messages[0].data << std::endl;
-    storage->network_communicator_messages[0].status = EMPTY_SLOT;   
+        storage->network_communicator_messages[0].data + sizeof(int) << std::endl;
+    storage->network_communicator_messages[0].status = EMPTY_SLOT;
+    
+    memcpy(&cnt_grammar, storage->network_communicator_messages[0].data, sizeof(int));
+    std::cout << "n_grammar = " << cnt_grammar << std::endl;
+    
+    connect_to_other_partitions(total_clients, connected_client, client_index, clients, 
+        partition_id, program_name);
 
-    connect_to_other_partitions(total_clients, connected_client, client_index, 
-        clients, partition_id, program_name);
-
-   
     /* 3. Broadcast partition prepared message to all other partitions. */
     std::cout << "Broadcast prepared message." << std::endl;
     Message partition_prepared_msg = gen_partition_prepared_msg(partition_id);
@@ -266,17 +271,18 @@ int main(int argc, char* argv[]) {
     std::cout << "[barrier passed] All partition prepared!" << std::endl;
     std::cout << RED << "[!Important] Barrier 1: All partition arrive front pre-epoch-0." << RESET << std::endl;    
  
+
     int epoch = 0;
     const int MAX_EPOCHS = 3;
     const int package_per_epoch = total_clients * 4;
+    
     while(epoch < MAX_EPOCHS){
         std::cout << std::endl;
         std::cout << "[Main Loop] partition " << program_name 
                   << " at the beginning of epoch " << epoch << std::endl;
         
-        
         // 5.1 Notify Application begin a new epoch.
-        Message epoch_begin_msg = gen_epoch_begin_message(epoch, partition_id);
+        Message epoch_begin_msg = gen_epoch_begin_message(epoch, partition_id, cnt_grammar);
         push_msg_to_shared_memory_rr(epoch_begin_msg, shared_memory);
         broadcast_message(package_per_epoch * epoch + total_clients * 1, partition_id, epoch_begin_msg);
         {
@@ -288,6 +294,7 @@ int main(int argc, char* argv[]) {
         
             
 
+        /* Application Execution */
         // 5.2 Wait application finished.
         std::cout << "[Main Loop] wait application execution. " << std::endl;
         {
@@ -295,20 +302,28 @@ int main(int argc, char* argv[]) {
             while(storage->network_communicator_messages[0].status == EMPTY_SLOT){
             }
             storage->network_communicator_messages[0].status = EMPTY_SLOT;
+            int client_cnt_grammars = -1;
+            memcpy(&client_cnt_grammars, storage->network_communicator_messages[0].data, sizeof(int));
+            assert(client_cnt_grammars == cnt_grammar);
         }
 
-        int application_result = -1;
-        memcpy(&application_result, storage->network_communicator_messages[0].data, sizeof(int));
-        
-        std::cout << "[Main Loop] application finish and reply result " <<  
-            application_result << std::endl;
-        
-        storage->network_communicator_messages[0].status = EMPTY_SLOT;
+        double* this_partition_f = new double[cnt_grammar]();
+        memcpy(this_partition_f, storage->network_communicator_messages[0].data + sizeof(int), sizeof(double) * cnt_grammar);
 
+        /* Application Execution */
+        std::cout << "[Main Loop] application finish and reply result " << std::endl;
+        
+        std::cout << GREEN << "Finish Epoch " << epoch << std::endl;
+        for(int i = 0; i < cnt_grammar; i++){
+            std::cout << "f[" << i << "] = " << this_partition_f[i] << std::endl;
+        }
+        std::cout << RESET << std::endl;
+
+        storage->network_communicator_messages[0].status = EMPTY_SLOT;
        
 
         // 5.3 Broadcast epoch finished message.
-        Message epoch_finished_msg = gen_epoch_finished_msg(partition_id, epoch, application_result);
+        Message epoch_finished_msg = gen_epoch_finished_msg(partition_id, epoch, this_partition_f, cnt_grammar);
         std::cout << "[Main Loop] Prepare and broadcast epoch " << epoch << "finished message." << std::endl;
         broadcast_message(package_per_epoch * epoch + total_clients * 2, partition_id,
             epoch_finished_msg);
@@ -318,25 +333,28 @@ int main(int argc, char* argv[]) {
             auto lock = epoch_completed_ack_count.lock();
             epoch_completed_msg_cv.wait(lock, [&total_clients, &epoch] { return epoch_completed_ack_count.value[epoch] == total_clients - 1; });
         }
-        std::cout << "[Main Loop] [barrier passed] All partition Completed Epoch " << epoch << "!" << std::endl;
-        std::cout << "[Main Loop] Integrated Result = " << global_result.get()  << " + " <<
-                application_result << "!" << std::endl;
 
-       
+
+        double* local_integrated_result = new double[cnt_grammar];
+        std::cout << "[Main Loop] [barrier passed] All partition Completed Epoch " << epoch << "!" << std::endl;
+        std::cout <<  BOLD_BLUE << "[Main Loop] Integrated Result = ";
+        for(int gid = 0; gid < cnt_grammar; gid++){
+            local_integrated_result[gid] =  global_result.get()[gid]  + this_partition_f[gid];
+            std::cout  << "\t - " << global_result.get()[gid] << " + " << this_partition_f[gid] 
+                    << " = " << local_integrated_result[gid] << std::endl;
+        }
+        std::cout << RESET << std::endl;
 
         // 5.5 Notify the application the integrated results.
-        int local_integrated_result = global_result.get() + application_result;
-        integrated_result.access_with_function([&local_integrated_result](auto& v)->void{
-            v = local_integrated_result;
+        integrated_result.access_with_function([local_integrated_result](auto& v)->void{
+            memcpy(v.data(), local_integrated_result, sizeof(double) * cnt_grammar);
         });
+
         std::cout << RED << "[!Important] Inner Epoch" << epoch << 
-            " Partition calculate integration result finished. Result == " << local_integrated_result
-        << RESET << std::endl;
-
-        
+            " Partition calculate integration result finished." << RESET << std::endl;
 
 
-        Message msg_integrated_result_notification = gen_notificate_integrate_result_msg(local_integrated_result, epoch);
+        Message msg_integrated_result_notification = gen_notificate_integrate_result_msg(local_integrated_result, epoch, cnt_grammar);
         push_msg_to_shared_memory_rr(msg_integrated_result_notification, shared_memory);
 
         // 5.6 Wait for ack from application
@@ -350,6 +368,7 @@ int main(int argc, char* argv[]) {
         std::cout << RED << "[!Important] Inner Epoch " << epoch << 
             " Partition application processed integration results." << RESET << std::endl;
 
+
         Message msg_integrated_result_prepared = gen_integrated_result_prepared_msg(partition_id, epoch);
         broadcast_message(package_per_epoch * epoch + total_clients * 3, partition_id , msg_integrated_result_prepared);
         {
@@ -359,6 +378,9 @@ int main(int argc, char* argv[]) {
         std::cout << RED << "[!Important] Inner Epoch " << epoch << 
             " Barrier 2: All partition prepared integrated results in epoch " << epoch << "." 
             << RESET << std::endl;    
+
+            
+
 
         broadcast_message(package_per_epoch * epoch + total_clients * 4, 
                         partition_id, msg_integrated_result_notification);
@@ -374,14 +396,20 @@ int main(int argc, char* argv[]) {
             << RESET << std::endl;
 
         epoch ++;
+
         {
-            global_result.access_with_function([](auto& v)->void{global_result.value = 0;});
+            global_result.access_with_function([](auto& v)->void{
+                for(int grammar_id = 0; grammar_id < cnt_grammar; grammar_id++){
+                    GlobalState::global_result.value[grammar_id] = 0;
+                }
+            });
         }
 
         std::cout << std::endl;
         std::cout <<  GREEN << "========================= END OF EPOCH " 
                 << epoch 
                 << "=========================" << RESET << std::endl;
+        assert(false);
     }
 
     std::cin.get();

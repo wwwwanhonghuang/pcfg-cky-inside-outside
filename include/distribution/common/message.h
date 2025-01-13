@@ -1,6 +1,6 @@
 #ifndef MESSAGE_H
 #define MESSAGE_H
-#define MSG_DATA_SIZE 128
+#define MSG_DATA_SIZE (256 * 8)
 #include <cstdint>
 typedef enum {
     EMPTY_SLOT = 0,

@@ -9,6 +9,11 @@ struct MutexableVariable{
 
     std::mutex mutex_variable;
     T value;
+    // static MutexableVariable<T> pack(T value){
+    //     MutexableVariable<T> instance;
+    //     instance.value = value;
+    //     return instance;
+    // }
     std::unique_lock<std::mutex> lock(){
         return std::unique_lock<std::mutex>(mutex_variable);
     }
