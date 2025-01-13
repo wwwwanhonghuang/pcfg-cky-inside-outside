@@ -401,6 +401,7 @@ int main(int argc, char* argv[]) {
             global_result.access_with_function([](auto& v)->void{
                 for(int grammar_id = 0; grammar_id < cnt_grammar; grammar_id++){
                     GlobalState::global_result.value[grammar_id] = 0;
+                    GlobalState::integrated_result.value[grammar_id] = 0;
                 }
             });
         }
@@ -409,7 +410,6 @@ int main(int argc, char* argv[]) {
         std::cout <<  GREEN << "========================= END OF EPOCH " 
                 << epoch 
                 << "=========================" << RESET << std::endl;
-        assert(false);
     }
 
     std::cin.get();
