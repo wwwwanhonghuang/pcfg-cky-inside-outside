@@ -9,6 +9,8 @@ cluster:
     - name: pcfg-train-3
       ip: 127.0.0.1
       port: 9242
+    - name: pcfg-train-4
+      port: 9243
 
 pcfg-train:
   pcfg-train-1:
@@ -20,3 +22,6 @@ pcfg-train:
   pcfg-train-3:
     sentence_from: 2001
     sentence_to: 2999
+  pcfg-train-4:
+    sentence_from: 3000
+    sentence_to: 3999
