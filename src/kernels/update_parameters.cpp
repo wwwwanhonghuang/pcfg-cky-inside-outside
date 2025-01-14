@@ -84,7 +84,7 @@ void kernel_update_parameters(double* f, double* count, double* mu, double* beta
                         }
                         gid++;
                     }
-            }    
-        }  
+            }
+        }
     }
 #endif
