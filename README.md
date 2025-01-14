@@ -64,10 +64,40 @@ response to calculate the inside-outside variable `f`. When all machine reach an
 they integrate the result from other machines. After processed the integrated  inside-outside variable,
 they update their grammar parameter respectively. They then synchronized to entry the next epoch.
 Machines are communicated in network.
-To do this:
+#### Step 1: Build the Programms
 ``` bash 
 $ sh make_distributed_training.sh
 ```
+#### Step 2: Prepare the configuration
+A `cluster.yaml` should be placed at the root of this repository,
+in which has content similar to follows:
+``` yaml
+cluster:
+  clients:
+    - name: pcfg-train-1
+      ip: 127.0.0.1
+      port: 9240
+    - name: pcfg-train-2
+      ip: 127.0.0.1
+      port: 9241
+    - name: pcfg-train-3
+      ip: 127.0.0.1
+      port: 9242
+
+pcfg-train:
+  pcfg-train-1:
+    sentence_from: 0
+    sentence_to: 999
+  pcfg-train-2:
+    sentence_from: 999
+    sentence_to: 1999
+  pcfg-train-3:
+    sentence_from: 2000
+    sentence_to: 2999
+```
+- The `cluster` section define each computational site's name network configuration
+- `pcfg-train` section contains the configuration of sentence dsitribution. In the example `pcfg-train-1` responsible for the `1`st to `1000`-th sentences,  `pcfg-train-2` responsible for `1001`-th to `2000`-th sentences, `pcfg-train-3`
+responsible for `2001`-th to `3000`-th sentences.
 
 ## Reference
 [1] Itiroo Sakai, “Syntax in universal translation”. In Proceedings 1961 International Conference on Machine Translation of Languages and Applied Language Analysis, Her Majesty’s Stationery Office, London, p. 593-608, 1962.
