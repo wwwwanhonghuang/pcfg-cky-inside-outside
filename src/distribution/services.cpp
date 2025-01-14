@@ -15,6 +15,8 @@
 #include <queue>
 #include <unordered_map>
 #include <cassert>
+#include <cmath>
+#include "utils/math.hpp"
 using namespace GlobalState;
 
 
@@ -104,7 +106,7 @@ void process(const Package& package){
         {
             GlobalState::global_result.access_with_function([&client_result](auto& v)->void{
                 for(int i = 0; i < cnt_grammar; i++){
-                    v[i] += *(client_result + i);
+                    v[i] = log_sum_exp(v[i], *(client_result + i));
                 }
             });
         }

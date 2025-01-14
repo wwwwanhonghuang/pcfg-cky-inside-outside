@@ -28,6 +28,7 @@
 #include "distribution/shared_memory.hpp"
 #include <string>
 #include "kernels/update_parameters.cuh"
+#include "utils/math.hpp"
 
 #define SHARED_MEMORY_NAME "/shared_mem"
 int result = 0;

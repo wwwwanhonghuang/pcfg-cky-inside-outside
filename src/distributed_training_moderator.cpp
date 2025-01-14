@@ -26,6 +26,7 @@
 #include "distribution/communication/package.hpp"
 #include "distribution/package_manager.hpp"
 #include <cassert>
+#include "utils/math.hpp"
 
 #define RED     "\033[31m"      /* Red */
 #define RESET   "\033[0m"
@@ -273,7 +274,7 @@ int main(int argc, char* argv[]) {
  
 
     int epoch = 0;
-    const int MAX_EPOCHS = 3;
+    const int MAX_EPOCHS = 10;
     const int package_per_epoch = total_clients * 4;
     
     while(epoch < MAX_EPOCHS){
@@ -339,7 +340,7 @@ int main(int argc, char* argv[]) {
         std::cout << "[Main Loop] [barrier passed] All partition Completed Epoch " << epoch << "!" << std::endl;
         std::cout <<  BOLD_BLUE << "[Main Loop] Integrated Result = ";
         for(int gid = 0; gid < cnt_grammar; gid++){
-            local_integrated_result[gid] =  global_result.get()[gid]  + this_partition_f[gid];
+            local_integrated_result[gid] =  log_sum_exp(global_result.get()[gid], this_partition_f[gid]);
             std::cout  << "\t - " << global_result.get()[gid] << " + " << this_partition_f[gid] 
                     << " = " << local_integrated_result[gid] << std::endl;
         }
@@ -379,9 +380,6 @@ int main(int argc, char* argv[]) {
             " Barrier 2: All partition prepared integrated results in epoch " << epoch << "." 
             << RESET << std::endl;    
 
-            
-
-
         broadcast_message(package_per_epoch * epoch + total_clients * 4, 
                         partition_id, msg_integrated_result_notification);
         {
@@ -400,8 +398,8 @@ int main(int argc, char* argv[]) {
         {
             global_result.access_with_function([](auto& v)->void{
                 for(int grammar_id = 0; grammar_id < cnt_grammar; grammar_id++){
-                    GlobalState::global_result.value[grammar_id] = 0;
-                    GlobalState::integrated_result.value[grammar_id] = 0;
+                    GlobalState::global_result.value[grammar_id] = -INFINITY;
+                    GlobalState::integrated_result.value[grammar_id] = -INFINITY;
                 }
             });
         }
