@@ -185,7 +185,7 @@ void process(const Package& package){
         break;
     }
 }
-#define TOTAL_CLIENTS 3
+#define TOTAL_CLIENTS 4
 bool should_ignore(int partition_id, int sock, int seq_num){
     return (partition_id  - 1)== (seq_num % TOTAL_CLIENTS);
 }

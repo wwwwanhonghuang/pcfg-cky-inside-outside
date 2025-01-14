@@ -252,7 +252,7 @@ int main(int argc, char* argv[]) {
     
     memcpy(&cnt_grammar, storage->network_communicator_messages[0].data, sizeof(int));
     std::cout << "n_grammar = " << cnt_grammar << std::endl;
-    
+    std::cout << "partition_id = " << partition_id << std::endl; 
     connect_to_other_partitions(total_clients, connected_client, client_index, clients, 
         partition_id, program_name);
 
