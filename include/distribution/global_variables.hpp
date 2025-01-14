@@ -9,6 +9,7 @@
 #include "communication/client.hpp"
 #include <cmath>
 namespace GlobalState {
+    inline int sleep_time = 0;
     inline std::atomic<bool> keep_running(true);
 
     inline MutexableVariable<std::unordered_map<int, Client>> client_map;  // Maps sock -> Client
