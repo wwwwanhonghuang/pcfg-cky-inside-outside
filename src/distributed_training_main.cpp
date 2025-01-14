@@ -84,8 +84,9 @@ void execution(int epoch, int partition_id){
 }
 
 inline double _calculate_new_possibility(double S, double f_gid) {
-    double result = f_gid - S;
-    return result;
+    if (S == -INFINITY || f_gid == -INFINITY) 
+        return -INFINITY;
+    return f_gid - S;
 }
 
 int current_epoch = 0;
@@ -184,7 +185,7 @@ int main(int argc, char* argv[])
     std::cout << "Train set size of this partition " << n_sequences_train << std::endl;
     std::cout << "Total numbers of sentences = " << n_sequences << std::endl;
 
-    std::cout << "tr;'ain sentence from " << sentence_from << " to " << sentence_to << std::endl;
+    std::cout << "train sentence from " << sentence_from << " to " << sentence_to << std::endl;
     
     int T = 0;
     int MS = MAX_SEQUENCE_LENGTH;
@@ -352,7 +353,6 @@ int main(int argc, char* argv[])
                     double f_gid = integrated_f[gid];
                     double new_possibility = _calculate_new_possibility(S, f_gid);
                     *(double*)(grammar->grammar_table + pt + 1) = new_possibility;
-                    
 
                     if(IS_EPSILON(sym_C) && IS_TERMINATE(sym_B)){
                         uint64_t key = encode_key(sym_A, sym_B);
