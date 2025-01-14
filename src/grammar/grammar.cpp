@@ -231,8 +231,7 @@ std::vector<std::tuple<uint32_t, uint32_t>> generate_inside_perterminate_iterati
         assert(IS_EPSILON(syms & (0xFFFF)));
         #else
         assert(IS_EPSILON((uint32_t*)grammar->grammar_table + (n_grammar + 1) * 4 + gid * 2));
-        #endif
-        
+        #endif   
     }
     
     return results;

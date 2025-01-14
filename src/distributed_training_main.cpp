@@ -171,7 +171,8 @@ int main(int argc, char* argv[])
 
     // 4. load corpus.
     std::cout << "Load sentences..." << std::endl;
-    std::vector<std::vector<uint32_t>> sentences = parse_input_file(input_filename, grammar, limit_n_sentences, MAX_SEQUENCE_LENGTH);
+    std::vector<std::vector<uint32_t>> sentences = 
+        parse_input_file(input_filename, grammar, limit_n_sentences, MAX_SEQUENCE_LENGTH);
     std::cout << "Load sentences finished. Total instances:" << sentences.size() << std::endl;
     if (sentences.empty()) {
         std::cerr << "Error: No sentences loaded." << std::endl;
@@ -326,13 +327,11 @@ int main(int argc, char* argv[])
             int N = grammar->N();
             for(int sym_A = 0; sym_A < N; sym_A++){
                 double S = INIT_POSSIBILITY;
-
                 uint32_t grammar_pointer_current = *(grammar->grammar_index + sym_A);
                 uint32_t grammar_pointer_next = *(grammar->grammar_index + sym_A + 1);
                 int gid_begin = gid;
                 for(uint32_t pt = grammar_pointer_current; pt < grammar_pointer_next; PT_INCREASE){
                     double f_gid = integrated_f[gid];
-                    
                     LOG_SUM_EXP_SET(S, f_gid);
                     gid ++;
                 }
@@ -357,6 +356,7 @@ int main(int argc, char* argv[])
                     gid++;
                 }
             }
+
             /* grammar parameter updation code here */
             std::cout << "STATUS: parameter updated." << std::endl;
             std::string grammar_file_path = "./logs/grammar_log_partition_" +
@@ -381,8 +381,8 @@ int main(int argc, char* argv[])
     std::cout << std::endl << "All finished" << std::endl;
     print_grammar(grammar);
     
-    std::ofstream logfile_ostream = std::ofstream("./logs/log_final_" + 
-                std::to_string(sentences.size()) + ".pcfg");
+    std::ofstream logfile_ostream = std::ofstream("./logs/log_final_" + std::to_string(sentences.size()) + ".pcfg");
+    
     print_grammar(grammar, logfile_ostream);
 
     delete[] alpha;

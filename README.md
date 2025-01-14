@@ -99,6 +99,11 @@ pcfg-train:
 - `pcfg-train` section contains the configuration of sentence dsitribution. In the example `pcfg-train-1` responsible for the `1`st to `1000`-th sentences,  `pcfg-train-2` responsible for `1001`-th to `2000`-th sentences, `pcfg-train-3`
 responsible for `2001`-th to `3000`-th sentences.
 
+All partitions will read sentences from file define in `config.yaml`'s `main`-`input` section. These sentences are used as train set without shuffling, splitting. In distributed training, we not currently not perform validation in each end of 
+training epoch. But save grammar files in each epoch.
+These grammar file can be loaded later, and be used to do validations on the validation set.
+
+
 #### Step 3: Run the programs.
 In a computational site of id `i`, where i is a integer number, run
 ``` bash
@@ -107,7 +112,6 @@ $ ./bin/distributed_training_moderator i
 ```
 After all partition run, they will communicate with each other, 
 and proceed the training process.
-
 
 ## Reference
 [1] Itiroo Sakai, “Syntax in universal translation”. In Proceedings 1961 International Conference on Machine Translation of Languages and Applied Language Analysis, Her Majesty’s Stationery Office, London, p. 593-608, 1962.
