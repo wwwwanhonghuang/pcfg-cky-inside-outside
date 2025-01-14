@@ -40,10 +40,8 @@ int result = 0;
                 uint32_t B = (symbols >> 16) & 0xFFFF; \
                 uint32_t C = symbols & 0xFFFF;
 
-
 #define ACK(MSG_TYPE) (MSG_TYPE | (1 << 31))
 #define CLEAR_MSG(MSG) MSG.status = EMPTY_SLOT;
-
 
 void write_grammar_to_file(const std::string& grammar_file_path, pcfg* grammar) {
     std::filesystem::path file_path(grammar_file_path);
@@ -122,13 +120,14 @@ int main(int argc, char* argv[])
 
     std::cout << "read configuration file " << configuration_file_path << std::endl;
     YAML::Node config = YAML::LoadFile(configuration_file_path);
-    
-    if (!config.IsDefined()) {
+    YAML::Node cluster_config = YAML::LoadFile("cluster.yaml");
+
+    if (!config.IsDefined() || !cluster_config.IsDefined()) {
         std::cout << "Error: config.yaml could not be loaded!" << std::endl;
         return 1;
     }
 
-    // 1. load configuration.
+    // 1. load configurations.
     std::string grammar_filename = config["main"]["grammar_file"].as<std::string>();
     std::string input_filename = config["main"]["input"].as<std::string>();
     uint32_t log_intervals = config["main"]["log_intervals"].as<int>();
@@ -142,6 +141,11 @@ int main(int argc, char* argv[])
         log_f_intervals = config["main"]["log_f"]["intervals"].as<int>();
     }
     bool log_warning_in_training = config["main"]["log_warning_in_training"].as<bool>();
+    
+    int sentence_from = cluster_config["pcfg-train"][std::string("pcfg-train-") + std::to_string(partition_id)].as<int>();
+    int sentence_to = cluster_config["pcfg-train"][std::string("pcfg-train-") + std::to_string(partition_id)].as<int>();
+    std::cout << "sentence_from = " << sentence_from << ", " << "sentence_to = " << sentence_to << std::endl;
+    assert(false);
 
     // 2. parse grammar file.
     pcfg* grammar = nullptr;
@@ -174,17 +178,13 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-   
     std::vector<std::vector<uint32_t>> train_set = std::move(sentences);
-    int sentence_from = 0;
-    int sentence_to = 9;
-
+    
     int n_sequences = sentences.size();
     int n_sequences_train = train_set.size();
    
     std::cout << "Train set size of this partition " << n_sequences_train << std::endl;
     std::cout << "Total numbers of sentences = " << n_sequences << std::endl;
-
     std::cout << "train sentence from " << sentence_from << " to " << sentence_to << std::endl;
     
     int T = 0;
@@ -204,8 +204,9 @@ int main(int argc, char* argv[])
             CLEAR_MSG(msg);
             const std::string& response = 
                 std::string("Hi! This is a response for msg PARTITION_PREPARED. ")
-            +   std::string("This partition responsible for sentence ")
+            +   std::string("This partition responsible for sentence from ")
             +   std::to_string(sentence_from)
+            +   std::string(" to ")
             +   std::to_string(sentence_to);
             
             Message response_msg;
@@ -271,10 +272,6 @@ int main(int argc, char* argv[])
                     , grammar->symbol_A_vector
                 );
                 
-                bool update_parameter_immediately = 
-                (i == n_sequences_train - 1) || 
-                ((batch_size_for_parameter_update > 0) && (i % batch_size_for_parameter_update) == 0) ? true : false;
-
                 kernel_update_parameters(f, count, mu, beta, sequence, 
                     (uint32_t*)(grammar->preterminate_rule_lookup_table),
                     (uint32_t*)(grammar->grammar_index),
@@ -285,9 +282,7 @@ int main(int argc, char* argv[])
                         , grammar, false);
             }
 
-            
             /* Execution Block */
-
             std::cout << "response msg BEGIN_EPOCH. result = " 
                 << result << std::endl;
 
@@ -295,7 +290,6 @@ int main(int argc, char* argv[])
             response_msg.status = MESSAGE_WAITING; 
             response_msg.msg_type = ACK(BEGIN_EPOCH);
             
-
             std::cout << "Client Results: " << std::endl;
             for(int gid = 0; gid < grammar->cnt_grammar; gid++){
                 std::cout << "\tf[" << gid << "] = " << f[gid] << std::endl; 
@@ -309,9 +303,9 @@ int main(int argc, char* argv[])
 
             memcpy(&storage->network_communicator_messages[0], &response_msg, 
                 sizeof(response_msg));
+            
             // clear memory f at the end of an epoch.
             std::fill(f, f + grammar->cnt_grammar, -INFINITY);
-            
             break;
         }
         case NOTIFICATE_INTEGRATE_RESULT: {
@@ -331,7 +325,6 @@ int main(int argc, char* argv[])
             int gid = 0;
             int N = grammar->N();
             for(int sym_A = 0; sym_A < N; sym_A++){
-                std::cout << " -- sym_A = " << sym_A << std::endl;
                 double S = INIT_POSSIBILITY;
 
                 uint32_t grammar_pointer_current = *(grammar->grammar_index + sym_A);
