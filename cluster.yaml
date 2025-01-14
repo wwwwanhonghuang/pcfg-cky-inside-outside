@@ -17,3 +17,6 @@ pcfg-train:
   pcfg-train-2:
     sentence_from: 999
     sentence_to: 2000
+  pcfg-train-3:
+    sentence_from: 2001
+    sentence_to: 2999
