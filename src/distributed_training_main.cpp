@@ -145,7 +145,6 @@ int main(int argc, char* argv[])
     int sentence_from = cluster_config["pcfg-train"][std::string("pcfg-train-") + std::to_string(partition_id)]["sentence_from"].as<int>();
     int sentence_to = cluster_config["pcfg-train"][std::string("pcfg-train-") + std::to_string(partition_id)]["sentence_to"].as<int>();
     std::cout << "sentence_from = " << sentence_from << ", " << "sentence_to = " << sentence_to << std::endl;
-    assert(false);
 
     // 2. parse grammar file.
     pcfg* grammar = nullptr;
