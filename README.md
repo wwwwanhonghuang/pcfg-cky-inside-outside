@@ -55,6 +55,20 @@ main:
 ### Run
 `$ ./build/bin/main_executable`
 
+
+
+### [Optional] Distributed Training on Multiple Machine
+For higher speed training, we provide programs for distributed training on multiple machines.
+In this cases, sentences are splitted and distributed to multiple machine, and each machine
+response to calculate the inside-outside variable `f`. When all machine reach an epoch end,
+they integrate the result from other machines. After processed the integrated  inside-outside variable,
+they update their grammar parameter respectively. They then synchronized to entry the next epoch.
+Machines are communicated in network.
+To do this:
+``` bash 
+$ sh make_distributed_training.sh
+```
+
 ## Reference
 [1] Itiroo Sakai, “Syntax in universal translation”. In Proceedings 1961 International Conference on Machine Translation of Languages and Applied Language Analysis, Her Majesty’s Stationery Office, London, p. 593-608, 1962.
 
