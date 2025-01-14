@@ -11,10 +11,9 @@ cluster:
       port: 9242
 
 pcfg-train:
-  partition:
-    - name: pcfg-train-1
-      sentence_from: 0
-      sentence_to: 999
-    - name: pcfg-train-2
-      sentence_from: 999
-      sentence_to: 2000
+  pcfg-train-1:
+    sentence_from: 0
+    sentence_to: 999
+  pcfg-train-2:
+    sentence_from: 999
+    sentence_to: 2000
