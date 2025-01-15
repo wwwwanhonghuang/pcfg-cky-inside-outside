@@ -154,13 +154,17 @@ void process(const Package& package){
             // Check consistancy
             for(int gid = 0; gid < cnt_grammar; gid++){
                 if(GlobalState::integrated_result.get()[gid] != client_integrated_results[gid]){
-                    std::cout << YELLOW << "Warning: integration result of grammar gid = " << gid <<
+                    std::cout << YELLOW << "Warning: integration result of grammar gid = " << gid << " " <<
                         GlobalState::integrated_result.get()[gid] << " may not equal to " << 
                         client_integrated_results[gid] << " ignore this, if it differ in ignorable precision." << std::endl;
                 }
             }
+            std::cout << RESET << std::endl;
+            
+            std::cout << "epoch = " << epoch << std::endl;
 
-            integrated_result_confirmation_ack_count.access_with_function([&epoch](auto& v)->void{v[epoch]++;} );
+            integrated_result_confirmation_ack_count.
+                access_with_function([&epoch](auto& v)->void{v[epoch]++;} );
 
             std::cout << "ACK NOTIFICATE_INTEGRATE_RESULT" 
                 << " integrated_result_confirmation_ack_count = " 
@@ -212,6 +216,7 @@ void handle_client(int client_sock, int partition_id) {
             << seq_number_expect << RESET << std::endl;
             continue;
         }
+        
         // Process saved packages in order if they match the expected sequence
         std::lock_guard<std::mutex> lock(package_storage);
 

@@ -262,13 +262,15 @@ int main(int argc, char* argv[]) {
     Message partition_prepared_msg = gen_partition_prepared_msg(partition_id);
     broadcast_message(0, partition_id, partition_prepared_msg);
 
+    std::cout << "[MAIN LOOP] begin waiting for partition_prepared_msg acks" << std::endl;
+
     /* 4. Wait ACKs of PARTITION_PREPARED . */
     std::cout << total_clients << std::endl;
     {
         std::unique_lock<std::mutex> lock = partition_prepared_msg_ack_count.lock();
         partition_prepared_msg_cv.wait(lock, [&total_clients] { return partition_prepared_msg_ack_count.value == total_clients - 1; });
     }
-    
+    std::cout << "[MAIN LOOP] end waiting for partition_prepared_msg acks" << std::endl;
     std::cout << "[barrier passed] All partition prepared!" << std::endl;
     std::cout << RED << "[!Important] Barrier 1: All partition arrive front pre-epoch-0." << RESET << std::endl;    
  
@@ -285,11 +287,14 @@ int main(int argc, char* argv[]) {
         // 5.1 Notify Application begin a new epoch.
         Message epoch_begin_msg = gen_epoch_begin_message(epoch, partition_id, cnt_grammar);
         push_msg_to_shared_memory_rr(epoch_begin_msg, shared_memory);
+        std::cout << "[MAIN LOOP] begin waiting for epoch " << epoch << " begin. (begin_epoch_msg_ack_count)" << std::endl;
         broadcast_message(package_per_epoch * epoch + total_clients * 1, partition_id, epoch_begin_msg);
         {
             std::unique_lock<std::mutex> lock = begin_epoch_msg_ack_count.lock();
             begin_epoch_msg_cv.wait(lock, [&total_clients, &epoch] { return begin_epoch_msg_ack_count.value[epoch] == total_clients - 1; });
         }
+        std::cout << "[MAIN LOOP] end waiting for epoch " << epoch << " begin. (begin_epoch_msg_ack_count)" << std::endl;
+
         std::cout << RED << "[Main Loop] [barrier passed] All partition prepare to proceed epoch "
                   << RESET << epoch << "!" << std::endl;
         
@@ -331,11 +336,14 @@ int main(int argc, char* argv[]) {
         broadcast_message(package_per_epoch * epoch + total_clients * 2, partition_id,
             epoch_finished_msg);
 
+        std::cout << "[MAIN LOOP] begin waiting for epoch_completed acks." << std::endl;
         // 5.4 Wait clients until all clients finish current epoch.
         {
             auto lock = epoch_completed_ack_count.lock();
             epoch_completed_msg_cv.wait(lock, [&total_clients, &epoch] { return epoch_completed_ack_count.value[epoch] == total_clients - 1; });
         }
+        std::cout << "[MAIN LOOP] end waiting for epoch_completed acks." << std::endl;
+
 
 
         double* local_integrated_result = new double[cnt_grammar];
@@ -373,15 +381,19 @@ int main(int argc, char* argv[]) {
 
 
         Message msg_integrated_result_prepared = gen_integrated_result_prepared_msg(partition_id, epoch);
+        std::cout << "[MAIN LOOP] begin waiting for msg_integrated_result_prepared acks." << std::endl;
         broadcast_message(package_per_epoch * epoch + total_clients * 3, partition_id , msg_integrated_result_prepared);
         {
             auto lock = integrated_result_prepared_ack_count.lock();
             integrated_result_prepared_cv.wait(lock, [&total_clients, &epoch] { return integrated_result_prepared_ack_count.value[epoch] == total_clients - 1; });
         }
+        std::cout << "[MAIN LOOP] end waiting for msg_integrated_result_prepared acks." << std::endl;
+
         std::cout << RED << "[!Important] Inner Epoch " << epoch << 
             " Barrier 2: All partition prepared integrated results in epoch " << epoch << "." 
             << RESET << std::endl;    
 
+        std::cout << "[MAIN LOOP] begin waiting for msg_integrated_result_notification acks." << std::endl;
         broadcast_message(package_per_epoch * epoch + total_clients * 4, 
                         partition_id, msg_integrated_result_notification);
         {
@@ -390,21 +402,27 @@ int main(int argc, char* argv[]) {
                 return integrated_result_confirmation_ack_count.value[epoch] == total_clients - 1; 
             });
         }
-
+        
+        std::cout << "[MAIN LOOP] end waiting for msg_integrated_result_notification acks." << std::endl;
+        
         std::cout << RED << "[!Important] Inner Epoch" << epoch << 
             " Barrier 3: All partition confirmed integrated results of epoch " << epoch << "." 
             << RESET << std::endl;
 
-        epoch ++;
+        std::cout << "reinitialize inside-outside f variable buffers." << std::endl;
 
+        epoch ++;
         {
-            global_result.access_with_function([](auto& v)->void{
+            global_result.access_with_function([](auto& v)->void {
                 for(int grammar_id = 0; grammar_id < cnt_grammar; grammar_id++){
                     GlobalState::global_result.value[grammar_id] = -INFINITY;
                     GlobalState::integrated_result.value[grammar_id] = -INFINITY;
                 }
             });
         }
+        std::cout << "end of reinitialization of inside-outside f 
+            variable buffers." << std::endl;
+
 
         std::cout << std::endl;
         std::cout <<  GREEN << "========================= END OF EPOCH " 
