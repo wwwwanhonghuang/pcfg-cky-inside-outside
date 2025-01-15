@@ -421,8 +421,7 @@ int main(int argc, char* argv[]) {
             });
         }
         
-        std::cout << "end of reinitialization of inside-outside f 
-            variable buffers." << std::endl;
+        std::cout << "end of reinitialization of inside-outside f variable buffers." << std::endl;
 
         std::cout << std::endl;
         std::cout <<  GREEN << "========================= END OF EPOCH " 
