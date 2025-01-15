@@ -282,10 +282,7 @@ void handle_client(int client_sock, int partition_id) {
                 close(client_sock);
                 return;
             } else if (bytes_read < 0) {
-                if (errno == EINTR) continue;  // Retry on interrupted system call
-                std::cerr << "Error reading from socket: sock " << client_sock << ", errno = " << errno << "\n";
-                close(client_sock);
-                return;
+                continue;
             }
 
             bytes_already_read += bytes_read;
