@@ -15,6 +15,7 @@ main:
     train_fraction: 0.8
   n_epochs: 5
   limit_n_sentences: -1
+  validation: false
 
 phase_convert:
   grammar_file: "data/grammar.pcfg"
@@ -29,6 +30,8 @@ syntax_analysis:
   report_path: "data/reports/pre-epileptic/"
   serialize_to_files: false
   tree_serialization_path: "data/serialized_tree/seizure/"
+  sentence_from: -1
+  sentence_to: -1
 
 test_parsing:
   grammar_file: "data/grammar-trained.pcfg"
