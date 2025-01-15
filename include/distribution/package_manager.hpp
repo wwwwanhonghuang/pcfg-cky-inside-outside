@@ -25,7 +25,7 @@ class PackageManager {
             return &instance;
         }
     
-        Package pack_msg_to_package(const int& sock, const Message& msg){
+        Package pack_msg_to_package(int sock, Message msg){
             Package package;
             next_seq_numbers.access_with_function([&package, &sock](auto& map)->void{
                 package.sequence_number = map[sock];

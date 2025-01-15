@@ -257,7 +257,6 @@ void handle_client(int client_sock, int partition_id) {
             }
         }
 
-
         Package package_receive;
 
         // Check if a new package has arrived
