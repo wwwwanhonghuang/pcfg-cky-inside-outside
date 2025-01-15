@@ -297,8 +297,6 @@ int main(int argc, char* argv[]) {
 
         std::cout << RED << "[Main Loop] [barrier passed] All partition prepare to proceed epoch "
                   << RESET << epoch << "!" << std::endl;
-        
-            
 
         /* Application Execution */
         // 5.2 Wait application finished.
@@ -342,7 +340,9 @@ int main(int argc, char* argv[]) {
         // 5.4 Wait clients until all clients finish current epoch.
         {
             auto lock = epoch_completed_ack_count.lock();
-            epoch_completed_msg_cv.wait(lock, [&total_clients, &epoch] { return epoch_completed_ack_count.value[epoch] == total_clients - 1; });
+            epoch_completed_msg_cv.wait(lock, [&total_clients, &epoch] { 
+                return epoch_completed_ack_count.value[epoch] == total_clients - 1;
+            });
         }
         std::cout << "[MAIN LOOP] end waiting for epoch_completed acks." << std::endl;
 

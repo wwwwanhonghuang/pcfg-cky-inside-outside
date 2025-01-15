@@ -149,10 +149,6 @@ void process(const Package& package){
         break;
     }
     case NOTIFICATE_INTEGRATE_RESULT: {
-        std::vector<double> client_result;
-        std::vector<double> result_this_partition = integrated_result.get();
-        memcpy(&client_result, &msg_receive.data[0], sizeof(int));
-
         {
             double* client_integrated_results = new double[cnt_grammar];
             int epoch = -1;
@@ -163,7 +159,7 @@ void process(const Package& package){
             for(int gid = 0; gid < cnt_grammar; gid++){
                 if(GlobalState::integrated_result.get()[gid] != client_integrated_results[gid]){
                     std::cout << YELLOW << "Warning: integration result of grammar gid = " << gid << " " <<
-                        GlobalState::integrated_result.get()[gid] << " may not equal to " << 
+                        GlobalState::integrated_result.value[gid] << " may not equal to " << 
                         client_integrated_results[gid] << " ignore this, if it differ in ignorable precision." << std::endl;
                 }
             }
@@ -176,7 +172,7 @@ void process(const Package& package){
 
             std::cout << "ACK NOTIFICATE_INTEGRATE_RESULT" 
                 << " integrated_result_confirmation_ack_count = " 
-                << integrated_result_confirmation_ack_count.get()[epoch]
+                << integrated_result_confirmation_ack_count.value[epoch]
                 << std::endl;
         }
         std::cout << "[Client Service] Notify one thread that waiting for integrated_result_msg_cv" << std::endl;
