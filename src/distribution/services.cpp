@@ -16,6 +16,8 @@
 #include <unordered_map>
 #include <cassert>
 #include <cmath>
+#include <netinet/tcp.h> // For TCP_NODELAY
+
 #include "utils/math.hpp"
 using namespace GlobalState;
 
@@ -209,8 +211,13 @@ void handle_client(int client_sock, int partition_id) {
         std::this_thread::get_id() << "\n";
 
     fcntl(client_sock, F_SETFL, O_NONBLOCK);
-    int buffer_size = 64 * 1024; // Example: 64KB buffer
+    int buffer_size = 64 * 1024; // Example: 64KB buffer    
     setsockopt(client_sock, SOL_SOCKET, SO_RCVBUF, &buffer_size, sizeof(buffer_size));
+    int flag = 1;
+    setsockopt(client_sock, IPPROTO_TCP, TCP_NODELAY, (void *)&flag, sizeof(int));
+    int flags = fcntl(client_sock, F_GETFL, 0);
+    fcntl(client_sock, F_SETFL, flags & ~O_NONBLOCK); // Clear the O_NONBLOCK flag
+    
     while (true) {
         // if(sleep_time != 0) sleep(sleep_time);
         // Fetch the last processed package sequence number for this client
