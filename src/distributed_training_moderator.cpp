@@ -300,12 +300,12 @@ int main(int argc, char* argv[]) {
 
         /* Application Execution */
         // 5.2 Wait application finished.
-        sleep_time = 30 * 60;
+        sleep_time = 20 * 60;
         std::cout << "[Main Loop] wait application execution. " << std::endl;
         {
             std::unique_lock<std::mutex> lock(application_mutex);
             while(storage->network_communicator_messages[0].status == EMPTY_SLOT){
-                // sleep(sleep_time);
+                sleep(sleep_time);
             }
             storage->network_communicator_messages[0].status = EMPTY_SLOT;
             int client_cnt_grammars = -1;
