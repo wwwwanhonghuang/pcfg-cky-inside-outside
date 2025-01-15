@@ -202,7 +202,7 @@ void handle_client(int client_sock, int partition_id) {
     fcntl(client_sock, F_SETFL, O_NONBLOCK);
 
     while (true) {
-        if(sleep_time != 0) sleep(sleep_time);
+        // if(sleep_time != 0) sleep(sleep_time);
         // Fetch the last processed package sequence number for this client
         int seq_number_expect = get_expect_seq_number();
         if(should_ignore(partition_id, client_sock, seq_number_expect)){
