@@ -32,7 +32,7 @@ using namespace GlobalState;
 
 
 struct ComparePackage {
-    bool operator()(const Package& p1, const Package& p2) {
+    bool operator()(Package p1, Package p2) {
         return p1.sequence_number > p2.sequence_number;
     }
 };
@@ -54,11 +54,11 @@ inline void increase_package_seq(){
 
 
 
-inline void save_package(const Package& package) {
+inline void save_package(Package package) {
     saved_packages.value.push(package);
 }
 
-inline const Package& most_early_one() {
+inline const Package most_early_one() {
     return saved_packages.value.top();
 }
 
@@ -74,7 +74,7 @@ inline bool has_saved_packages() {
 
 std::mutex package_storage;
 
-void process(const Package& package){
+void process(Package package){
     Message msg_receive = package.msg;
     std::cout << BLUE << "[Process] seq = " << package.sequence_number 
               << " msg_type = " 
