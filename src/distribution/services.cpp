@@ -265,8 +265,10 @@ void handle_client(int client_sock, int partition_id) {
         } 
 
         if (bytes_read > 0) {
-            std::cout << "Received: package seq = " << package_receive.sequence_number
-                << " from sock " << client_sock  
+            std::cout << CYAN << "Received:" << RESET << "package " <<
+                "seq = " 
+                << RED << package_receive.sequence_number << RESET
+                << " from sock " << client_sock
                 << " msg_type = " << package_receive.msg.msg_type << "\n";
 
             int seq_num = package_receive.sequence_number;
