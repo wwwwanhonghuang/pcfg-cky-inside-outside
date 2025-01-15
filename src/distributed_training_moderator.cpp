@@ -109,7 +109,7 @@ void serverLoop(uint32_t port, int partition_id) {
     }
 }
 
-void broadcast_message(const Message& message) {
+void broadcast_message(Message message) {
     client_map.access_with_function([&message](auto& map)->void{
         for (const auto& [sock, client] : map) {
             Package package = PackageManager::get_instance()->pack_msg_to_package(client.sock, message);
