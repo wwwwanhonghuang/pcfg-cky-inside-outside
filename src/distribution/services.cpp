@@ -210,7 +210,7 @@ void handle_client(int client_sock, int partition_id) {
 
     fcntl(client_sock, F_SETFL, O_NONBLOCK);
     int buffer_size = 64 * 1024; // Example: 64KB buffer
-    `setsockopt(client_sock, SOL_SOCKET, SO_RCVBUF, &buffer_size, sizeof(buffer_size));
+    setsockopt(client_sock, SOL_SOCKET, SO_RCVBUF, &buffer_size, sizeof(buffer_size));
     while (true) {
         // if(sleep_time != 0) sleep(sleep_time);
         // Fetch the last processed package sequence number for this client
