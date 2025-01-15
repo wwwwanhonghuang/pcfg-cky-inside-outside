@@ -215,7 +215,8 @@ void handle_client(int client_sock, int partition_id) {
     setsockopt(client_sock, SOL_SOCKET, SO_RCVBUF, &buffer_size, sizeof(buffer_size));
     int flag = 1;
     setsockopt(client_sock, IPPROTO_TCP, TCP_NODELAY, (void *)&flag, sizeof(int));
-   
+    Package package_receive;
+    ssize_t bytes_already_read = 0;
     while (true) {
         // if(sleep_time != 0) sleep(sleep_time);
         // Fetch the last processed package sequence number for this client
@@ -268,41 +269,49 @@ void handle_client(int client_sock, int partition_id) {
             }
         }
 
-        Package package_receive;
+      
 
-        // Check if a new package has arrived
-        ssize_t bytes_read = read(client_sock, &package_receive, sizeof(Package));
-        
-        if (bytes_read == 0) {
-            std::cout << "Client disconnected: sock " << client_sock << "\n";
-            close(client_sock);
-            break; 
-        } 
+        // Read the package in a loop
+        if (bytes_already_read < sizeof(Package)) {
+            ssize_t bytes_read = read(client_sock, 
+                reinterpret_cast<char*>(&package_receive) + bytes_already_read, 
+                sizeof(Package) - bytes_already_read);
 
-        if (bytes_read > 0) {
-            std::cout << CYAN << "Received (bytes = " << bytes_read 
-                << "/" << sizeof(Package) << "):" << RESET << "package " <<
-                "seq = " 
-                << RED << package_receive.sequence_number << RESET
-                << " from sock " << client_sock
-                << " msg_type = " 
-                << package_receive.msg.msg_type << "\n";
+            if (bytes_read == 0) {
+                std::cout << "Client disconnected: sock " << client_sock << "\n";
+                close(client_sock);
+                return;
+            } else if (bytes_read < 0) {
+                if (errno == EINTR) continue;  // Retry on interrupted system call
+                std::cerr << "Error reading from socket: sock " << client_sock << ", errno = " << errno << "\n";
+                close(client_sock);
+                return;
+            }
 
+            bytes_already_read += bytes_read;
+
+            std::cout << "Received (bytes = " << bytes_read 
+                    << "/" << sizeof(Package) << "): package "
+                    << "seq = " << package_receive.sequence_number
+                    << " from sock " << client_sock
+                    << " msg_type = " << package_receive.msg.msg_type << "\n";
+        }
+
+        // Reset bytes_already_read for potential reuse
+        if(bytes_already_read == sizeof(Package)){
+            bytes_already_read = 0;
+            // Handle the received package
             int seq_num = package_receive.sequence_number;
-            seq_number_expect = get_expect_seq_number();
+            int seq_number_expect = get_expect_seq_number();
 
             if (seq_num == seq_number_expect) {
-                // Process the package if it's the next in sequence
-                std::cout << "process package "
-                    << "seq = " << package_receive.sequence_number << std::endl;
+                std::cout << "Processing package seq = " << package_receive.sequence_number << "\n";
                 process(package_receive);
                 increase_package_seq();
             } else {
-                // Save the out-of-order package for later processing
-                std::cout << "save package " 
-                    << "seq = " << package_receive.sequence_number << std::endl;
+                std::cout << "Saving out-of-order package seq = " << package_receive.sequence_number << "\n";
                 save_package(package_receive);
             }
-        }else if(bytes_read < 0) continue;
+        }        
     }
 }
