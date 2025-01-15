@@ -155,8 +155,8 @@ void process(const Package& package){
             for(int gid = 0; gid < cnt_grammar; gid++){
                 if(GlobalState::integrated_result.get()[gid] != client_integrated_results[gid]){
                     std::cout << YELLOW << "Warning: integration result of grammar gid = " << gid <<
-                        GlobalState::integrated_result.get()[gid] << " may not equal to " << client_integrated_results[gid]
-                        << std::endl;
+                        GlobalState::integrated_result.get()[gid] << " may not equal to " << 
+                        client_integrated_results[gid] << " ignore this, if it differ in ignorable precision." << std::endl;
                 }
             }
 
@@ -202,7 +202,7 @@ void handle_client(int client_sock, int partition_id) {
     fcntl(client_sock, F_SETFL, O_NONBLOCK);
 
     while (true) {
-        // if(sleep_time != 0) sleep(sleep_time);
+        if(sleep_time != 0) sleep(sleep_time);
         // Fetch the last processed package sequence number for this client
         int seq_number_expect = get_expect_seq_number();
         if(should_ignore(partition_id, client_sock, seq_number_expect)){
