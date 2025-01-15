@@ -13,7 +13,23 @@ cluster:
       ip: 34.57.142.132
       port: 9243
 
+
+
 pcfg-train:
+  pcfg-train-1:
+    sentence_from: 0
+    sentence_to: 99
+  pcfg-train-2:
+    sentence_from: 100
+    sentence_to: 199
+  pcfg-train-3:
+    sentence_from: 200
+    sentence_to: 299
+  pcfg-train-4:
+    sentence_from: 300
+    sentence_to: 399
+
+pcfg-train-bk:
   pcfg-train-1:
     sentence_from: 0
     sentence_to: 805247
