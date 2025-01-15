@@ -209,8 +209,8 @@ void handle_client(int client_sock, int partition_id) {
         std::this_thread::get_id() << "\n";
 
     fcntl(client_sock, F_SETFL, O_NONBLOCK);
-
-    int bytes_already_read = 0;
+    int buffer_size = 64 * 1024; // Example: 64KB buffer
+    `setsockopt(client_sock, SOL_SOCKET, SO_RCVBUF, &buffer_size, sizeof(buffer_size));
     while (true) {
         // if(sleep_time != 0) sleep(sleep_time);
         // Fetch the last processed package sequence number for this client
@@ -265,38 +265,39 @@ void handle_client(int client_sock, int partition_id) {
 
         Package package_receive;
 
-        while(bytes_already_read < sizeof(Package)){
-            ssize_t bytes_read = read(client_sock, reinterpret_cast<char*>(&package_receive) + bytes_already_read, sizeof(Package) - bytes_already_read);
+        // Check if a new package has arrived
+        ssize_t bytes_read = read(client_sock, &package_receive, sizeof(Package));
         
-            if (bytes_read == 0) {
-                std::cout << "Client disconnected: sock " << client_sock << "\n";
-                close(client_sock);
-                return;
-            } else if(bytes_read < 0) continue;
-            bytes_already_read += bytes_read;
+        if (bytes_read == 0) {
+            std::cout << "Client disconnected: sock " << client_sock << "\n";
+            close(client_sock);
+            break; 
+        } 
+
+        if (bytes_read > 0) {
             std::cout << CYAN << "Received (bytes = " << bytes_read 
-                << "/" << sizeof(Package) << "):" << RESET << "package " <<
+                << "/" << sizeof(Package) "):" << RESET << "package " <<
                 "seq = " 
                 << RED << package_receive.sequence_number << RESET
                 << " from sock " << client_sock
                 << " msg_type = " 
                 << package_receive.msg.msg_type << "\n";
-        }
-        bytes_already_read = 0;
-        int seq_num = package_receive.sequence_number;
-        seq_number_expect = get_expect_seq_number();
 
-        if (seq_num == seq_number_expect) {
-            // Process the package if it's the next in sequence
-            std::cout << "process package "
-                << "seq = " << package_receive.sequence_number << std::endl;
-            process(package_receive);
-            increase_package_seq();
-        } else {
-            // Save the out-of-order package for later processing
-            std::cout << "save package " 
-                << "seq = " << package_receive.sequence_number << std::endl;
-            save_package(package_receive);
-        }
+            int seq_num = package_receive.sequence_number;
+            seq_number_expect = get_expect_seq_number();
+
+            if (seq_num == seq_number_expect) {
+                // Process the package if it's the next in sequence
+                std::cout << "process package "
+                    << "seq = " << package_receive.sequence_number << std::endl;
+                process(package_receive);
+                increase_package_seq();
+            } else {
+                // Save the out-of-order package for later processing
+                std::cout << "save package " 
+                    << "seq = " << package_receive.sequence_number << std::endl;
+                save_package(package_receive);
+            }
+        }else if(bytes_read < 0) continue;
     }
 }
