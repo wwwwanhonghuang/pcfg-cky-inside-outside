@@ -203,9 +203,10 @@ void process(Package package){
 bool should_ignore(int partition_id, int sock, int seq_num){
     return (partition_id  - 1)== (seq_num % TOTAL_CLIENTS);
 }
+
 void handle_client(int client_sock, int partition_id) {
-    std::cout << "Handling client in thread: " << std::this_thread::get_id() << "\n";
-    
+    std::cout << "Handling client in thread: " << 
+        std::this_thread::get_id() << "\n";
 
     fcntl(client_sock, F_SETFL, O_NONBLOCK);
 
@@ -227,19 +228,23 @@ void handle_client(int client_sock, int partition_id) {
         if (!saved_packages.value.empty()) {
             // Capture current thread ID
             auto thread_id = std::this_thread::get_id();
-            Package earliest_package = saved_packages.value.top();
+            Package earliest_package = 
+                saved_packages.value.top();
 
             // Check sequence number
-            if (earliest_package.sequence_number == seq_number_expect) {
+            if (earliest_package.sequence_number 
+                == seq_number_expect) {
                 std::cout << "Process package "
-                        << "seq = " << earliest_package.sequence_number
+                        << "seq = " 
+                        << earliest_package.sequence_number
                         << " from queue."
                         << std::endl;
 
                 // Log current queue state
                 std::cout << " - " << thread_id << ": "
                         << " queue size = " << saved_packages.value.size()
-                        << " expect seq num = " << seq_number_expect
+                        << " expect seq num = " 
+                        << seq_number_expect
                         << std::endl;
 
                 // Remove the package from the queue
@@ -261,6 +266,7 @@ void handle_client(int client_sock, int partition_id) {
 
         // Check if a new package has arrived
         ssize_t bytes_read = read(client_sock, &package_receive, sizeof(Package));
+        
         if (bytes_read == 0) {
             std::cout << "Client disconnected: sock " << client_sock << "\n";
             close(client_sock);
@@ -268,18 +274,20 @@ void handle_client(int client_sock, int partition_id) {
         } 
 
         if (bytes_read > 0) {
-            std::cout << CYAN << "Received:" << RESET << "package " <<
+            std::cout << CYAN << "Received (bytes = " << bytes_read 
+                << "/" << sizeof(Package) << "):" << RESET << "package " <<
                 "seq = " 
                 << RED << package_receive.sequence_number << RESET
                 << " from sock " << client_sock
-                << " msg_type = " << package_receive.msg.msg_type << "\n";
+                << " msg_type = " 
+                << package_receive.msg.msg_type << "\n";
 
             int seq_num = package_receive.sequence_number;
             seq_number_expect = get_expect_seq_number();
 
             if (seq_num == seq_number_expect) {
                 // Process the package if it's the next in sequence
-                std::cout << "process package " 
+                std::cout << "process package "
                     << "seq = " << package_receive.sequence_number << std::endl;
                 process(package_receive);
                 increase_package_seq();
@@ -291,8 +299,4 @@ void handle_client(int client_sock, int partition_id) {
             }
         }else if(bytes_read < 0) continue;
     }
-    
-
-
-
 }

@@ -126,7 +126,7 @@ void broadcast_message(Message message) {
     });
 }
 
-void broadcast_message(int base_seq_number, int partition_id, const Message& message) {
+void broadcast_message(int base_seq_number, int partition_id, Message message) {
     client_map.access_with_function([&message, &base_seq_number, &partition_id](auto& map)->void{
         for (const auto& [sock, client] : map) {
             Package package;
