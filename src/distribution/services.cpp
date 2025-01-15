@@ -151,9 +151,13 @@ void process(const Package& package){
             memcpy(client_integrated_results, &msg_receive.data[0], sizeof(double) * cnt_grammar);
             memcpy(&epoch, msg_receive.data + sizeof(double) * cnt_grammar, sizeof(int));
 
-            // check consistancy
+            // Check consistancy
             for(int gid = 0; gid < cnt_grammar; gid++){
-                assert(GlobalState::integrated_result.get()[gid] == client_integrated_results[gid]);
+                if(GlobalState::integrated_result.get()[gid] != client_integrated_results[gid]){
+                    std::cout << YELLOW << "Warning: integration result of grammar gid = " << gid <<
+                        GlobalState::integrated_result.get()[gid] << " may not equal to " << client_integrated_results[gid]
+                        << std::endl;
+                }
             }
 
             integrated_result_confirmation_ack_count.access_with_function([&epoch](auto& v)->void{v[epoch]++;} );

@@ -45,7 +45,7 @@ Message gen_notificate_integrate_result_msg(double* integrated_result, int epoch
     msg_integrated_result_notification.msg_type = NOTIFICATE_INTEGRATE_RESULT;
     memcpy(msg_integrated_result_notification.data, integrated_result, sizeof(double) * cnt_grammar);
     memcpy(msg_integrated_result_notification.data + sizeof(double) * cnt_grammar, &epoch, sizeof(int));
-
+    
     return msg_integrated_result_notification;
 }
 
