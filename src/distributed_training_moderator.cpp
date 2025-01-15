@@ -322,9 +322,11 @@ int main(int argc, char* argv[]) {
         std::cout << "[Main Loop] application finish and reply result " << std::endl;
         
         std::cout << GREEN << "Finish Epoch " << epoch << std::endl;
+        #ifdef PRINT_RESULTS
         for(int i = 0; i < cnt_grammar; i++){
             std::cout << "f[" << i << "] = " << this_partition_f[i] << std::endl;
         }
+        #endif
         std::cout << RESET << std::endl;
 
         storage->network_communicator_messages[0].status = EMPTY_SLOT;
@@ -402,7 +404,6 @@ int main(int argc, char* argv[]) {
                 return integrated_result_confirmation_ack_count.value[epoch] == total_clients - 1; 
             });
         }
-        
         std::cout << "[MAIN LOOP] end waiting for msg_integrated_result_notification acks." << std::endl;
         
         std::cout << RED << "[!Important] Inner Epoch" << epoch << 

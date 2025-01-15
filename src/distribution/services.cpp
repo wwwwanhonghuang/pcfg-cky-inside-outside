@@ -105,10 +105,12 @@ void process(const Package& package){
 
         std::cout << "[Client Service] client " <<  client_partition_id << 
                     " has completed epoch " << epoch << std::endl;
+        #ifdef PRINT_RESULTS
         std::cout << "\tClient Report Result:" << std::endl;
         for(int gid = 0; gid < cnt_grammar; gid++){
             std::cout << "\tf[" << gid << "] = " << *(client_result + gid) << std::endl;
         }
+        #endif
         {
             GlobalState::global_result.access_with_function([&client_result](auto& v)->void{
                 for(int i = 0; i < cnt_grammar; i++){
