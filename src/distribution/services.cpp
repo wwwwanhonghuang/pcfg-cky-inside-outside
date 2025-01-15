@@ -276,7 +276,7 @@ void handle_client(int client_sock, int partition_id) {
 
         if (bytes_read > 0) {
             std::cout << CYAN << "Received (bytes = " << bytes_read 
-                << "/" << sizeof(Package) "):" << RESET << "package " <<
+                << "/" << sizeof(Package) << "):" << RESET << "package " <<
                 "seq = " 
                 << RED << package_receive.sequence_number << RESET
                 << " from sock " << client_sock
