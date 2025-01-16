@@ -218,7 +218,7 @@ void handle_client(int client_sock, int partition_id) {
     Package package_receive;
     ssize_t bytes_already_read = 0;
     while (true) {
-        // if(sleep_time != 0) sleep(sleep_time);
+        if(sleep_time != 0) sleep(sleep_time);
         // Fetch the last processed package sequence number for this client
         int seq_number_expect = get_expect_seq_number();
         if(should_ignore(partition_id, client_sock, seq_number_expect)){
