@@ -46,8 +46,8 @@ add_executable(train_pcfg src/main.cpp)
 target_link_libraries(train_pcfg shared_lib yaml-cpp)
 
 # Phase conversion executable
-add_executable(phase_convert_executable src/phase_convert.cpp)
-target_link_libraries(phase_convert_executable shared_lib yaml-cpp)
+add_executable(phase_convert src/phase_convert.cpp)
+target_link_libraries(phase_convert shared_lib yaml-cpp)
 
 # Syntax analysis executable
 add_executable(syntax_analysis src/syntax_analysis.cpp)
@@ -66,7 +66,7 @@ target_compile_options(distributed_training_main PRIVATE -O0)
 target_compile_options(distributed_training_moderator PRIVATE -O0)
 target_compile_options(test_parsing PRIVATE -O3)
 target_compile_options(syntax_analysis PRIVATE -O3)
-target_compile_options(phase_convert_executable PRIVATE -O3)
+target_compile_options(phase_convert PRIVATE -O3)
 target_compile_options(train_pcfg PRIVATE -O3)
 
 # Test executable target
@@ -82,7 +82,7 @@ add_custom_target(run_tests
 )
 
 # Output directories
-set_target_properties(train_pcfg phase_convert_executable syntax_analysis test_parsing distributed_training_main distributed_training_moderator PROPERTIES
+set_target_properties(train_pcfg phase_convert syntax_analysis test_parsing distributed_training_main distributed_training_moderator PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
 )
 
