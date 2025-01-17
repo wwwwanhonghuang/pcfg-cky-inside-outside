@@ -57,10 +57,10 @@ RM = /usr/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/huang/research/snn-seizure-prediction-research/eeg_lang/scripts/parsers/cuda
+CMAKE_SOURCE_DIR = /home/huang/EMBC2025-reproduce/lib/pcfg-cky-inside-outside
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/huang/research/snn-seizure-prediction-research/eeg_lang/scripts/parsers/cuda
+CMAKE_BINARY_DIR = /home/huang/EMBC2025-reproduce/lib/pcfg-cky-inside-outside
 
 #=============================================================================
 # Targets provided globally by CMake.
@@ -87,9 +87,9 @@ rebuild_cache/fast: rebuild_cache
 
 # The main all target
 all: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/huang/research/snn-seizure-prediction-research/eeg_lang/scripts/parsers/cuda/CMakeFiles /home/huang/research/snn-seizure-prediction-research/eeg_lang/scripts/parsers/cuda//CMakeFiles/progress.marks
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/huang/EMBC2025-reproduce/lib/pcfg-cky-inside-outside/CMakeFiles /home/huang/EMBC2025-reproduce/lib/pcfg-cky-inside-outside//CMakeFiles/progress.marks
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/huang/research/snn-seizure-prediction-research/eeg_lang/scripts/parsers/cuda/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/huang/EMBC2025-reproduce/lib/pcfg-cky-inside-outside/CMakeFiles 0
 .PHONY : all
 
 # The main clean target
@@ -130,17 +130,17 @@ shared_lib/fast:
 .PHONY : shared_lib/fast
 
 #=============================================================================
-# Target rules for targets named main_executable
+# Target rules for targets named train_pcfg
 
 # Build rule for target.
-main_executable: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 main_executable
-.PHONY : main_executable
+train_pcfg: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 train_pcfg
+.PHONY : train_pcfg
 
 # fast build rule for target.
-main_executable/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/main_executable.dir/build.make CMakeFiles/main_executable.dir/build
-.PHONY : main_executable/fast
+train_pcfg/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/train_pcfg.dir/build.make CMakeFiles/train_pcfg.dir/build
+.PHONY : train_pcfg/fast
 
 #=============================================================================
 # Target rules for targets named phase_convert_executable
@@ -180,6 +180,32 @@ test_parsing: cmake_check_build_system
 test_parsing/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_parsing.dir/build.make CMakeFiles/test_parsing.dir/build
 .PHONY : test_parsing/fast
+
+#=============================================================================
+# Target rules for targets named distributed_training_main
+
+# Build rule for target.
+distributed_training_main: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 distributed_training_main
+.PHONY : distributed_training_main
+
+# fast build rule for target.
+distributed_training_main/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/distributed_training_main.dir/build.make CMakeFiles/distributed_training_main.dir/build
+.PHONY : distributed_training_main/fast
+
+#=============================================================================
+# Target rules for targets named distributed_training_moderator
+
+# Build rule for target.
+distributed_training_moderator: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 distributed_training_moderator
+.PHONY : distributed_training_moderator
+
+# fast build rule for target.
+distributed_training_moderator/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/distributed_training_moderator.dir/build.make CMakeFiles/distributed_training_moderator.dir/build
+.PHONY : distributed_training_moderator/fast
 
 #=============================================================================
 # Target rules for targets named unit_tests
@@ -302,6 +328,108 @@ src/debug/debug.s: src/debug/debug.cpp.s
 src/debug/debug.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/shared_lib.dir/build.make CMakeFiles/shared_lib.dir/src/debug/debug.cpp.s
 .PHONY : src/debug/debug.cpp.s
+
+src/distributed_training_main.o: src/distributed_training_main.cpp.o
+.PHONY : src/distributed_training_main.o
+
+# target to build an object file
+src/distributed_training_main.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/shared_lib.dir/build.make CMakeFiles/shared_lib.dir/src/distributed_training_main.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/distributed_training_main.dir/build.make CMakeFiles/distributed_training_main.dir/src/distributed_training_main.cpp.o
+.PHONY : src/distributed_training_main.cpp.o
+
+src/distributed_training_main.i: src/distributed_training_main.cpp.i
+.PHONY : src/distributed_training_main.i
+
+# target to preprocess a source file
+src/distributed_training_main.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/shared_lib.dir/build.make CMakeFiles/shared_lib.dir/src/distributed_training_main.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/distributed_training_main.dir/build.make CMakeFiles/distributed_training_main.dir/src/distributed_training_main.cpp.i
+.PHONY : src/distributed_training_main.cpp.i
+
+src/distributed_training_main.s: src/distributed_training_main.cpp.s
+.PHONY : src/distributed_training_main.s
+
+# target to generate assembly for a file
+src/distributed_training_main.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/shared_lib.dir/build.make CMakeFiles/shared_lib.dir/src/distributed_training_main.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/distributed_training_main.dir/build.make CMakeFiles/distributed_training_main.dir/src/distributed_training_main.cpp.s
+.PHONY : src/distributed_training_main.cpp.s
+
+src/distributed_training_moderator.o: src/distributed_training_moderator.cpp.o
+.PHONY : src/distributed_training_moderator.o
+
+# target to build an object file
+src/distributed_training_moderator.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/shared_lib.dir/build.make CMakeFiles/shared_lib.dir/src/distributed_training_moderator.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/distributed_training_moderator.dir/build.make CMakeFiles/distributed_training_moderator.dir/src/distributed_training_moderator.cpp.o
+.PHONY : src/distributed_training_moderator.cpp.o
+
+src/distributed_training_moderator.i: src/distributed_training_moderator.cpp.i
+.PHONY : src/distributed_training_moderator.i
+
+# target to preprocess a source file
+src/distributed_training_moderator.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/shared_lib.dir/build.make CMakeFiles/shared_lib.dir/src/distributed_training_moderator.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/distributed_training_moderator.dir/build.make CMakeFiles/distributed_training_moderator.dir/src/distributed_training_moderator.cpp.i
+.PHONY : src/distributed_training_moderator.cpp.i
+
+src/distributed_training_moderator.s: src/distributed_training_moderator.cpp.s
+.PHONY : src/distributed_training_moderator.s
+
+# target to generate assembly for a file
+src/distributed_training_moderator.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/shared_lib.dir/build.make CMakeFiles/shared_lib.dir/src/distributed_training_moderator.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/distributed_training_moderator.dir/build.make CMakeFiles/distributed_training_moderator.dir/src/distributed_training_moderator.cpp.s
+.PHONY : src/distributed_training_moderator.cpp.s
+
+src/distribution/services.o: src/distribution/services.cpp.o
+.PHONY : src/distribution/services.o
+
+# target to build an object file
+src/distribution/services.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/shared_lib.dir/build.make CMakeFiles/shared_lib.dir/src/distribution/services.cpp.o
+.PHONY : src/distribution/services.cpp.o
+
+src/distribution/services.i: src/distribution/services.cpp.i
+.PHONY : src/distribution/services.i
+
+# target to preprocess a source file
+src/distribution/services.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/shared_lib.dir/build.make CMakeFiles/shared_lib.dir/src/distribution/services.cpp.i
+.PHONY : src/distribution/services.cpp.i
+
+src/distribution/services.s: src/distribution/services.cpp.s
+.PHONY : src/distribution/services.s
+
+# target to generate assembly for a file
+src/distribution/services.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/shared_lib.dir/build.make CMakeFiles/shared_lib.dir/src/distribution/services.cpp.s
+.PHONY : src/distribution/services.cpp.s
+
+src/distribution/shared_memory.o: src/distribution/shared_memory.cpp.o
+.PHONY : src/distribution/shared_memory.o
+
+# target to build an object file
+src/distribution/shared_memory.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/shared_lib.dir/build.make CMakeFiles/shared_lib.dir/src/distribution/shared_memory.cpp.o
+.PHONY : src/distribution/shared_memory.cpp.o
+
+src/distribution/shared_memory.i: src/distribution/shared_memory.cpp.i
+.PHONY : src/distribution/shared_memory.i
+
+# target to preprocess a source file
+src/distribution/shared_memory.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/shared_lib.dir/build.make CMakeFiles/shared_lib.dir/src/distribution/shared_memory.cpp.i
+.PHONY : src/distribution/shared_memory.cpp.i
+
+src/distribution/shared_memory.s: src/distribution/shared_memory.cpp.s
+.PHONY : src/distribution/shared_memory.s
+
+# target to generate assembly for a file
+src/distribution/shared_memory.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/shared_lib.dir/build.make CMakeFiles/shared_lib.dir/src/distribution/shared_memory.cpp.s
+.PHONY : src/distribution/shared_memory.cpp.s
 
 src/grammar/grammar.o: src/grammar/grammar.cpp.o
 .PHONY : src/grammar/grammar.o
@@ -477,7 +605,7 @@ src/main.o: src/main.cpp.o
 # target to build an object file
 src/main.cpp.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/shared_lib.dir/build.make CMakeFiles/shared_lib.dir/src/main.cpp.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/main_executable.dir/build.make CMakeFiles/main_executable.dir/src/main.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/train_pcfg.dir/build.make CMakeFiles/train_pcfg.dir/src/main.cpp.o
 .PHONY : src/main.cpp.o
 
 src/main.i: src/main.cpp.i
@@ -486,7 +614,7 @@ src/main.i: src/main.cpp.i
 # target to preprocess a source file
 src/main.cpp.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/shared_lib.dir/build.make CMakeFiles/shared_lib.dir/src/main.cpp.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/main_executable.dir/build.make CMakeFiles/main_executable.dir/src/main.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/train_pcfg.dir/build.make CMakeFiles/train_pcfg.dir/src/main.cpp.i
 .PHONY : src/main.cpp.i
 
 src/main.s: src/main.cpp.s
@@ -495,7 +623,7 @@ src/main.s: src/main.cpp.s
 # target to generate assembly for a file
 src/main.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/shared_lib.dir/build.make CMakeFiles/shared_lib.dir/src/main.cpp.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/main_executable.dir/build.make CMakeFiles/main_executable.dir/src/main.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/train_pcfg.dir/build.make CMakeFiles/train_pcfg.dir/src/main.cpp.s
 .PHONY : src/main.cpp.s
 
 src/phase_convert.o: src/phase_convert.cpp.o
@@ -524,6 +652,54 @@ src/phase_convert.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/shared_lib.dir/build.make CMakeFiles/shared_lib.dir/src/phase_convert.cpp.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/phase_convert_executable.dir/build.make CMakeFiles/phase_convert_executable.dir/src/phase_convert.cpp.s
 .PHONY : src/phase_convert.cpp.s
+
+src/src/services.o: src/src/services.cpp.o
+.PHONY : src/src/services.o
+
+# target to build an object file
+src/src/services.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/shared_lib.dir/build.make CMakeFiles/shared_lib.dir/src/src/services.cpp.o
+.PHONY : src/src/services.cpp.o
+
+src/src/services.i: src/src/services.cpp.i
+.PHONY : src/src/services.i
+
+# target to preprocess a source file
+src/src/services.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/shared_lib.dir/build.make CMakeFiles/shared_lib.dir/src/src/services.cpp.i
+.PHONY : src/src/services.cpp.i
+
+src/src/services.s: src/src/services.cpp.s
+.PHONY : src/src/services.s
+
+# target to generate assembly for a file
+src/src/services.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/shared_lib.dir/build.make CMakeFiles/shared_lib.dir/src/src/services.cpp.s
+.PHONY : src/src/services.cpp.s
+
+src/src/shared_memory.o: src/src/shared_memory.cpp.o
+.PHONY : src/src/shared_memory.o
+
+# target to build an object file
+src/src/shared_memory.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/shared_lib.dir/build.make CMakeFiles/shared_lib.dir/src/src/shared_memory.cpp.o
+.PHONY : src/src/shared_memory.cpp.o
+
+src/src/shared_memory.i: src/src/shared_memory.cpp.i
+.PHONY : src/src/shared_memory.i
+
+# target to preprocess a source file
+src/src/shared_memory.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/shared_lib.dir/build.make CMakeFiles/shared_lib.dir/src/src/shared_memory.cpp.i
+.PHONY : src/src/shared_memory.cpp.i
+
+src/src/shared_memory.s: src/src/shared_memory.cpp.s
+.PHONY : src/src/shared_memory.s
+
+# target to generate assembly for a file
+src/src/shared_memory.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/shared_lib.dir/build.make CMakeFiles/shared_lib.dir/src/src/shared_memory.cpp.s
+.PHONY : src/src/shared_memory.cpp.s
 
 src/statistics/entropy_utils.o: src/statistics/entropy_utils.cpp.o
 .PHONY : src/statistics/entropy_utils.o
@@ -969,11 +1145,13 @@ help:
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
 	@echo "... run_tests"
-	@echo "... main_executable"
+	@echo "... distributed_training_main"
+	@echo "... distributed_training_moderator"
 	@echo "... phase_convert_executable"
 	@echo "... shared_lib"
 	@echo "... syntax_analysis"
 	@echo "... test_parsing"
+	@echo "... train_pcfg"
 	@echo "... unit_tests"
 	@echo "... src/algorithms/alg_inside_outside_main.o"
 	@echo "... src/algorithms/alg_inside_outside_main.i"
@@ -987,6 +1165,18 @@ help:
 	@echo "... src/debug/debug.o"
 	@echo "... src/debug/debug.i"
 	@echo "... src/debug/debug.s"
+	@echo "... src/distributed_training_main.o"
+	@echo "... src/distributed_training_main.i"
+	@echo "... src/distributed_training_main.s"
+	@echo "... src/distributed_training_moderator.o"
+	@echo "... src/distributed_training_moderator.i"
+	@echo "... src/distributed_training_moderator.s"
+	@echo "... src/distribution/services.o"
+	@echo "... src/distribution/services.i"
+	@echo "... src/distribution/services.s"
+	@echo "... src/distribution/shared_memory.o"
+	@echo "... src/distribution/shared_memory.i"
+	@echo "... src/distribution/shared_memory.s"
 	@echo "... src/grammar/grammar.o"
 	@echo "... src/grammar/grammar.i"
 	@echo "... src/grammar/grammar.s"
@@ -1014,6 +1204,12 @@ help:
 	@echo "... src/phase_convert.o"
 	@echo "... src/phase_convert.i"
 	@echo "... src/phase_convert.s"
+	@echo "... src/src/services.o"
+	@echo "... src/src/services.i"
+	@echo "... src/src/services.s"
+	@echo "... src/src/shared_memory.o"
+	@echo "... src/src/shared_memory.i"
+	@echo "... src/src/shared_memory.s"
 	@echo "... src/statistics/entropy_utils.o"
 	@echo "... src/statistics/entropy_utils.i"
 	@echo "... src/statistics/entropy_utils.s"
