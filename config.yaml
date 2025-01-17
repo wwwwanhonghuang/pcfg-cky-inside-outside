@@ -15,7 +15,7 @@ main:
     train_fraction: 0.8
   n_epochs: 5
   limit_n_sentences: -1
-  validation: false
+  validation: true
 
 phase_convert:
   grammar_file: "data/grammar.pcfg"
