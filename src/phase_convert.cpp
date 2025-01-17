@@ -34,7 +34,12 @@ std::vector<std::vector<uint32_t>> read_input_file(const std::string& file_path)
 }
 
 int main(int argc, char* argv[]){
-    YAML::Node config = YAML::LoadFile("config.yaml");
+    std::string config_file = "config.yaml";
+
+    if (argc > 1) {
+        config_file = argv[1];
+    }
+    YAML::Node config = YAML::LoadFile(config_file);
     if (!config.IsDefined()) {
         std::cout << "Error: config.yaml could not be loaded!" << std::endl;
         return 1;

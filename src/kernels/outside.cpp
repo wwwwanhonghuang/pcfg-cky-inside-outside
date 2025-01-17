@@ -48,7 +48,6 @@ void kernel_outside_main(double* mu, double* beta, const uint32_t* sequence,
         , where w_A w_C are terminates.
     */
 
-
     // Case 1: A is non-terminate 
     // confirm these codes are correct.
     /* diagonal-order iteration */
@@ -84,7 +83,6 @@ void kernel_outside_main(double* mu, double* beta, const uint32_t* sequence,
                             double beta_B = BETA(sym_B, k, j);
                             ASSERT_POSSIBILITY(alpha_C);
                             ASSERT_POSSIBILITY(beta_B);
-
 
                             LOG_SUM_EXP_SET(BETA(sym_A, i, j), possibility + alpha_C + beta_B); 
                             ASSERT_POSSIBILITY(BETA(sym_A, i, j));

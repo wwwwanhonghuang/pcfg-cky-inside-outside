@@ -1,0 +1,28 @@
+cluster:
+  clients:
+    - name: pcfg-train-1
+      ip: 34.58.110.70
+      port: 9240
+    - name: pcfg-train-2
+      ip: 34.29.124.240
+      port: 9241
+    - name: pcfg-train-3
+      ip: 34.173.57.136
+      port: 9242
+    - name: pcfg-train-4
+      ip: 34.57.142.132
+      port: 9243
+
+pcfg-train:
+  pcfg-train-1:
+    sentence_from: 0
+    sentence_to: 805247
+  pcfg-train-2:
+    sentence_from: 805248
+    sentence_to: 1610495
+  pcfg-train-3:
+    sentence_from: 1610496
+    sentence_to: 2415743
+  pcfg-train-4:
+    sentence_from: 2415744
+    sentence_to: 3220992

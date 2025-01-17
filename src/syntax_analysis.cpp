@@ -36,11 +36,17 @@ void create_path_if_not_exists(const std::string& path){
 
 int main(int argc, char* argv[])
 {
-    YAML::Node config = YAML::LoadFile("config.yaml");
+    std::string config_file = "config.yaml";
+
+    if (argc > 1) {
+        config_file = argv[1];
+    }
     if (!config.IsDefined()) {
         std::cout << "Error: config.yaml could not be loaded!" << std::endl;
         return 1;
     }
+    YAML::Node config = YAML::LoadFile(config_file);
+
 
     std::string grammar_filename = config["syntax_analysis"]["grammar_file"].as<std::string>();
     std::string input_filename = config["syntax_analysis"]["input"].as<std::string>();
@@ -49,6 +55,8 @@ int main(int argc, char* argv[])
     bool serialize_to_files = config["syntax_analysis"]["serialize_to_files"].as<bool>(); 
     std::string report_path = config["syntax_analysis"]["report_path"].as<std::string>();
     std::string tree_serialization_path = config["syntax_analysis"]["tree_serialization_path"].as<std::string>();
+    int sentence_from = config["syntax_analysis"]["sentence_from"].as<int>();
+    int sentence_to = config["syntax_analysis"]["sentence_to"].as<int>();
 
     create_path_if_not_exists(log_path);
     create_path_if_not_exists(tree_serialization_path);
@@ -68,10 +76,10 @@ int main(int argc, char* argv[])
     cky_printer printer;
     size_t n_total_sentences = sentences.size();
 
-    for(int i = 0; i < n_total_sentences; i++){
+    for(int i = max(0, sentence_from); i < max(sentence_to, n_total_sentences); i++){
         auto& sentence = sentences[i];
         progress_bar(i + 1, n_total_sentences);
-        if(sentence.size() > 500) {
+        if(sentence.size() > 256) {
             std::cout << "Warning: a sentence with length " << 
             sentence.size() << " is skipped." << std::endl;
             continue;

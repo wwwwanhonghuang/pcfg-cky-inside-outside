@@ -7,30 +7,17 @@
 
 
 inline double _calculate_new_possibility(double S, double f_gid) {
-    if(std::abs(f_gid) < std::log(grammar_minimal_possibility))
-        f_gid = std::log(grammar_minimal_possibility);
+    if(S == -INFINITY || f_gid == -INFINITY) return -INFINITY; // Avoid -inf - inf = -nan
     return f_gid - S;
 }
 
-#ifndef ENABLE_GRAMMAR_VECTORIZATION_OPTIMIZATION
-    #define SYMBOL_AND_POSSIBILITY_EXTRACTION(B, C, P) \
-                    uint32_t symbols = grammar_table[pt]; \
-                    double P = *(double*)(grammar_table + pt + 1); \
-                    uint32_t B = (symbols >> 16) & 0xFFFF; \
-                    uint32_t C = symbols & 0xFFFF;
-#else
-    #define SYMBOL_AND_POSSIBILITY_EXTRACTION(B, C, P) \
-                    uint32_t symbols = grammar_table[(n_grammars + 1) * 0 + pt]; \
-                    double P = *(double*)(grammar_table + (n_grammars + 1) * 4 + pt * 2); \
-                    uint32_t B = grammar_table[(n_grammars + 1) * 1 + pt]; \
-                    uint32_t C = grammar_table[(n_grammars + 1) * 2 + pt];
-#endif
+#define SYMBOL_AND_POSSIBILITY_EXTRACTION(B, C, P) \
+                uint32_t symbols = grammar_table[pt]; \
+                double P = *(double*)(grammar_table + pt + 1); \
+                uint32_t B = (symbols >> 16) & 0xFFFF; \
+                uint32_t C = symbols & 0xFFFF;
+#define PT_INCREASE pt += BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS
 
-#ifndef ENABLE_GRAMMAR_VECTORIZATION_OPTIMIZATION
-    #define PT_INCREASE pt += BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS
-#else
-    #define PT_INCREASE pt++
-#endif
 
 void kernel_update_parameters(double* f, double* count, double* mu, double* beta,
         const uint32_t* sequence, 
@@ -69,8 +56,7 @@ void kernel_update_parameters(double* f, double* count, double* mu, double* beta
                     int gid_begin = gid;
                     for(uint32_t pt = grammar_pointer_current; pt < grammar_pointer_next; PT_INCREASE){
                         double f_gid = f[gid];
-                        LOG_SUM_EXP_SET(S, 
-                                (std::abs(f_gid - 0) < std::log(grammar_minimal_possibility) ? std::log(grammar_minimal_possibility) : f_gid));
+                        LOG_SUM_EXP_SET(S, f_gid);
                         gid ++;
                     }
 
@@ -82,9 +68,7 @@ void kernel_update_parameters(double* f, double* count, double* mu, double* beta
                         SYMBOL_AND_POSSIBILITY_EXTRACTION(sym_B, sym_C, possibility);
                         double f_gid = f[gid];
                         double new_possibility = 
-                            _calculate_new_possibility(S, 
-                                (std::abs(f_gid - 0) < std::log(grammar_minimal_possibility) ?
-                                 std::log(grammar_minimal_possibility) : f_gid));
+                            _calculate_new_possibility(S, f_gid);
                         
                         #ifndef ENABLE_GRAMMAR_VECTORIZATION_OPTIMIZATION
                             *(double*)(grammar_table + pt + 1) = new_possibility;
