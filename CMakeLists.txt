@@ -8,6 +8,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_C_COMPILER clang)
 set(CMAKE_CXX_COMPILER clang++)
 
+find_package(yaml-cpp REQUIRED)
+include_directories(/usr/include/yaml-cpp)
+
 # Important Note: currently CUDA is unsupport
 option(USE_CUDA "Enable CUDA support" OFF)
 find_package(OpenMP REQUIRED)
@@ -29,7 +32,7 @@ add_definitions(-DCOMPUTING_IN_LOG_SPACE)
 
 # Compiler flags for non-CUDA builds
 if(NOT USE_CUDA)
-    add_compile_options(-O3 -g -fopenmp -Werror -DDEBUG_INSIDE_ALGORITHM)
+    add_compile_options(-O3 -g -fopenmp -Werror -DDEBUG_INSIDE_ALGORITHM )
 endif()
 
 # Set CUDA flags if enabled
@@ -59,6 +62,15 @@ list(FILTER SRC_FILES EXCLUDE REGEX "src/syntax_analysis.cpp")
 add_library(shared_lib STATIC ${SRC_FILES})
 # target_link_libraries(shared_lib ${Boost_LIBRARIES})
 
+
+file(GLOB_RECURSE DISTRIBUTED_TRAINING_SRC_FILES
+    "src/distribution/*.cpp"
+)
+
+# Object files library
+# add_library(distribution_lib STATIC ${DISTRIBUTED_TRAINING_SRC_FILES})
+# target_link_libraries(shared_lib ${Boost_LIBRARIES})
+
 # Train PCFG executable targets
 add_executable(train_pcfg src/main.cpp)
 target_link_libraries(train_pcfg shared_lib yaml-cpp)
@@ -73,6 +85,12 @@ target_link_libraries(syntax_analysis shared_lib yaml-cpp)
 
 add_executable(test_parsing src/test/test_parsing.cpp)
 target_link_libraries(test_parsing shared_lib yaml-cpp)
+
+add_executable(distributed_training_main src/distributed_training_main.cpp)
+target_link_libraries(distributed_training_main shared_lib yaml-cpp)
+
+add_executable(distributed_training_moderator src/distributed_training_moderator.cpp)
+target_link_libraries(distributed_training_moderator shared_lib yaml-cpp)
 
 # Conditional CUDA main executable
 if(USE_CUDA)
@@ -93,10 +111,9 @@ add_custom_target(run_tests
 )
 
 # Output directories
-set_target_properties(train_pcfg phase_convert_executable syntax_analysis test_parsing PROPERTIES
+set_target_properties(train_pcfg phase_convert_executable syntax_analysis test_parsing distributed_training_main distributed_training_moderator PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
 )
-
 
 # Note: currently CUDA is unsupport
 if(USE_CUDA)
