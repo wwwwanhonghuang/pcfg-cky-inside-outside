@@ -1,24 +1,6 @@
 #ifndef SYNCHRONIZATION_HPP
 #define SYNCHRONIZATION_HPP
 #include <functional>
-#include <iostream>
-#include <fcntl.h>
-#include <sys/mman.h>
-#include <unistd.h>
-#include <cstring>
-#include <memory>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <string>
-#include <unordered_set>
-#include <unordered_map>
-#include <atomic>
-#include <mutex>
-#include <thread>
-#include <yaml-cpp/yaml.h>
-#include <condition_variable>
-#include <functional>
 template<typename T>
 struct MutexableVariable{
     explicit MutexableVariable(T initial_value = T{}) : value(initial_value) {}
@@ -29,7 +11,7 @@ struct MutexableVariable{
         return std::unique_lock<std::mutex>(mutex_variable);
     }
     void access_with_function(std::function<void(T&)> func){
-        std::lock_guard<std::mutex> lock_guard(mutex_variable);
+        std::lock_guard<std::mutex>(mutex_variable);
         func(value);
     }
     T get(){
