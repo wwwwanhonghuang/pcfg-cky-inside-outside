@@ -49,7 +49,7 @@ int main(int argc, char* argv[])
         log_f_intervals = config["main"]["log_f"]["intervals"].as<int>();
     }
     bool log_warning_in_training = config["main"]["log_warning_in_training"].as<bool>();
-    bool validation_mode = config["main"]["validation"].as<bool>();
+    bool validation_only_mode = config["main"]["validation_only"].as<bool>();
 
     // 2. parse grammar file.
     pcfg* grammar = nullptr;
@@ -86,7 +86,7 @@ int main(int argc, char* argv[])
     bool is_split_dataset = config["main"]["split_data"]["enabled"].as<bool>();
     std::vector<std::vector<uint32_t>> train_set;
     std::vector<std::vector<uint32_t>> valid_set;
-    if(!validation_mode && is_split_dataset){
+    if(!validation_only_mode && is_split_dataset){
         double train_fraction = config["main"]["split_data"]["train_fraction"].as<double>();
         std::string train_set_file_save_path = config["main"]["split_data"]["train_dataset_path"].as<std::string>();
         std::string val_set_file_save_path = config["main"]["split_data"]["val_dataset_path"].as<std::string>();
@@ -94,7 +94,7 @@ int main(int argc, char* argv[])
         save_data_set_to_file(train_set_file_save_path, train_set, grammar);
         save_data_set_to_file(val_set_file_save_path, valid_set, grammar);
     } else {
-        if(validation_mode){
+        if(validation_only_mode){
             valid_set = std::move(sentences);
         } else {
             train_set = std::move(sentences);
@@ -113,7 +113,7 @@ int main(int argc, char* argv[])
     cky_printer printer;
     
     for(int epoch = 0; epoch < n_epochs; epoch++){
-        if(!validation_mode){
+        if(!validation_only_mode){
             for(int i = 0; i < n_sequences_train; i++){
                 const std::vector<uint32_t>& sentence = train_set[i];
                 
