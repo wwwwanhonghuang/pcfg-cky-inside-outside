@@ -14,7 +14,7 @@ void print_grammar(pcfg* grammar, std::ostream& stream){
     
         uint32_t gid = std::get<4>(item);
         stream << "[" << gid << "] " << SYMBOL_STR(sym_A) << " -> " << SYMBOL_STR(sym_B) << " " <<
-            SYMBOL_STR(sym_C)  << " [" << std::fixed << std::setprecision(56) <<
+            SYMBOL_STR(sym_C)  << " [" << std::fixed << std::setprecision(96) <<
             possibility << "]" << std::endl;
     }
 }
