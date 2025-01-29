@@ -38,6 +38,7 @@ int main(int argc, char* argv[]){
 
     if (argc > 1) {
         config_file = argv[1];
+	std::cout << "use configuration file: " << config_file << std::endl;
     }
     YAML::Node config = YAML::LoadFile(config_file);
     if (!config.IsDefined()) {

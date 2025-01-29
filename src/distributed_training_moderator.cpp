@@ -33,9 +33,7 @@
 #define GREEN   "\033[32m"      /* Green */
 #define BOLD_BLUE   "\033[1;34m"      /* Bold Blue */
 
-
 using namespace GlobalState;
-
 
 void push_msg_to_shared_memory_rr(Message& msg, std::shared_ptr<SharedMemory> shared_memory){
     static int pos = 0;
@@ -165,7 +163,8 @@ void connect_to_other_partitions(int& total_clients, int& connected_client,
         client_map.lock();
         partiton_id_to_sock.lock();
         // Key is not ID but sock. Follow code not work. 
-        if(partiton_id_to_sock.value.find(current_client_index) != partiton_id_to_sock.value.end()) continue;
+        if(partiton_id_to_sock.value.find(current_client_index) != 
+            partiton_id_to_sock.value.end()) continue;
 
         std::string ip = client["ip"].as<std::string>();
         uint32_t port = client["port"].as<uint32_t>();
@@ -200,7 +199,6 @@ void connect_to_other_partitions(int& total_clients, int& connected_client,
                 });
             }
         } else {
-            // perror("\t- connect failed");
             close(sock);
         }
     }
@@ -220,7 +218,6 @@ int main(int argc, char* argv[]) {
         return 1;
     }
     
-
     int partition_id = std::stoi(argv[1]);
     YAML::Node config = YAML::LoadFile("cluster.yaml");
     std::string program_name = std::string("pcfg-train-") + std::to_string(partition_id);
@@ -231,8 +228,6 @@ int main(int argc, char* argv[]) {
     int total_clients = clients.size();
     int connected_client = 1;
     int client_index = 0;
-    
-    
 
     std::cout << "Open share memory. " << std::endl;
 
@@ -309,7 +304,8 @@ int main(int argc, char* argv[]) {
             }
             storage->network_communicator_messages[0].status = EMPTY_SLOT;
             int client_cnt_grammars = -1;
-            memcpy(&client_cnt_grammars, storage->network_communicator_messages[0].data, sizeof(int));
+            memcpy(&client_cnt_grammars, storage->network_communicator_messages[0].data, 
+                sizeof(int));
             assert(client_cnt_grammars == cnt_grammar);
         }
         sleep_time = 0;
@@ -346,12 +342,12 @@ int main(int argc, char* argv[]) {
         }
         std::cout << "[MAIN LOOP] end waiting for epoch_completed acks." << std::endl;
 
-
-
+        // 5.4  After all other clients finish current epoch, adding this partition's results into the integrated results.
         double* local_integrated_result = new double[cnt_grammar];
         std::cout << "[Main Loop] [barrier passed] All partition Completed Epoch " << epoch << "!" << std::endl;
         std::cout <<  BOLD_BLUE << "[Main Loop] Integrated Result = ";
         for(int gid = 0; gid < cnt_grammar; gid++){
+            // Integrate the results of all partitions into local_integrated_result (using log_sum_exp, as the probabilities are in log representation).
             local_integrated_result[gid] =  log_sum_exp(global_result.get()[gid], this_partition_f[gid]);
             std::cout  << "\t - " << global_result.get()[gid] << " + " << this_partition_f[gid] 
                     << " = " << local_integrated_result[gid] << std::endl;
@@ -365,7 +361,6 @@ int main(int argc, char* argv[]) {
 
         std::cout << RED << "[!Important] Inner Epoch" << epoch << 
             " Partition calculate integration result finished." << RESET << std::endl;
-
 
         Message msg_integrated_result_notification = gen_notificate_integrate_result_msg(local_integrated_result, epoch, cnt_grammar);
         push_msg_to_shared_memory_rr(msg_integrated_result_notification, shared_memory);
@@ -389,7 +384,8 @@ int main(int argc, char* argv[]) {
             auto lock = integrated_result_prepared_ack_count.lock();
             integrated_result_prepared_cv.wait(lock, [&total_clients, &epoch] { return integrated_result_prepared_ack_count.value[epoch] == total_clients - 1; });
         }
-        std::cout << "[MAIN LOOP] end waiting for msg_integrated_result_prepared acks." << std::endl;
+        std::cout << "[MAIN LOOP] end waiting for msg_integrated_result_prepared acks." 
+            << std::endl;
 
         std::cout << RED << "[!Important] Inner Epoch " << epoch << 
             " Barrier 2: All partition prepared integrated results in epoch " << epoch << "." 
@@ -401,7 +397,8 @@ int main(int argc, char* argv[]) {
         {
             auto lock = integrated_result_confirmation_ack_count.lock();
             integrated_result_confirmation_cv.wait(lock, [&total_clients, &epoch] { 
-                return integrated_result_confirmation_ack_count.value[epoch] == total_clients - 1; 
+                return integrated_result_confirmation_ack_count.value[epoch] 
+                    == total_clients - 1; 
             });
         }
         std::cout << "[MAIN LOOP] end waiting for msg_integrated_result_notification acks." << std::endl;
@@ -422,7 +419,8 @@ int main(int argc, char* argv[]) {
             });
         }
         
-        std::cout << "end of reinitialization of inside-outside f variable buffers." << std::endl;
+        std::cout << "end of reinitialization of inside-outside f variable buffers." 
+            << std::endl;
 
         std::cout << std::endl;
         std::cout <<  GREEN << "========================= END OF EPOCH " 
