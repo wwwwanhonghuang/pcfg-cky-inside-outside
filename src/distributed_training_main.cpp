@@ -12,15 +12,7 @@ int result = 0;
 #define ACK(MSG_TYPE) (MSG_TYPE | (1 << 31))
 #define CLEAR_MSG(MSG) MSG.status = EMPTY_SLOT;
 
-void execution(int epoch, int partition_id){
-    std::cout << "partition " << partition_id << 
-            " begin execute epoch " << epoch << std::endl; 
-    int begin_i = (partition_id - 1) * 50;
-    int end_i = partition_id * 50;
-    for(int i = begin_i; i < end_i; i++){
-        result += i * partition_id;
-    }
-}
+
 int main(int argc, char** argv) {
     if (argc < 2) {
         std::cerr << "Please provide the instance index (i).\n";
@@ -61,7 +53,7 @@ int main(int argc, char** argv) {
             CLEAR_MSG(msg);
             int epoch = -1;
             memcpy(&epoch, &msg.data[0], sizeof(int));
-            execution(epoch, std::stoi(argv[1]));
+            // execution(epoch, std::stoi(argv[1]));
             
             std::cout << "response msg BEGIN_EPOCH. result = " << result << std::endl;
 

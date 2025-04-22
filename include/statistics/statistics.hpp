@@ -367,12 +367,6 @@ namespace statistics{
                 }
             }
 
-            for(int layer_id = layers.size() - L; layer_id < layers.size(); layer_id++){
-                for(auto&& layer_element: layers[layer_id]){
-                    symbol_counter[layer_element]++;
-                }
-            }
-
             // Normalization to possibility
             std::map<uint64_t, double> joint_possibility;
             std::map<uint32_t, double> symbol_possibility;
@@ -413,6 +407,7 @@ namespace statistics{
                         mutual_entropy +=  p_AB * log(p_AB / (p_A * p_B)); 
                 }
             }
+            assert(mutual_entropy >= -1e-7);
             return mutual_entropy;
         }
 

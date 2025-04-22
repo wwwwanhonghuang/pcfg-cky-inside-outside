@@ -1,6 +1,6 @@
 main:
   grammar_file: "data/grammar.pcfg"
-  input: "../../data/recurrence/epileptic_eeg_dataset/normal_integrated_all_d2_s4_converted.txt"
+  input: "../../data/train_sentences.txt"
   log_intervals: 10000
   log_path: "data/logs/"
   log_f:
@@ -23,12 +23,12 @@ phase_convert:
 
 syntax_analysis:
   grammar_file: "../../data/grammar-trained.pcfg"
-  input: "../../data/recurrence/epileptic_eeg_dataset/pre-epileptic_integrated_all_d2_s4_converted.txt"
+  input: "../../data/train_sentences.txt"
   log_intervals: 1000000
-  log_path: "/data1/pcfg-logs/preepileptic/"
-  report_path: "/data1/pcfg-logs/reports/preepileptic/"
+  log_path: "/data1/pcfg-logs/normal_train/"
+  report_path: "/data1/pcfg-logs/reports/normal_train/"
   serialize_to_files: true
-  tree_serialization_path: "/data1/pcfg-logs/serialized_tree/preepileptic/"
+  tree_serialization_path: "/data1/pcfg-logs/serialized_tree/normal_train/"
 
 test_parsing:
   grammar_file: "data/grammar-trained.pcfg"

@@ -66,13 +66,15 @@ namespace statistics{
 
         for (int span_length = 2; span_length < std::min(max_span_length, (int) sentence.size()); span_length++){
             for (int k = sentence.size() - 1; k >= span_length; k--){
-                double prefix_parse_entropy = prefix_L_parse_entropy(grammar, alpha, sentence.size(), k, span_length, sequence);
+                double prefix_parse_entropy = prefix_L_parse_entropy(grammar, alpha, sentence.size(), k, 
+                span_length, sequence);
                 oss << "pre_" << span_length << "_end_" << k << ": " << prefix_parse_entropy << std::endl;
             }
         }
 
         std::vector<std::vector<parsing::SyntaxTreeNode*>> paths = 
-            get_paths<parsing::SyntaxTreeNode*>(node, [](parsing::SyntaxTreeNode* node)->parsing::SyntaxTreeNode*{return node;});
+            get_paths<parsing::SyntaxTreeNode*>(node, 
+                [](parsing::SyntaxTreeNode* node)->parsing::SyntaxTreeNode*{return node;});
 
         double average_path_length = calculate_average_path_length(node, paths);
         int redundancy = calculate_redundancy(node);

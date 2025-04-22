@@ -41,11 +41,16 @@ int main(int argc, char* argv[])
     if (argc > 1) {
         config_file = argv[1];
     }
+
+    std::cout << "read configuration file " << config_file << std::endl;
+        YAML::Node config = YAML::LoadFile(config_file);
+
+
+
     if (!config.IsDefined()) {
         std::cout << "Error: config.yaml could not be loaded!" << std::endl;
         return 1;
     }
-    YAML::Node config = YAML::LoadFile(config_file);
 
 
     std::string grammar_filename = config["syntax_analysis"]["grammar_file"].as<std::string>();
@@ -77,13 +82,14 @@ int main(int argc, char* argv[])
     for(int i = 0; i < n_total_sentences; i++){
         auto& sentence = sentences[i];
         progress_bar(i + 1, n_total_sentences);
-        if(sentence.size() > 500) {
+        if(sentence.size() > 256) {
             std::cout << "Warning: a sentence with length " << 
             sentence.size() << " is skipped." << std::endl;
             continue;
         }
 
-        parsing::SyntaxTreeNode* root = parsing::SyntaxTreeParser::parse(grammar, sentence, alpha, inside_order_1_rule_iteration_path);
+        parsing::SyntaxTreeNode* root = 
+            parsing::SyntaxTreeParser::parse(grammar, sentence, alpha, inside_order_1_rule_iteration_path);
         
         if(serialize_to_files){
             parsing::SyntaxTreeSerializer::serialize_tree_to_file(tree_serialization_path + std::string("/sentence_") + 

@@ -76,8 +76,8 @@ add_executable(train_pcfg src/main.cpp)
 target_link_libraries(train_pcfg shared_lib yaml-cpp)
 
 # Phase conversion executable
-add_executable(phase_convert_executable src/phase_convert.cpp)
-target_link_libraries(phase_convert_executable shared_lib yaml-cpp)
+add_executable(phase_convert src/phase_convert.cpp)
+target_link_libraries(phase_convert shared_lib yaml-cpp)
 
 # Syntax analysis executable
 add_executable(syntax_analysis src/syntax_analysis.cpp)
@@ -91,6 +91,11 @@ target_link_libraries(distributed_training_main shared_lib yaml-cpp)
 
 add_executable(distributed_training_moderator src/distributed_training_moderator.cpp)
 target_link_libraries(distributed_training_moderator shared_lib yaml-cpp)
+
+
+
+add_executable(fill_zero_possibility src/fill_zero_possibility.cpp)
+target_link_libraries(fill_zero_possibility shared_lib)
 
 # Conditional CUDA main executable
 if(USE_CUDA)
@@ -111,7 +116,7 @@ add_custom_target(run_tests
 )
 
 # Output directories
-set_target_properties(train_pcfg phase_convert_executable syntax_analysis test_parsing distributed_training_main distributed_training_moderator PROPERTIES
+set_target_properties(train_pcfg phase_convert syntax_analysis test_parsing distributed_training_main distributed_training_moderator fill_zero_possibility PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
 )
 

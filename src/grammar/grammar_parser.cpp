@@ -89,8 +89,6 @@ pcfg* _parse_grammar_file(const std::string& path){
                 _record_non_terminate_symbol(rule.right2, grammar, rule, grammar_items_map);
             }
         }
-
-        
     }
     #ifdef DEBUG_PRINT_GRAMMAR_SYMBOL_MAP
         print_map(grammar->nonterminate_map);

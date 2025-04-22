@@ -2,8 +2,11 @@
 #include "utils/data_structure.hpp"
 #include "utils/data_encoding.h"
 #include "utils/math.hpp"
+#include <cmath>
+
 
 void normalize_grammar(pcfg* grammar){
+    const double minimal_possibility = 1e-9;
     int N = grammar->N();
     
     for(auto& map_item : grammar->grammar_items_map){
@@ -13,6 +16,10 @@ void normalize_grammar(pcfg* grammar){
         double Z = 0;
 
         for(auto& grammar_item : grammar_items){
+            std::cout << grammar_item.possibility << std::endl;
+            if(grammar_item.possibility == -INFINITY){
+                grammar_item.possibility = std::log(minimal_possibility);
+            }
             Z = log_sum_exp(Z, grammar_item.possibility);
         }
         
@@ -37,7 +44,7 @@ void normalize_grammar(pcfg* grammar){
                     grammar->cnt_grammar * BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS, key, possibility
                 );
             }
-            current_offset += 16 / 4;
+            current_offset += BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS;
         }
     }
 }

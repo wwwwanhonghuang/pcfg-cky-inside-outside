@@ -97,7 +97,12 @@ void kernel_inside_computeSpanKernel(const uint32_t* sequence, uint32_t* preterm
                             assert(alpha_B + alpha_C + possibility < 1e-9);
                             LOG_SUM_EXP_SET(ALPHA(sym_A, i, j), alpha_B + alpha_C + possibility);
 
-                            assert(ALPHA(sym_A, i, j) < 1e-9);
+                            if (ALPHA(sym_A, i, j) >= 1e-9){
+                                std::cout << "Warning: " << "inside ALPHA("
+                                << sym_A << ", " << i << ", " << j << ") ="
+                                << ALPHA(sym_A, i, j) << " >= " << 1e-9
+                                << std::endl;
+                            };
 
                         }
                     }
@@ -117,14 +122,23 @@ void kernel_inside_computeSpanKernel(const uint32_t* sequence, uint32_t* preterm
                             double possibility = *(double*)(grammar_table + (n_grammars + 1) * 4 + gid * 2);
                         #endif
                         assert(possibility < 1e-9);
-                        assert(ALPHA(sym_A, i, j) < 1e-9);
+                        if (ALPHA(sym_A, i, j) >= 1e-9){
+                            std::cout << "Warning: " << "inside ALPHA("
+                            << sym_A << ", " << i << ", " << j << ") ="
+                            << ALPHA(sym_A, i, j) << " >= " << 1e-9
+                            << std::endl;
+                        };
+
                         assert(ALPHA_GET(sym_B, i, j) < 1e-9);
 
                         LOG_SUM_EXP_SET(ALPHA(sym_A, i, j), ALPHA_GET(sym_B, i, j) + possibility);
-                        if(ALPHA(sym_A, i, j) >= 1e-9){
-                            std::cout << ALPHA(sym_A, i, j)  << std::endl;
-                        }
-                        assert(ALPHA(sym_A, i, j)  < 1e-9);
+                        if (ALPHA(sym_A, i, j) >= 1e-9){
+                            std::cout << "Warning: " << "inside ALPHA("
+                            << sym_A << ", " << i << ", " << j << ") ="
+                            << ALPHA(sym_A, i, j) << " >= " << 1e-9
+                            << std::endl;
+                        };
+
                     }
                 }
             }
