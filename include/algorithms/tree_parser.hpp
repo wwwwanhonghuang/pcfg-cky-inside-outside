@@ -34,13 +34,13 @@ namespace parsing{
         static SyntaxTreeNode* merge_trees(uint32_t sym_A, int gid, uint32_t sym_B, uint32_t sym_C, int k, 
             double p, SyntaxTreeNode* left, SyntaxTreeNode* right);
         static SyntaxTreeNode* parse(pcfg* grammar, std::vector<uint32_t> sequence, double* alpha, 
-            std::vector<std::tuple<uint32_t, uint32_t>> inside_order_1_rule_iteration_path);
+            std::vector<std::tuple<uint32_t, uint32_t>> inside_order_1_rule_iteration_path, std::vector<uint32_t> repetitions);
         static void serialize_tree_to_file(std::string filepath, SyntaxTreeNode* root);
         
         SyntaxTreeParser(){
         };
     private:
-        static SyntaxTreeNode* _parsing_helper(double* alpha, int MS, uint32_t symbol_id, int span_from, int span_to, pcfg* grammar, uint32_t* sequence);
+        static SyntaxTreeNode* _parsing_helper(double* alpha, int MS, uint32_t symbol_id, int span_from, int span_to, pcfg* grammar, uint32_t* sequence, uint32_t* repetitions);
         static std::shared_ptr<frfl::logger::Logger> logger;
     };
     

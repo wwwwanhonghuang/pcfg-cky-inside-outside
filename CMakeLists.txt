@@ -57,6 +57,7 @@ endif()
 
 # Further filtering, regardless of CUDA
 list(FILTER SRC_FILES EXCLUDE REGEX "src/syntax_analysis.cpp")
+list(FILTER SRC_FILES EXCLUDE REGEX "src/test_syntax_analysis.cpp")
 
 # Object files library
 add_library(shared_lib STATIC ${SRC_FILES})
@@ -97,6 +98,12 @@ target_link_libraries(distributed_training_moderator shared_lib yaml-cpp)
 add_executable(fill_zero_possibility src/fill_zero_possibility.cpp)
 target_link_libraries(fill_zero_possibility shared_lib)
 
+
+
+add_executable(test_syntax_analysis src/test_syntax_analysis.cpp)
+target_link_libraries(test_syntax_analysis shared_lib)
+
+
 # Conditional CUDA main executable
 if(USE_CUDA)
     add_executable(main_cuda_executable src/main.cu)
@@ -116,7 +123,7 @@ add_custom_target(run_tests
 )
 
 # Output directories
-set_target_properties(train_pcfg phase_convert syntax_analysis test_parsing distributed_training_main distributed_training_moderator fill_zero_possibility PROPERTIES
+set_target_properties(train_pcfg phase_convert syntax_analysis test_parsing distributed_training_main distributed_training_moderator fill_zero_possibility test_syntax_analysis PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
 )
 

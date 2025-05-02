@@ -49,6 +49,7 @@ int main(int argc, char* argv[])
         log_f_intervals = config["main"]["log_f"]["intervals"].as<int>();
     }
     bool log_warning_in_training = config["main"]["log_warning_in_training"].as<bool>();
+    std::string validation_file = config["main"]["validation_file"].as<std::string>();
 
     // 2. parse grammar file.
     pcfg* grammar = nullptr;
@@ -73,7 +74,7 @@ int main(int argc, char* argv[])
     std::fill(f, f + grammar->cnt_grammar, -INFINITY);
 
     // 4. load corpus.
-    std::cout << "Load sentences..." << std::endl;
+    std::cout << "Load sentences from file " << input_filename << std::endl;
     std::vector<std::vector<uint32_t>> sentences = parse_input_file(input_filename, grammar, limit_n_sentences, MAX_SEQUENCE_LENGTH);
     std::cout << "Load sentences finished. Total instances:" << sentences.size() << std::endl;
     if (sentences.empty()) {
@@ -96,6 +97,13 @@ int main(int argc, char* argv[])
         train_set = std::move(sentences);
     }
     
+    std::cout << "Validation file: " << validation_file << std::endl;
+    if(validation_file != ""){
+        std::cout << "Load sentences from file " << validation_file << std::endl;
+
+        std::vector<std::vector<uint32_t>> validation_sentences = parse_input_file(validation_file, grammar, limit_n_sentences, MAX_SEQUENCE_LENGTH);
+        valid_set = std::move(validation_sentences);
+    }
     int n_sequences = sentences.size();
     int n_sequences_train = train_set.size();
     int n_sequences_val = valid_set.size();

@@ -7,6 +7,9 @@
 #include <yaml-cpp/yaml.h>
 #include "utils/application_io.hpp"
 #include "grammar/grammar_parser.hpp"
+#include <filesystem>
+
+namespace fs = std::filesystem;
 
 
 std::vector<std::vector<uint32_t>> read_input_file(const std::string& file_path){
@@ -68,6 +71,10 @@ int main(int argc, char* argv[]){
         sentence.clear();
         sentence.assign(phase_array.begin(), phase_array.end());
     }
+    std::cout << "Total sentences = " << sentences.size() << std::endl;
+    std::cout << "Creating output file: " << output_filename << std::endl;
+    fs::path output_path(output_filename);
+    fs::create_directories(output_path.parent_path()); // Recursively create directories
     std::ofstream output_file(output_filename);
     for(int sentence_id = 0; sentence_id < sentences.size(); sentence_id++){
         std::vector<uint32_t>& sentence = sentences[sentence_id];
