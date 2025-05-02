@@ -38,6 +38,7 @@ int main(int argc, char* argv[])
     // 1. load configuration.
     std::string grammar_filename = config["main"]["grammar_file"].as<std::string>();
     std::string input_filename = config["main"]["input"].as<std::string>();
+
     uint32_t log_intervals = config["main"]["log_intervals"].as<int>();
     std::string log_path = config["main"]["log_path"].as<std::string>();
     int n_epochs = config["main"]["n_epochs"].as<int>();

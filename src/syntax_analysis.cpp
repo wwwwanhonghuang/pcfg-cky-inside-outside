@@ -60,6 +60,7 @@ int main(int argc, char* argv[])
     bool serialize_to_files = config["syntax_analysis"]["serialize_to_files"].as<bool>(); 
     std::string report_path = config["syntax_analysis"]["report_path"].as<std::string>();
     std::string tree_serialization_path = config["syntax_analysis"]["tree_serialization_path"].as<std::string>();
+    std::string repetition_filename = config["main"]["repetition"].as<std::string>();
 
     create_path_if_not_exists(log_path);
     create_path_if_not_exists(tree_serialization_path);
@@ -73,6 +74,10 @@ int main(int argc, char* argv[])
     std::cout << "Load sentences..." << std::endl;
     std::vector<std::vector<uint32_t>> sentences = parse_input_file(input_filename, grammar);
     std::cout << "Load sentences finished. Total instances:" << sentences.size() << std::endl;
+    std::cout << "Load repetitions data..." << std::endl;
+    std::vector<std::vector<uint32_t>> repetitions = parse_repetition_file(input_filename);
+    std::cout << "Load repetition data finished. Total instances:" << repetitions.size() << std::endl;
+    assert(sentences.size() == repetitions.size());
 
     if(sentences.empty()) return 0;
 

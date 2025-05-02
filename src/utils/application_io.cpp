@@ -1,6 +1,37 @@
 #include "utils/application_io.hpp"
 #include "utils/string_helper.hpp"
 #include <map>
+std::vector<std::vector<uint32_t>> parse_repetition_file(const std::string& file_path, int limit, int max_sequence_length){
+    std::vector<std::vector<uint32_t>> all_repetitions;
+    std::string line;
+	std::ifstream file(file_path);
+    if (!file.is_open()) {
+        std::cerr << "Error: Could not open the input file at path: " << file_path << std::endl;
+        return sentences;
+    }
+    int N = grammar->N();
+    int parsed_sentences = 0;
+    while (std::getline(file, line)) {
+        if(limit >= 0 && parsed_sentences >= limit) break;
+        if(line == "")
+            continue;
+        std::vector<uint32_t> repetitions;
+
+        std::string word;
+        std::stringstream line_string_stream(line);
+        while (getline(line_string_stream, word, ' ')) {
+            int repetition = std::stoi(word)
+            
+            repetitions.push_back(repetition);
+        }
+        if(all_repetitions.size() < max_sequence_length){
+            sentences.push_back(repetitions);
+            parsed_sentences++;
+        }
+    }
+    return sentences;
+}
+
 std::vector<std::vector<uint32_t>> parse_input_file(const std::string& file_path, pcfg* grammar, int limit, int max_sequence_length){
     std::vector<std::vector<uint32_t>> sentences;
     std::string line;

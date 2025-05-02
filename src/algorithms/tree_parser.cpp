@@ -84,7 +84,7 @@ namespace parsing
 
 
     /* method for parsing a sequence, in which terminate [symbol_id] repets [repetitions] times. */
-    SyntaxTreeNode* _parse_terminates(uint32_t symbol_id, uint32_t repetitions, uint32_t span_from, pcfg* grammar){
+    SyntaxTreeNode* _parse_terminates(uint32_t symbol_id, uint32_t repetitions, uint32_t span_from){
         if(repetitions < 1) return nullptr;
         if(repetitions == 1) {
             SyntaxTreeNode* node = new SyntaxTreeNode();
@@ -96,8 +96,8 @@ namespace parsing
         SyntaxTreeNode* node = new SyntaxTreeNode();
         /* Represent rule R_{symbol_id} -> symbol_id R_{symbol_id} be symbol_id | 0xF000 -> symbol_id (symbol_id | 0xF000) */
         node->value = std::make_tuple(symbol_id | 0xF000, symbol_id, symbol_id | 0xF000, span_from, 1.0f, 0xFFFF); // parameters [A, B, C, k, possibility, grammar_id]. Value 0xFFFF means unavaliable. This node is obtained by reducing children with grammar A->BC
-        node->right = _parse_terminates(symbol_id, repetitions - 1, span_from + 1, grammar);
-        node->left = _parse_terminates(symbol_id, 1, span_from, grammar);
+        node->right = _parse_terminates(symbol_id, repetitions - 1, span_from + 1);
+        node->left = _parse_terminates(symbol_id, 1, span_from);
         return node;
 
     }
@@ -120,12 +120,7 @@ namespace parsing
         
         // terminate case
         if(IS_TERMINATE(symbol_id)){
-            return _parse_terminates(symbol_id, repetition[span_from], span_from + repetition_prefix[span_from],  grammar);
-            // SyntaxTreeNode* node = new SyntaxTreeNode();
-            // node->value = std::make_tuple(symbol_id, 0xFFFF, 0xFFFF, span_from, 1.0f, 0xFFFF); // 
-            // node->right = nullptr;
-            // node->left = nullptr;   
-            // return node;
+            return _parse_terminates(symbol_id, repetition[span_from], span_from + repetition_prefix[span_from]);
         }
         double p = ALPHA_GET(symbol_id, span_from, span_to);
         uint32_t best_symbol_B = 0xFFFF;
