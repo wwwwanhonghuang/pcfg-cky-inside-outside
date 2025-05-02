@@ -84,24 +84,24 @@ namespace parsing
 
 
     /* method for parsing a sequence, in which terminate [symbol_id] repets [repetitions] times. */
-    SyntaxTreeNode* _parse_terminates(uint32_t symbol_id, uint32_t repetitions, pcfg* grammar){
+    SyntaxTreeNode* _parse_terminates(uint32_t symbol_id, uint32_t repetitions, uint32_t span_from, pcfg* grammar){
         if(repetitions < 1) return nullptr;
         if(repetitions == 1) {
             SyntaxTreeNode* node = new SyntaxTreeNode();
-            node->value = std::make_tuple(symbol_id, 0xFFFF, 0xFFFF, 0xFFFF, 1.0f, 0xFFFF); // parameters [A, B, C, k, possibility, grammar_id]. Value 0xFFFF means unavaliable.
+            node->value = std::make_tuple(symbol_id, 0xFFFF, 0xFFFF, span_from, 1.0f, 0xFFFF); // parameters [A, B, C, k, possibility, grammar_id]. Value 0xFFFF means unavaliable.
             node->right = nullptr;
             node->left = nullptr;
             return node;
         }
         SyntaxTreeNode* node = new SyntaxTreeNode();
         /* Represent rule R_{symbol_id} -> symbol_id R_{symbol_id} be symbol_id | 0xF000 -> symbol_id (symbol_id | 0xF000) */
-        node->value = std::make_tuple(symbol_id | 0xF000, symbol_id, symbol_id | 0xF000, 0xFFFF, 1.0f, 0xFFFF); // parameters [A, B, C, k, possibility, grammar_id]. Value 0xFFFF means unavaliable. This node is obtained by reducing children with grammar A->BC
-        node->right = _parse_terminates(symbol_id, repetitions - 1, grammar);
-        node->left = _parse_terminates(symbol_id, 1, grammar);
+        node->value = std::make_tuple(symbol_id | 0xF000, symbol_id, symbol_id | 0xF000, span_from, 1.0f, 0xFFFF); // parameters [A, B, C, k, possibility, grammar_id]. Value 0xFFFF means unavaliable. This node is obtained by reducing children with grammar A->BC
+        node->right = _parse_terminates(symbol_id, repetitions - 1, span_from + 1, grammar);
+        node->left = _parse_terminates(symbol_id, 1, span_from, grammar);
         return node;
 
     }
-    SyntaxTreeNode* SyntaxTreeParser::_parsing_helper(double* alpha, int MS, uint32_t symbol_id, int span_from, int span_to, pcfg* grammar, uint32_t* sequence, uint32_t* repetitions){
+    SyntaxTreeNode* SyntaxTreeParser::_parsing_helper(double* alpha, int MS, uint32_t symbol_id, int span_from, int span_to, pcfg* grammar, uint32_t* sequence, uint32_t* repetitions, uint32_t* repetition_prefix){
         int N = grammar->N();
 
         if(span_from > span_to || IS_EPSILON(symbol_id)){
@@ -120,12 +120,12 @@ namespace parsing
         
         // terminate case
         if(IS_TERMINATE(symbol_id)){
-            return _parse_terminates(symbol_id, repetition[span_from], grammar);
-            SyntaxTreeNode* node = new SyntaxTreeNode();
-            node->value = std::make_tuple(symbol_id, 0xFFFF, 0xFFFF, span_from, 1.0f, 0xFFFF); // 
-            node->right = nullptr;
-            node->left = nullptr;   
-            return node;
+            return _parse_terminates(symbol_id, repetition[span_from], span_from + repetition_prefix[span_from],  grammar);
+            // SyntaxTreeNode* node = new SyntaxTreeNode();
+            // node->value = std::make_tuple(symbol_id, 0xFFFF, 0xFFFF, span_from, 1.0f, 0xFFFF); // 
+            // node->right = nullptr;
+            // node->left = nullptr;   
+            // return node;
         }
         double p = ALPHA_GET(symbol_id, span_from, span_to);
         uint32_t best_symbol_B = 0xFFFF;
@@ -187,17 +187,17 @@ namespace parsing
 
         if(span_from == span_to){
             SyntaxTreeNode* node = new SyntaxTreeNode();
-            node->value = std::make_tuple(sym_A, best_symbol_B, best_symbol_C, span_from, best_v, best_gid); 
+            node->value = std::make_tuple(sym_A, best_symbol_B, best_symbol_C, span_from + repetition_prefix[span_from], best_v, best_gid); 
             node->right = nullptr;
             SyntaxTreeNode* tree_left = 
-                _parsing_helper(alpha, MS, best_symbol_B, span_from, span_to, grammar, sequence);
+                _parsing_helper(alpha, MS, best_symbol_B, span_from, span_to, grammar, sequence, repetitions, repetition_prefix);
             node->left = tree_left;        
             return node;
         }
         
-        SyntaxTreeNode* tree_1 = _parsing_helper(alpha, MS, best_symbol_B, span_from, best_k, grammar, sequence);
-        SyntaxTreeNode* tree_2 = _parsing_helper(alpha, MS, best_symbol_C, best_k + 1, span_to, grammar, sequence);
-        SyntaxTreeNode* merged_SyntaxTreeNode = merge_trees(symbol_id, best_gid, best_symbol_B, best_symbol_C, best_k, best_v, tree_1, tree_2);
+        SyntaxTreeNode* tree_1 = _parsing_helper(alpha, MS, best_symbol_B, span_from, best_k, grammar, sequence, repetitions, repetition_prefix);
+        SyntaxTreeNode* tree_2 = _parsing_helper(alpha, MS, best_symbol_C, best_k + 1, span_to, grammar, sequence, repetitions, repetition_prefix);
+        SyntaxTreeNode* merged_SyntaxTreeNode = merge_trees(symbol_id, best_gid, best_symbol_B, best_symbol_C, best_k + repetition_prefix[best_k], best_v, tree_1, tree_2);
         return merged_SyntaxTreeNode;
     }
 
@@ -228,7 +228,12 @@ namespace parsing
         int argmax_nonterminate_id = 0;
         double max_inside_value = 0;
         assert(alpha[sequence.size() - 1] > -INFINITY);
-        SyntaxTreeNode* node = _parsing_helper(alpha, MAX_SEQUENCE_LENGTH, 0, 0, sequence.size() - 1, grammar, sequence.data(), repetitions.data());
+        std::vector<uint32_t> repetition_prefix(repetitions.size() + 1, 0);
+        repetition_prefix[1] = repetitions[0] - 1;
+        for(int i = 1; i < repetitions.size(); i++) {
+            repetition_prefix[i + 1] = repetitions[i] - 1 + repetition_prefix[i - 1];
+        }
+        SyntaxTreeNode* node = _parsing_helper(alpha, MAX_SEQUENCE_LENGTH, 0, 0, sequence.size() - 1, grammar, sequence.data(), repetitions.data(), repetition_prefix.data());
         return node;
     }
 }
