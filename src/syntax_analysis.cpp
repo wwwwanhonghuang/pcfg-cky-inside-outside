@@ -94,7 +94,7 @@ int main(int argc, char* argv[])
         }
 
         parsing::SyntaxTreeNode* root = 
-            parsing::SyntaxTreeParser::parse(grammar, sentence, alpha, inside_order_1_rule_iteration_path);
+            parsing::SyntaxTreeParser::parse(grammar, sentence, alpha, inside_order_1_rule_iteration_path, repetitions);
         
         if(serialize_to_files){
             parsing::SyntaxTreeSerializer::serialize_tree_to_file(tree_serialization_path + std::string("/sentence_") + 
