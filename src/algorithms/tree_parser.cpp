@@ -76,10 +76,32 @@ namespace parsing
     }
 
 
+
+
+
     std::shared_ptr<frfl::logger::Logger> SyntaxTreeParser::logger = 
             frfl::logger::Loggers::build_logger<frfl::logger::StdLogger>("SyntaxTreeParser");
 
-    SyntaxTreeNode* SyntaxTreeParser::_parsing_helper(double* alpha, int MS, uint32_t symbol_id, int span_from, int span_to, pcfg* grammar, uint32_t* sequence){
+
+    /* method for parsing a sequence, in which terminate [symbol_id] repets [repetitions] times. */
+    SyntaxTreeNode* _parse_terminates(uint32_t symbol_id, uint32_t repetitions, pcfg* grammar){
+        if(repetitions < 1) return nullptr;
+        if(repetitions == 1) {
+            SyntaxTreeNode* node = new SyntaxTreeNode();
+            node->value = std::make_tuple(symbol_id, 0xFFFF, 0xFFFF, 0xFFFF, 1.0f, 0xFFFF); // parameters [A, B, C, k, possibility, grammar_id]. Value 0xFFFF means unavaliable.
+            node->right = nullptr;
+            node->left = nullptr;
+            return node;
+        }
+        SyntaxTreeNode* node = new SyntaxTreeNode();
+        /* Represent rule R_{symbol_id} -> symbol_id R_{symbol_id} be symbol_id | 0xF000 -> symbol_id (symbol_id | 0xF000) */
+        node->value = std::make_tuple(symbol_id | 0xF000, symbol_id, symbol_id | 0xF000, 0xFFFF, 1.0f, 0xFFFF); // parameters [A, B, C, k, possibility, grammar_id]. Value 0xFFFF means unavaliable. This node is obtained by reducing children with grammar A->BC
+        node->right = _parse_terminates(symbol_id, repetitions - 1, grammar);
+        node->left = _parse_terminates(symbol_id, 1, grammar);
+        return node;
+
+    }
+    SyntaxTreeNode* SyntaxTreeParser::_parsing_helper(double* alpha, int MS, uint32_t symbol_id, int span_from, int span_to, pcfg* grammar, uint32_t* sequence, uint32_t* repetitions){
         int N = grammar->N();
 
         if(span_from > span_to || IS_EPSILON(symbol_id)){
@@ -98,8 +120,9 @@ namespace parsing
         
         // terminate case
         if(IS_TERMINATE(symbol_id)){
+            return _parse_terminates(symbol_id, repetition[span_from], grammar);
             SyntaxTreeNode* node = new SyntaxTreeNode();
-            node->value = std::make_tuple(symbol_id, 0xFFFF, 0xFFFF, span_from, 1.0f, 0xFFFF); 
+            node->value = std::make_tuple(symbol_id, 0xFFFF, 0xFFFF, span_from, 1.0f, 0xFFFF); // 
             node->right = nullptr;
             node->left = nullptr;   
             return node;
@@ -189,7 +212,7 @@ namespace parsing
     }
 
     SyntaxTreeNode* SyntaxTreeParser::parse(pcfg* grammar, std::vector<uint32_t> sequence, double* alpha, 
-            std::vector<std::tuple<uint32_t, uint32_t>> inside_order_1_rule_iteration_path){
+            std::vector<std::tuple<uint32_t, uint32_t>> inside_order_1_rule_iteration_path, std::vector<uint32_t> repetitions){
         int sequence_length = sequence.size();
         inside_algorithm(sequence.data(), 
             (uint32_t*)(grammar->preterminate_rule_lookup_table),
@@ -205,7 +228,7 @@ namespace parsing
         int argmax_nonterminate_id = 0;
         double max_inside_value = 0;
         assert(alpha[sequence.size() - 1] > -INFINITY);
-        SyntaxTreeNode* node = _parsing_helper(alpha, MAX_SEQUENCE_LENGTH, 0, 0, sequence.size() - 1, grammar, sequence.data());
+        SyntaxTreeNode* node = _parsing_helper(alpha, MAX_SEQUENCE_LENGTH, 0, 0, sequence.size() - 1, grammar, sequence.data(), repetitions.data());
         return node;
     }
 }
