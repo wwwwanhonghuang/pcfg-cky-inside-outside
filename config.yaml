@@ -13,6 +13,7 @@ main:
     val_dataset_path: "../../data/validate_sentences.txt" 
     train_dataset_path: "../../data/train_sentences.txt"
     train_fraction: 0.8
+  validation_data: "../"
   n_epochs: 5
   limit_n_sentences: -1
 
