@@ -40,7 +40,8 @@ namespace parsing{
         SyntaxTreeParser(){
         };
     private:
-        static SyntaxTreeNode* _parsing_helper(double* alpha, int MS, uint32_t symbol_id, int span_from, int span_to, pcfg* grammar, uint32_t* sequence, uint32_t* repetitions);
+    
+        static SyntaxTreeNode* _parsing_helper(double* alpha, int MS, uint32_t symbol_id, int span_from, int span_to, pcfg* grammar, uint32_t* sequence, uint32_t* repetitions, uint32_t* repetition_prefix);
         static std::shared_ptr<frfl::logger::Logger> logger;
     };
     

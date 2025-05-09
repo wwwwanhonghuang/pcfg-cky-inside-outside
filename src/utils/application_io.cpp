@@ -7,9 +7,8 @@ std::vector<std::vector<uint32_t>> parse_repetition_file(const std::string& file
 	std::ifstream file(file_path);
     if (!file.is_open()) {
         std::cerr << "Error: Could not open the input file at path: " << file_path << std::endl;
-        return sentences;
+        return all_repetitions;
     }
-    int N = grammar->N();
     int parsed_sentences = 0;
     while (std::getline(file, line)) {
         if(limit >= 0 && parsed_sentences >= limit) break;
@@ -17,19 +16,19 @@ std::vector<std::vector<uint32_t>> parse_repetition_file(const std::string& file
             continue;
         std::vector<uint32_t> repetitions;
 
-        std::string word;
+        std::string repetiton_str;
         std::stringstream line_string_stream(line);
-        while (getline(line_string_stream, word, ' ')) {
-            int repetition = std::stoi(word)
+        while (getline(line_string_stream, repetiton_str, ' ')) {
+            int repetition = std::stoi(repetiton_str);
             
             repetitions.push_back(repetition);
         }
-        if(all_repetitions.size() < max_sequence_length){
-            sentences.push_back(repetitions);
+        if(repetitions.size() < max_sequence_length){
+            all_repetitions.push_back(repetitions);
             parsed_sentences++;
         }
     }
-    return sentences;
+    return all_repetitions;
 }
 
 std::vector<std::vector<uint32_t>> parse_input_file(const std::string& file_path, pcfg* grammar, int limit, int max_sequence_length){

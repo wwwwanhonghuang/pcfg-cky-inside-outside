@@ -2,6 +2,7 @@
 #include "grammar/grammar.hpp"
 #include "algorithms/alg_inside_outside_main.h"
 #include "macros.def"
+
 namespace parsing
 {
     void SyntaxTreeSerializer::_serialize_helper(SyntaxTreeNode* root, std::ostringstream& oss) {
@@ -75,16 +76,11 @@ namespace parsing
         return node;
     }
 
-
-
-
-
     std::shared_ptr<frfl::logger::Logger> SyntaxTreeParser::logger = 
             frfl::logger::Loggers::build_logger<frfl::logger::StdLogger>("SyntaxTreeParser");
 
-
     /* method for parsing a sequence, in which terminate [symbol_id] repets [repetitions] times. */
-    SyntaxTreeNode* _parse_terminates(uint32_t symbol_id, uint32_t repetitions, uint32_t span_from){
+    SyntaxTreeNode* _parse_terminates(uint32_t symbol_id, uint32_t repetitions, uint32_t span_from, int n_grammar, int NT){
         if(repetitions < 1) return nullptr;
         if(repetitions == 1) {
             SyntaxTreeNode* node = new SyntaxTreeNode();
@@ -94,13 +90,17 @@ namespace parsing
             return node;
         }
         SyntaxTreeNode* node = new SyntaxTreeNode();
-        /* Represent rule R_{symbol_id} -> symbol_id R_{symbol_id} be symbol_id | 0xF000 -> symbol_id (symbol_id | 0xF000) */
-        node->value = std::make_tuple(symbol_id | 0xF000, symbol_id, symbol_id | 0xF000, span_from, 1.0f, 0xFFFF); // parameters [A, B, C, k, possibility, grammar_id]. Value 0xFFFF means unavaliable. This node is obtained by reducing children with grammar A->BC
-        node->right = _parse_terminates(symbol_id, repetitions - 1, span_from + 1);
-        node->left = _parse_terminates(symbol_id, 1, span_from);
+        /* Represent rule R_{symbol_id} -> symbol_id R_{symbol_id} be symbol_id | 0xF000 -> symbol_id (symbol_id | 0xF000) Value 0xFFFF means unavaliable. This node is obtained by reducing children with grammar A->BC
+           This temperary grammar rule not present in PCFG file. With grammar id = n_grammar + i for the i-th terminate in alphabet. 
+        */
+        assert(symbol_id - NT >= 0 && n_grammar + symbol_id - NT <= 196);
+        node->value = std::make_tuple(symbol_id | 0xF000, symbol_id, symbol_id | 0xF000, span_from, 1.0f, n_grammar + symbol_id - NT); // parameters [A, B, C, k, possibility, grammar_id]. 
+        node->right = _parse_terminates(symbol_id, repetitions - 1, span_from + 1, n_grammar, NT);
+        node->left = _parse_terminates(symbol_id, 1, span_from, n_grammar, NT);
         return node;
 
     }
+
     SyntaxTreeNode* SyntaxTreeParser::_parsing_helper(double* alpha, int MS, uint32_t symbol_id, int span_from, int span_to, pcfg* grammar, uint32_t* sequence, uint32_t* repetitions, uint32_t* repetition_prefix){
         int N = grammar->N();
 
@@ -120,7 +120,7 @@ namespace parsing
         
         // terminate case
         if(IS_TERMINATE(symbol_id)){
-            return _parse_terminates(symbol_id, repetition[span_from], span_from + repetition_prefix[span_from]);
+            return _parse_terminates(symbol_id, repetitions[span_from], span_from + repetition_prefix[span_from], grammar->cnt_grammar, grammar->N());
         }
         double p = ALPHA_GET(symbol_id, span_from, span_to);
         uint32_t best_symbol_B = 0xFFFF;
@@ -197,8 +197,22 @@ namespace parsing
     }
 
     SyntaxTreeNode* SyntaxTreeParser::merge_trees(uint32_t sym_A, int gid, uint32_t sym_B, uint32_t sym_C, int k, double p, SyntaxTreeNode* left, SyntaxTreeNode* right){
-        assert((sym_B == 0xFFFF && !left) || std::get<0>(left->value) == sym_B);
-        assert((sym_C == 0xFFFF && !right) || std::get<0>(right->value) == sym_C);
+        // if (left){
+        //     std::cout << "std::get<0>(left->value) = "<< std::get<0>(left->value) << " " << std::endl;
+        // }else{
+        //     std::cout << " left = nullptr" << std::endl;
+        // }
+        // if (right){
+        //     std::cout << "std::get<0>(right->value) = "<< std::get<0>(right->value) << " " << std::endl;
+        // }else{
+        //     std::cout << " right = nullptr" << std::endl;
+        // }
+        // std::cout << "sym_B = " << sym_B << " sym_C = " << sym_C << " (" << 
+        // (right ? (std::get<0>(right->value) ^ 0xF000) : 0xFFFF)
+        // << ") " << std::endl;
+        
+        assert((sym_B == 0xFFFF && !left) || std::get<0>(left->value) == sym_B || (std::get<0>(left->value) ^ 0xF000) == sym_B);
+        assert((sym_C == 0xFFFF && !right) || std::get<0>(right->value) == sym_C || (std::get<0>(right->value) ^ 0xF000) == sym_C);
         SyntaxTreeNode* result = new SyntaxTreeNode();
         result->left = left;
         result->right = right;

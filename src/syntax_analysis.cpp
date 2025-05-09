@@ -60,7 +60,7 @@ int main(int argc, char* argv[])
     bool serialize_to_files = config["syntax_analysis"]["serialize_to_files"].as<bool>(); 
     std::string report_path = config["syntax_analysis"]["report_path"].as<std::string>();
     std::string tree_serialization_path = config["syntax_analysis"]["tree_serialization_path"].as<std::string>();
-    std::string repetition_filename = config["main"]["repetition"].as<std::string>();
+    std::string repetition_filename = config["syntax_analysis"]["repetition"].as<std::string>();
 
     create_path_if_not_exists(log_path);
     create_path_if_not_exists(tree_serialization_path);
@@ -75,7 +75,7 @@ int main(int argc, char* argv[])
     std::vector<std::vector<uint32_t>> sentences = parse_input_file(input_filename, grammar);
     std::cout << "Load sentences finished. Total instances:" << sentences.size() << std::endl;
     std::cout << "Load repetitions data..." << std::endl;
-    std::vector<std::vector<uint32_t>> repetitions = parse_repetition_file(input_filename);
+    std::vector<std::vector<uint32_t>> repetitions = parse_repetition_file(repetition_filename);
     std::cout << "Load repetition data finished. Total instances:" << repetitions.size() << std::endl;
     assert(sentences.size() == repetitions.size());
 
@@ -86,6 +86,8 @@ int main(int argc, char* argv[])
 
     for(int i = 0; i < n_total_sentences; i++){
         auto& sentence = sentences[i];
+        auto& repetition_this_sentence = repetitions[i];
+
         progress_bar(i + 1, n_total_sentences);
         if(sentence.size() > 256) {
             std::cout << "Warning: a sentence with length " << 
@@ -94,18 +96,18 @@ int main(int argc, char* argv[])
         }
 
         parsing::SyntaxTreeNode* root = 
-            parsing::SyntaxTreeParser::parse(grammar, sentence, alpha, inside_order_1_rule_iteration_path, repetitions);
+            parsing::SyntaxTreeParser::parse(grammar, sentence, alpha, inside_order_1_rule_iteration_path, repetition_this_sentence);
         
         if(serialize_to_files){
             parsing::SyntaxTreeSerializer::serialize_tree_to_file(tree_serialization_path + std::string("/sentence_") + 
                 std::to_string(i + 1) + std::string(".txt"), root);
         }
 
-        std::string statistics_report = statistics::Statistician::report_all_statistics(root, alpha, sentence, grammar, 5, 100);
+        // std::string statistics_report = statistics::Statistician::report_all_statistics(root, alpha, sentence, grammar, 5, 100);
         
-        std::string report_filename = report_path + std::string("/sentence_") + std::to_string(i + 1) + std::string(".report");
-        std::ofstream report_file_output_stream(report_filename);
-
+        // std::string report_filename = report_path + std::string("/sentence_") + std::to_string(i + 1) + std::string(".report");
+        // std::ofstream report_file_output_stream(report_filename);
+/*
         if(!report_file_output_stream){
             std::cerr << "Error: cannot open output file " << report_filename << std::endl;
             continue;
@@ -118,7 +120,9 @@ int main(int argc, char* argv[])
             report_file_output_stream << sentence_serialization_stream.str() << 
             statistics_report << std::endl;
         }
-    }
+*/
+	}
+    
     std::cout << std::endl << "All finished" << std::endl;
 
     delete[] alpha;
