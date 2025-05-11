@@ -97,7 +97,7 @@ namespace parsing
         node->value = std::make_tuple(symbol_id | 0xF000, symbol_id, symbol_id | 0xF000, span_from, 1.0f, n_grammar + symbol_id - NT); // parameters [A, B, C, k, possibility, grammar_id]. 
         node->right = _parse_terminates(symbol_id, repetitions - 1, span_from + 1, n_grammar, NT);
         node->left = _parse_terminates(symbol_id, 1, span_from, n_grammar, NT);
-        return node;
+        return node;    
 
     }
 
