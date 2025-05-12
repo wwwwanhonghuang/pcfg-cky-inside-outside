@@ -23,48 +23,18 @@
 #include "distribution/global_variables.hpp"
 #include "distribution/services.hpp"
 #include "distribution/message_impl.h"
+#include "distribution/communication/package.hpp"
+#include "distribution/package_manager.hpp"
+#include <cassert>
+
+#define RED     "\033[31m"      /* Red */
+#define RESET   "\033[0m"
+#define GREEN   "\033[32m"      /* Green */
+#define BOLD_BLUE   "\033[1;34m"      /* Bold Blue */
+
 
 using namespace GlobalState;
 
-
-// struct MemoryBlockComparator {
-//     bool operator()(const std::tuple<uint32_t, uint32_t>& lhs, const std::tuple<uint32_t, uint32_t>& rhs) const {
-//         return std::get<0>(lhs) > std::get<0>(rhs); 
-//     }
-// };
-
-// struct RR_MSG_Allocator {
-//     int pos = 0;
-//     std::priority_queue<std::tuple<uint32_t, uint32_t>, std::vector<std::tuple<uint32_t, uint32_t>>, MemoryBlockComparator> available_allocated_application_msg_memory;
-
-//     void push_msg_to_shared_memory_rr(Message& msg, std::shared_ptr<SharedMemory> shared_memory){
-//         auto storage = (MemoryStorage*) shared_memory->get_data();
-//         uint32_t size = CALC_SIZE(msg);
-//         while (!available_allocated_application_msg_memory.empty()) {
-//             auto block = available_allocated_application_msg_memory.top();
-//             uint32_t available_memory_size = std::get<1>(block) - std::get<0>(block);
-//             if (available_memory_size >= size) {
-//                 // Allocate memory
-//                 uint32_t remaining_memory = available_memory_size - size;
-
-//                 // Remove the allocated block from the heap
-//                 available_allocated_application_msg_memory.pop();
-
-//                 // If there's remaining memory, split the block and push the remainder back into the heap
-//                 if (remaining_memory > 0) {
-//                     available_allocated_application_msg_memory.push(std::make_tuple(std::get<0>(block) + size, std::get<1>(block)));
-//                 }
-
-//                 // Store the message in the allocated space
-//                 std::cout << "Allocated msg at position: " << pos << std::endl;
-//                 std::memcpy(&storage->application_messages[pos], &msg, size); // Store the message
-//                 return;
-//             } else {
-//                 available_allocated_application_msg_memory.pop();
-//             }
-//         }
-
-//     }
 
 void push_msg_to_shared_memory_rr(Message& msg, std::shared_ptr<SharedMemory> shared_memory){
     static int pos = 0;
@@ -78,9 +48,7 @@ void push_msg_to_shared_memory_rr(Message& msg, std::shared_ptr<SharedMemory> sh
     memcpy(&storage->application_messages[pos], &msg, sizeof(msg));
 }
 
-
-
-void serverLoop(uint32_t port) {
+void serverLoop(uint32_t port, int partition_id) {
     // Create a server socket
     int server_sock = socket(AF_INET, SOCK_STREAM, 0);
     if (server_sock < 0) {
@@ -134,20 +102,50 @@ void serverLoop(uint32_t port) {
             }
 
             std::cout << "Connection accepted" << "client socket = " << client_sock << ", creating thread to handle client.\n";
-            std::thread client_thread(handle_client, client_sock);
+            std::thread client_thread(handle_client, client_sock, partition_id);
             client_thread.detach();
         }
     }
 }
 
 void broadcast_message(const Message& message) {
-    client_map.lock();
-    for (const auto& [sock, client] : client_map.value) {
-        ssize_t bytes_sent = send(client.sock, &message, sizeof(message), 0);
-        if (bytes_sent < 0) {
-            perror(("Failed to send message to " + client.name).c_str());
-        } 
-    }
+    client_map.access_with_function([&message](auto& map)->void{
+        for (const auto& [sock, client] : map) {
+            Package package = PackageManager::get_instance()->pack_msg_to_package(client.sock, message);
+            ssize_t bytes_sent = send(client.sock, &package, sizeof(package), 0);
+            if (bytes_sent < 0) {
+                perror(("Failed to send message to " + client.name).c_str());
+            } else {
+                std::cout << "\t[Broadcast package] seq = " 
+                    << package.sequence_number
+                    << ", message type = " << message.msg_type 
+                    << ", broad cast to " << sock << std::endl;
+            }
+        }
+    });
+}
+
+void broadcast_message(int base_seq_number, int partition_id, const Message& message) {
+    client_map.access_with_function([&message, &base_seq_number, &partition_id](auto& map)->void{
+        for (const auto& [sock, client] : map) {
+            Package package;
+            package.sequence_number = base_seq_number + partition_id - 1;
+            package.msg = message;
+            ssize_t bytes_sent = send(client.sock, &package, sizeof(package), 0);
+            if (bytes_sent < 0) {
+                perror(("Failed to send message to " + client.name).c_str());
+            } else{
+                std::cout << "\t[Broadcast package] seq = " 
+                << "[b"
+                << base_seq_number << " + " << partition_id
+                << " - 1"
+                << "] "
+                << package.sequence_number
+                << ", message type = " << message.msg_type 
+                << ", broad cast to " << sock << std::endl;
+            }
+        }
+    });
 }
 
 void connect_to_other_partitions(int& total_clients, int& connected_client, 
@@ -156,10 +154,18 @@ void connect_to_other_partitions(int& total_clients, int& connected_client,
     while(connected_client < total_clients) {
         const YAML::Node& client = clients[client_index];
         std::string name = client["name"].as<std::string>();
+        int current_client_index = client_index;
         client_index = (client_index + 1) % total_clients;
-        if (name == program_name) continue;
+
+        if (name == program_name) {
+            continue;
+        }
+        
         client_map.lock();
-        if(client_map.value.find(partition_id) != client_map.value.end()) continue;
+        partiton_id_to_sock.lock();
+        // Key is not ID but sock. Follow code not work. 
+        if(partiton_id_to_sock.value.find(current_client_index) != partiton_id_to_sock.value.end()) continue;
+
         std::string ip = client["ip"].as<std::string>();
         uint32_t port = client["port"].as<uint32_t>();
         // std::cout << ip << " " << port << " " << name << std::endl;
@@ -183,6 +189,14 @@ void connect_to_other_partitions(int& total_clients, int& connected_client,
             {
                 // Lock the mutex to safely modify the shared client_map
                 client_map.value[sock] = client;
+                client_map.value[sock].partition_id = current_client_index;
+                partiton_id_to_sock.access_with_function([&current_client_index, &sock](auto& map){
+                    map[current_client_index] = sock;
+                });
+                sock_to_partition_id.access_with_function([&partition_id, &sock, &current_client_index](auto& map){
+                    std::cout << "set sock " << sock << " partition id = " << current_client_index + 1 << std::endl;
+                    map[sock] = current_client_index + 1;
+                });
             }
         } else {
             // perror("\t- connect failed");
@@ -204,22 +218,23 @@ int main(int argc, char* argv[]) {
         std::cerr << "Please provide the instance index (i).\n";
         return 1;
     }
+    
 
     int partition_id = std::stoi(argv[1]);
     YAML::Node config = YAML::LoadFile("cluster.yaml");
     std::string program_name = std::string("pcfg-train-") + std::to_string(partition_id);
     uint32_t server_port = 9239 + partition_id;
     std::cout << "Creating server for self at port " << server_port << "\n";
-    std::thread server_thread(serverLoop, server_port);
+    std::thread server_thread(serverLoop, server_port, partition_id);
     const YAML::Node& clients = config["cluster"]["clients"];
     int total_clients = clients.size();
     int connected_client = 1;
     int client_index = 0;
-
-    connect_to_other_partitions(total_clients, connected_client, client_index, clients, partition_id, program_name);
-
+    
+    
 
     std::cout << "Open share memory. " << std::endl;
+
     int size = sizeof(MemoryStorage);
     auto shared_memory = std::make_shared<SharedMemory>(program_name.c_str(), CREATE_NEW, size);
     auto storage = (MemoryStorage*)shared_memory->get_data();
@@ -228,16 +243,23 @@ int main(int argc, char* argv[]) {
     Message network_component_prepared_msg = gen_network_component_prepared_msg(partition_id);
     push_msg_to_shared_memory_rr(network_component_prepared_msg, shared_memory);
 
+ 
     /* 2. Wait ACK from the application */
     while(storage->network_communicator_messages[0].status == EMPTY_SLOT){}
     std::cout << "application repied: " <<  
-        storage->network_communicator_messages[0].data << std::endl;
+        storage->network_communicator_messages[0].data + sizeof(int) << std::endl;
     storage->network_communicator_messages[0].status = EMPTY_SLOT;
+    
+    memcpy(&cnt_grammar, storage->network_communicator_messages[0].data, sizeof(int));
+    std::cout << "n_grammar = " << cnt_grammar << std::endl;
+    
+    connect_to_other_partitions(total_clients, connected_client, client_index, clients, 
+        partition_id, program_name);
 
     /* 3. Broadcast partition prepared message to all other partitions. */
     std::cout << "Broadcast prepared message." << std::endl;
     Message partition_prepared_msg = gen_partition_prepared_msg(partition_id);
-    broadcast_message(partition_prepared_msg);
+    broadcast_message(0, partition_id, partition_prepared_msg);
 
     /* 4. Wait ACKs of PARTITION_PREPARED . */
     std::cout << total_clients << std::endl;
@@ -245,25 +267,34 @@ int main(int argc, char* argv[]) {
         std::unique_lock<std::mutex> lock = partition_prepared_msg_ack_count.lock();
         partition_prepared_msg_cv.wait(lock, [&total_clients] { return partition_prepared_msg_ack_count.value == total_clients - 1; });
     }
+    
     std::cout << "[barrier passed] All partition prepared!" << std::endl;
+    std::cout << RED << "[!Important] Barrier 1: All partition arrive front pre-epoch-0." << RESET << std::endl;    
+ 
 
     int epoch = 0;
     const int MAX_EPOCHS = 3;
+    const int package_per_epoch = total_clients * 4;
+    
     while(epoch < MAX_EPOCHS){
         std::cout << std::endl;
-        std::cout << "[Main Loop] partition " << program_name << " begin epoch " << epoch << std::endl;
-        
+        std::cout << "[Main Loop] partition " << program_name 
+                  << " at the beginning of epoch " << epoch << std::endl;
         
         // 5.1 Notify Application begin a new epoch.
-        Message epoch_begin_msg = gen_epoch_begin_message(epoch, partition_id);
+        Message epoch_begin_msg = gen_epoch_begin_message(epoch, partition_id, cnt_grammar);
         push_msg_to_shared_memory_rr(epoch_begin_msg, shared_memory);
-        broadcast_message(epoch_begin_msg);
+        broadcast_message(package_per_epoch * epoch + total_clients * 1, partition_id, epoch_begin_msg);
         {
             std::unique_lock<std::mutex> lock = begin_epoch_msg_ack_count.lock();
             begin_epoch_msg_cv.wait(lock, [&total_clients, &epoch] { return begin_epoch_msg_ack_count.value[epoch] == total_clients - 1; });
         }
-        std::cout << "[Main Loop] [barrier passed] All partition prepare to proceed epoch " << epoch << "!" << std::endl;
+        std::cout << RED << "[Main Loop] [barrier passed] All partition prepare to proceed epoch "
+                  << RESET << epoch << "!" << std::endl;
         
+            
+
+        /* Application Execution */
         // 5.2 Wait application finished.
         std::cout << "[Main Loop] wait application execution. " << std::endl;
         {
@@ -271,33 +302,59 @@ int main(int argc, char* argv[]) {
             while(storage->network_communicator_messages[0].status == EMPTY_SLOT){
             }
             storage->network_communicator_messages[0].status = EMPTY_SLOT;
+            int client_cnt_grammars = -1;
+            memcpy(&client_cnt_grammars, storage->network_communicator_messages[0].data, sizeof(int));
+            assert(client_cnt_grammars == cnt_grammar);
         }
 
-        int application_result = -1;
-        memcpy(&application_result, storage->network_communicator_messages[0].data, sizeof(int));
+        double* this_partition_f = new double[cnt_grammar]();
+        memcpy(this_partition_f, storage->network_communicator_messages[0].data + sizeof(int), sizeof(double) * cnt_grammar);
+
+        /* Application Execution */
+        std::cout << "[Main Loop] application finish and reply result " << std::endl;
         
-        std::cout << "[Main Loop] application reply result " <<  
-            application_result << std::endl;
-        
+        std::cout << GREEN << "Finish Epoch " << epoch << std::endl;
+        for(int i = 0; i < cnt_grammar; i++){
+            std::cout << "f[" << i << "] = " << this_partition_f[i] << std::endl;
+        }
+        std::cout << RESET << std::endl;
+
         storage->network_communicator_messages[0].status = EMPTY_SLOT;
+       
 
         // 5.3 Broadcast epoch finished message.
-        Message epoch_finished_msg = gen_epoch_finished_msg(partition_id, epoch, application_result);
+        Message epoch_finished_msg = gen_epoch_finished_msg(partition_id, epoch, this_partition_f, cnt_grammar);
         std::cout << "[Main Loop] Prepare and broadcast epoch " << epoch << "finished message." << std::endl;
-        broadcast_message(epoch_finished_msg);
+        broadcast_message(package_per_epoch * epoch + total_clients * 2, partition_id,
+            epoch_finished_msg);
 
         // 5.4 Wait clients until all clients finish current epoch.
         {
             auto lock = epoch_completed_ack_count.lock();
             epoch_completed_msg_cv.wait(lock, [&total_clients, &epoch] { return epoch_completed_ack_count.value[epoch] == total_clients - 1; });
         }
+
+
+        double* local_integrated_result = new double[cnt_grammar];
         std::cout << "[Main Loop] [barrier passed] All partition Completed Epoch " << epoch << "!" << std::endl;
-        std::cout << "[Main Loop] Integrated Result = " << global_result.get()  << " + " <<
-                application_result << "!" << std::endl;
+        std::cout <<  BOLD_BLUE << "[Main Loop] Integrated Result = ";
+        for(int gid = 0; gid < cnt_grammar; gid++){
+            local_integrated_result[gid] =  global_result.get()[gid]  + this_partition_f[gid];
+            std::cout  << "\t - " << global_result.get()[gid] << " + " << this_partition_f[gid] 
+                    << " = " << local_integrated_result[gid] << std::endl;
+        }
+        std::cout << RESET << std::endl;
 
         // 5.5 Notify the application the integrated results.
-        int integrated_result = global_result.get() + application_result;
-        Message msg_integrated_result_notification = gen_notificate_integrate_result_msg(integrated_result);
+        integrated_result.access_with_function([local_integrated_result](auto& v)->void{
+            memcpy(v.data(), local_integrated_result, sizeof(double) * cnt_grammar);
+        });
+
+        std::cout << RED << "[!Important] Inner Epoch" << epoch << 
+            " Partition calculate integration result finished." << RESET << std::endl;
+
+
+        Message msg_integrated_result_notification = gen_notificate_integrate_result_msg(local_integrated_result, epoch, cnt_grammar);
         push_msg_to_shared_memory_rr(msg_integrated_result_notification, shared_memory);
 
         // 5.6 Wait for ack from application
@@ -308,14 +365,51 @@ int main(int argc, char* argv[]) {
             storage->network_communicator_messages[0].status = EMPTY_SLOT;
         }
         std::cout << "[Main Loop] Integrated result processed by application." << std::endl;
+        std::cout << RED << "[!Important] Inner Epoch " << epoch << 
+            " Partition application processed integration results." << RESET << std::endl;
+
+
+        Message msg_integrated_result_prepared = gen_integrated_result_prepared_msg(partition_id, epoch);
+        broadcast_message(package_per_epoch * epoch + total_clients * 3, partition_id , msg_integrated_result_prepared);
+        {
+            auto lock = integrated_result_prepared_ack_count.lock();
+            integrated_result_prepared_cv.wait(lock, [&total_clients, &epoch] { return integrated_result_prepared_ack_count.value[epoch] == total_clients - 1; });
+        }
+        std::cout << RED << "[!Important] Inner Epoch " << epoch << 
+            " Barrier 2: All partition prepared integrated results in epoch " << epoch << "." 
+            << RESET << std::endl;    
+
+            
+
+
+        broadcast_message(package_per_epoch * epoch + total_clients * 4, 
+                        partition_id, msg_integrated_result_notification);
+        {
+            auto lock = integrated_result_confirmation_ack_count.lock();
+            integrated_result_confirmation_cv.wait(lock, [&total_clients, &epoch] { 
+                return integrated_result_confirmation_ack_count.value[epoch] == total_clients - 1; 
+            });
+        }
+
+        std::cout << RED << "[!Important] Inner Epoch" << epoch << 
+            " Barrier 3: All partition confirmed integrated results of epoch " << epoch << "." 
+            << RESET << std::endl;
 
         epoch ++;
+
         {
-            global_result.lock();
-            global_result.value = 0;
+            global_result.access_with_function([](auto& v)->void{
+                for(int grammar_id = 0; grammar_id < cnt_grammar; grammar_id++){
+                    GlobalState::global_result.value[grammar_id] = 0;
+                    GlobalState::integrated_result.value[grammar_id] = 0;
+                }
+            });
         }
 
         std::cout << std::endl;
+        std::cout <<  GREEN << "========================= END OF EPOCH " 
+                << epoch 
+                << "=========================" << RESET << std::endl;
     }
 
     std::cin.get();

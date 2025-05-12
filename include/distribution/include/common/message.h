@@ -1,6 +1,6 @@
 #ifndef MESSAGE_H
 #define MESSAGE_H
-#define MSG_DATA_SIZE (256 * 8)
+#define MSG_DATA_SIZE 128
 #include <cstdint>
 typedef enum {
     EMPTY_SLOT = 0,
@@ -13,8 +13,7 @@ typedef enum {
     PARTITION_PREPARED = 100,
     BEGIN_EPOCH = 103,
     EPOCH_COMPLETE = 104,
-    NOTIFICATE_INTEGRATE_RESULT = 105,
-    INTEGRATED_RESULT_PREPARED = 106
+    NOTIFICATE_INTEGRATE_RESULT = 105
 } MessageType;
 
 typedef struct {

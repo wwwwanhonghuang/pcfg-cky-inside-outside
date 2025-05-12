@@ -1,30 +1,19 @@
 #ifndef SYNCHRONIZATION_HPP
 #define SYNCHRONIZATION_HPP
 #include <functional>
-#include <iostream>
-#include <fcntl.h>
-#include <sys/mman.h>
-#include <unistd.h>
-#include <cstring>
-#include <memory>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <string>
-#include <unordered_set>
-#include <unordered_map>
-#include <atomic>
 #include <mutex>
-#include <thread>
-#include <yaml-cpp/yaml.h>
-#include <condition_variable>
-#include <functional>
+
 template<typename T>
 struct MutexableVariable{
     explicit MutexableVariable(T initial_value = T{}) : value(initial_value) {}
 
     std::mutex mutex_variable;
     T value;
+    // static MutexableVariable<T> pack(T value){
+    //     MutexableVariable<T> instance;
+    //     instance.value = value;
+    //     return instance;
+    // }
     std::unique_lock<std::mutex> lock(){
         return std::unique_lock<std::mutex>(mutex_variable);
     }
