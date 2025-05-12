@@ -53,7 +53,7 @@ int main(int argc, char* argv[]){
     std::string output_filename =  config["phase_convert"]["output"].as<std::string>();
 
     int delay = 2;
-    pcfg* grammar = prepare_grammar(grammar_filename);
+    pcfg* grammar = prepare_grammar(grammar_filename, false);
     std::vector<std::vector<uint32_t>> sentences = read_input_file(input_filename);
     int N = grammar->N();
     for(auto& sentence : sentences){

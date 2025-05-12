@@ -67,5 +67,5 @@ public:
     };
 };
 
-void print_grammar(pcfg* grammar, std::ostream& stream=std::cout);
+void print_grammar(pcfg* grammar, bool original_possibility_in_log_form,  bool print_in_log_form, std::ostream& stream=std::cout);
 #endif

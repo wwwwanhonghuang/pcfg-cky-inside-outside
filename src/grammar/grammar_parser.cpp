@@ -37,7 +37,7 @@ void _record_non_terminate_symbol(const std::string non_terminate_symbol, pcfg* 
     }
 }
 
-pcfg* _parse_grammar_file(const std::string& path){
+pcfg* _parse_grammar_file(const std::string& path, bool original_in_log_possibility){
     pcfg* grammar = new pcfg();
     std::ifstream grammar_file = open_grammar_file(path);
     std::map<std::string, std::vector<pcfg_grammar_item>>& grammar_items_map = grammar->grammar_items_map;
@@ -57,7 +57,11 @@ pcfg* _parse_grammar_file(const std::string& path){
         pcfg_grammar_item rule = parse_grammar_single_line(line);
         std::cout << "[grammar: " << ++cnt_recognized_grammars << "] " << rule.left << "->" << rule.right1 << " " << rule.right2 << " " << rule.possibility << std::endl;
         
-        rule.possibility = std::log(rule.possibility);
+        if(original_in_log_possibility){
+            rule.possibility = rule.possibility;
+        }else{
+            rule.possibility = std::log(rule.possibility);
+        }
         
         _record_non_terminate_symbol(rule.left, grammar, rule, grammar_items_map);
         if(!map_contains(grammar_items_map, rule.left)){
@@ -411,8 +415,8 @@ pcfg* _build_preterminate_grammar_lookup_table(pcfg* grammar, uint32_t* non_term
     return grammar;
 }
 
-pcfg* prepare_grammar(const std::string& path){
-    pcfg* grammar = _parse_grammar_file(path);
+pcfg* prepare_grammar(const std::string& path, bool original_in_log_possibility){
+    pcfg* grammar = _parse_grammar_file(path, original_in_log_possibility);
     int cnt_grammar = grammar->cnt_grammar;
     auto& grammar_items_map = grammar->grammar_items_map;
     

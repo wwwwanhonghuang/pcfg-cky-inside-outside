@@ -55,7 +55,7 @@ int main(int argc, char* argv[])
     // 2. parse grammar file.
     pcfg* grammar = nullptr;
     try {
-        grammar = prepare_grammar(grammar_filename);
+        grammar = prepare_grammar(grammar_filename, false);
         if (grammar == nullptr) {
             throw std::runtime_error("Error: Failed to parse grammar file.");
         }
@@ -237,7 +237,7 @@ int main(int argc, char* argv[])
                 if(!logfile_ostream){
                     std::cerr << "Error: Could not open log file for writing.\n";
                 }
-                print_grammar(grammar, logfile_ostream);
+                print_grammar(grammar, true, true, logfile_ostream);
             }
             if(save_f && log_f_intervals > 0 && (i + 1) % log_f_intervals == 0){
                 log_f(log_path + "/log_" + std::to_string(i + 1) + "_epoch_id_" + std::to_string(epoch) + ".f", f, grammar);
@@ -250,7 +250,7 @@ int main(int argc, char* argv[])
         if(!logfile_ostream){
             std::cerr << "Error: Could not open log file for writing.\n";
         }
-        print_grammar(grammar, logfile_ostream);
+        print_grammar(grammar, true, true, logfile_ostream);
 
         // Validation
         double log_likelihood = -INFINITY;
@@ -294,7 +294,7 @@ int main(int argc, char* argv[])
         double average_likelihood = log_likelihood - std::log(n_sequences_val);
 
         std::cout << "Average log likelihood on validate set at epoch " << epoch << " = " ;
-        std::cout << std::fixed << std::setprecision(56) << (double)(average_likelihood);
+        std::cout << std::fixed << std::setprecision(96) << (double)(average_likelihood);
         std::cout << " = " << log_likelihood << "-" << std::log(n_sequences_val) << "  " << std::endl;
 	std::ofstream likelihood_output_stream(
 			std::string("logs/epoch_") + 
@@ -306,11 +306,11 @@ int main(int argc, char* argv[])
     
     // 7. log results.
     std::cout << std::endl << "All finished" << std::endl;
-    print_grammar(grammar);
+    print_grammar(grammar, true, true);
     
     std::ofstream logfile_ostream = std::ofstream("./logs/log_final_" + std::to_string(sentences.size())  + 
 		    std::string(".pcfg"));
-    print_grammar(grammar, logfile_ostream);
+    print_grammar(grammar, true, true, logfile_ostream);
 
     delete[] alpha;
     delete[] beta;

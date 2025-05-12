@@ -66,7 +66,7 @@ int main(int argc, char* argv[])
     create_path_if_not_exists(tree_serialization_path);
     create_path_if_not_exists(report_path);
 
-    pcfg* grammar = prepare_grammar(grammar_filename);
+    pcfg* grammar = prepare_grammar(grammar_filename, true);
     auto inside_order_1_rule_iteration_path = generate_inside_perterminate_iteration_paths(grammar);
 
     double* alpha = new double[grammar->N() * MAX_SEQUENCE_LENGTH * MAX_SEQUENCE_LENGTH]();

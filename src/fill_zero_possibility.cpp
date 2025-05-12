@@ -53,7 +53,7 @@ int main(int argc, char* argv[])
     pcfg* grammar = nullptr;
 
     try {
-        grammar = prepare_grammar(grammar_filename);
+        grammar = prepare_grammar(grammar_filename, false);
         if (grammar == nullptr) {
             throw std::runtime_error("Error: Failed to parse grammar file.");
         }
