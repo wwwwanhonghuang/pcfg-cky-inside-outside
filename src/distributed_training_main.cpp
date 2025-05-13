@@ -260,8 +260,6 @@ int main(int argc, char* argv[])
                     inside_order_1_rule_iteration_path
                     ,grammar
                 );
-
-                
                 
                 kernel_expect_count(count, mu, beta, sequence, 
                     (uint32_t*)(grammar->preterminate_rule_lookup_table),
