@@ -236,20 +236,25 @@ int main(int argc, char* argv[]) {
     std::cout << "Open share memory. " << std::endl;
 
     int size = sizeof(MemoryStorage);
-    auto shared_memory = std::make_shared<SharedMemory>(program_name.c_str(), CREATE_NEW, size);
+    auto shared_memory = std::make_shared<SharedMemory>(program_name.c_str(), MAP_TO_EXIST, size);
     auto storage = (MemoryStorage*)shared_memory->get_data();
    
     /* 1. Notify the application network topology are prepared and connected. */
     Message network_component_prepared_msg = gen_network_component_prepared_msg(partition_id);
+    // TYPE = PARTITION_PREPARED
     push_msg_to_shared_memory_rr(network_component_prepared_msg, shared_memory);
 
- 
     /* 2. Wait ACK from the application */
-    while(storage->network_communicator_messages[0].status == EMPTY_SLOT){}
+    while(storage->network_communicator_messages[0].status == EMPTY_SLOT){
+        sleep(1);
+    }
+
     std::cout << "application repied: " <<  
         storage->network_communicator_messages[0].data + sizeof(int) << std::endl;
+    
     storage->network_communicator_messages[0].status = EMPTY_SLOT;
     
+    std::cout << &(storage->network_communicator_messages[0]) << std::endl;
     memcpy(&cnt_grammar, storage->network_communicator_messages[0].data, sizeof(int));
     std::cout << "n_grammar = " << cnt_grammar << std::endl;
     

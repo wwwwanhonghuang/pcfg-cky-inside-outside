@@ -2,7 +2,12 @@
 
 SharedMemory::SharedMemory(const char* shm_name, MEM_MODEL model, size_t size)
     : shm_name(shm_name), size(size), shm_fd(-1), data(nullptr) {
-    shm_fd = shm_open(shm_name, O_CREAT | O_RDWR, 0666);
+
+    if(model == CREATE_NEW){
+        shm_fd = shm_open(shm_name, O_CREAT | O_RDWR, 0666);
+    }else{
+        shm_fd = shm_open(shm_name, O_RDWR, 0666);
+    }
     if (shm_fd == -1) {
         perror("Failed to create/open shared memory");
         exit(1);
@@ -21,7 +26,9 @@ SharedMemory::SharedMemory(const char* shm_name, MEM_MODEL model, size_t size)
         perror("Failed to map shared memory");
         exit(1);
     }
-    memset(data, 0, size);
+    if(model == CREATE_NEW){
+        memset(data, 0, size);
+    }
 }
 
 SharedMemory::~SharedMemory() {

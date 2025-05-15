@@ -29,7 +29,6 @@
 #include <string>
 #include "kernels/update_parameters.cuh"
 
-#define SHARED_MEMORY_NAME "/shared_mem"
 int result = 0;
 
 #define PT_INCREASE pt += BYTE_4_CELL_PER_GRAMMAR_TABLE_ITEMS
@@ -142,11 +141,11 @@ int main(int argc, char* argv[])
     }
     bool log_warning_in_training = config["main"]["log_warning_in_training"].as<bool>();
     
-    int sentence_from = cluster_config["pcfg-train"][std::string("pcfg-train-") + std::to_string(partition_id)].as<int>();
-    int sentence_to = cluster_config["pcfg-train"][std::string("pcfg-train-") + std::to_string(partition_id)].as<int>();
+    std::cout << "Begin reading cluster configurations." << std::endl;
+    std::cout << "Partition id == " << partition_id << std::endl;
+    int sentence_from = cluster_config["pcfg-train"][std::string("pcfg-train-") + std::to_string(partition_id)]["sentence_from"].as<int>();
+    int sentence_to = cluster_config["pcfg-train"][std::string("pcfg-train-") + std::to_string(partition_id)]["sentence_to"].as<int>();
     std::cout << "sentence_from = " << sentence_from << ", " << "sentence_to = " << sentence_to << std::endl;
-    assert(false);
-
     // 2. parse grammar file.
     pcfg* grammar = nullptr;
     try {
@@ -178,9 +177,10 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    std::vector<std::vector<uint32_t>> train_set = std::move(sentences);
     
     int n_sequences = sentences.size();
+    std::vector<std::vector<uint32_t>> train_set = std::move(sentences);
+
     int n_sequences_train = train_set.size();
    
     std::cout << "Train set size of this partition " << n_sequences_train << std::endl;
@@ -213,6 +213,9 @@ int main(int argc, char* argv[])
             response_msg.status = MESSAGE_WAITING; 
             response_msg.msg_type = ACK(PARTITION_PREPARED);
             
+            std::cout << "write cnt_grammr = " << grammar->cnt_grammar << " to share memory addr:"<< 
+            &storage->network_communicator_messages[0] <<
+            "." << std::endl;
             memcpy(response_msg.data, &grammar->cnt_grammar, sizeof(int));
             memcpy(response_msg.data + 4, response.c_str(), response.size() + 1);
             memcpy(&storage->network_communicator_messages[0], &response_msg, sizeof(response_msg));
