@@ -163,7 +163,7 @@ void connect_to_other_partitions(int& total_clients, int& connected_client,
         client_index = (client_index + 1) % total_clients;
 
         if (name == program_name) {
-            std::cout << "Skip client name " << name << " (self)" MM std::endl;
+            std::cout << "Skip client name " << name << " (self)" << std::endl;
 
             continue;
         }
