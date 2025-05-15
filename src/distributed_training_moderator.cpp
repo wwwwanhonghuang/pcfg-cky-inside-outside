@@ -256,8 +256,8 @@ connection_success:
         std::cout << "Successfully connected to " << ip << ":" << port 
                  << " (socket " << sock << ")" << std::endl;
         
-        partiton_id_to_sock.unlock();
-        client_map.unlock();
+        //partiton_id_to_sock.unlock();
+        //client_map.unlock();
     }
 
     // Wait for all connections
@@ -267,7 +267,7 @@ connection_success:
             client_map.unlock();
             break;
         }
-        client_map.unlock();
+        // client_map.unlock();
         sleep(1);
     }
 
