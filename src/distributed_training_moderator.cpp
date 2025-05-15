@@ -150,116 +150,128 @@ void broadcast_message(int base_seq_number, int partition_id, const Message& mes
 
 void connect_to_other_partitions(int& total_clients, int& connected_client, 
         int& client_index, const YAML::Node& clients, 
-        int partition_id, const std::string& program_name){
+        int partition_id, const std::string& program_name) {
             
-    while(connected_client < total_clients) {
-        sleep(2);
-        std::cout << "Try client index == " << client_index << std::endl;
+    while(connected_client < total_clients - 1) {  // -1 to exclude self
+        sleep(1);  // Reduced sleep time
+        
         const YAML::Node& client = clients[client_index];
         std::string name = client["name"].as<std::string>();
-        std::cout << "Client name == " << name << std::endl;
-
         int current_client_index = client_index;
         client_index = (client_index + 1) % total_clients;
 
         if (name == program_name) {
             std::cout << "Skip client name " << name << " (self)" << std::endl;
-
             continue;
         }
         
+        // Check if already connected
         client_map.lock();
         partiton_id_to_sock.lock();
-        // Key is not ID but sock. Follow code not work. 
         if(partiton_id_to_sock.value.find(current_client_index) != partiton_id_to_sock.value.end()) {
-            std::cout << "Client name " << name << " (index:" << current_client_index << 
-            ")already exist, skip"  << std::endl;
+            std::cout << "Client " << name << " already connected" << std::endl;
+            partiton_id_to_sock.unlock();
+            client_map.unlock();
             continue;
         }
+        partiton_id_to_sock.unlock();
+        client_map.unlock();
 
         std::string ip = client["ip"].as<std::string>();
         uint32_t port = client["port"].as<uint32_t>();
-        // std::cout << ip << " " << port << " " << name << std::endl;
+        
         int sock = socket(AF_INET, SOCK_STREAM, 0);
         if (sock < 0) {
             perror("Socket creation failed");
             continue;
         }
-        struct sockaddr_in client_addr = {};
+
+        // Set non-blocking
+        fcntl(sock, F_SETFL, fcntl(sock, F_GETFL) | O_NONBLOCK);
+
+        sockaddr_in client_addr = {};
         client_addr.sin_family = AF_INET;
         client_addr.sin_port = htons(port);
         inet_pton(AF_INET, ip.c_str(), &client_addr.sin_addr);
 
-        int flags = fcntl(sock, F_GETFL, 0);
-        fcntl(sock, F_SETFL, flags | O_NONBLOCK);
-        int result = connect(sock, (struct sockaddr*)&client_addr, sizeof(client_addr)) == 0;
-        if (result < 0) {
-            if (errno == EINPROGRESS) {
-                // Connection in progress - use select/poll/epoll to check completion
-                fd_set writefds;
-                FD_ZERO(&writefds);
-                FD_SET(sock, &writefds);
-                
-                struct timeval timeout;
-                timeout.tv_sec = 1;  // 1 second timeout
-                timeout.tv_usec = 0;
-                
-                if (select(sock + 1, NULL, &writefds, NULL, &timeout) > 0) {
-                    int error = 0;
-                    socklen_t len = sizeof(error);
-                    getsockopt(sock, SOL_SOCKET, SO_ERROR, &error, &len);
-                    if (error == 0) {
-                        // Connection succeeded
-                    } else {
-                        // Connection failed
-                        close(sock);
-                        continue;
-                    }
-                } else {
-                    // Timeout or error
-                    close(sock);
-                    continue;
-                }
-            } else {
-                // Immediate error
-                close(sock);
-                continue;
-            }
+        // Attempt connection
+        int result = connect(sock, (struct sockaddr*)&client_addr, sizeof(client_addr));
+        
+        if (result == 0) {
+            // Immediate success (rare)
+            goto connection_success;
         }
 
-        if (result >= 0) {
-            std::cout << "\t- connect " << ip << ":" << port << " success." << " sock ="
-                << sock << " \n";
-            connected_client ++;
-            std::cout << "connected_client was updated to " << connected_client << std::endl;
-            Client client;
-            client.state = CONNETED;
-            client.sock = sock;
-            {
-                // Lock the mutex to safely modify the shared client_map
-                client_map.value[sock] = client;
-                client_map.value[sock].partition_id = current_client_index;
-                partiton_id_to_sock.access_with_function([&current_client_index, &sock](auto& map){
-                    map[current_client_index] = sock;
-                });
-                sock_to_partition_id.access_with_function([&partition_id, &sock, &current_client_index](auto& map){
-                    std::cout << "set sock " << sock << " partition id = " << current_client_index + 1 << std::endl;
-                    map[sock] = current_client_index + 1;
-                });
-            }
-        } else {
-            // perror("\t- connect failed");
+        if (errno != EINPROGRESS) {
+            perror(("Connection to " + ip + " failed").c_str());
             close(sock);
+            continue;
         }
-    }
-    
-    while(true){
+
+        // Wait for connection completion
+        fd_set writefds;
+        FD_ZERO(&writefds);
+        FD_SET(sock, &writefds);
+        
+        timeval timeout = {2, 0};  // 2 second timeout
+        
+        if (select(sock + 1, NULL, &writefds, NULL, &timeout) <= 0) {
+            std::cerr << "Timeout connecting to " << ip << std::endl;
+            close(sock);
+            continue;
+        }
+
+        // Verify connection success
+        int so_error = 0;
+        socklen_t len = sizeof(so_error);
+        if (getsockopt(sock, SOL_SOCKET, SO_ERROR, &so_error, &len) < 0 || so_error != 0) {
+            std::cerr << "Connection to " << ip << " failed: " << strerror(so_error) << std::endl;
+            close(sock);
+            continue;
+        }
+
+        // Final check - attempt zero-byte send
+        if (send(sock, "", 0, MSG_NOSIGNAL) < 0) {
+            std::cerr << "Final verification failed for " << ip << std::endl;
+            close(sock);
+            continue;
+        }
+
+connection_success:
+        // Only mark as connected after all checks pass
         client_map.lock();
-        if(client_map.value.size() < total_clients - 1) continue;
-        break;
+        partiton_id_to_sock.lock();
+        
+        Client new_client;
+        new_client.state = CONNECTED;
+        new_client.sock = sock;
+        new_client.name = name;
+        
+        client_map.value[sock] = new_client;
+        client_map.value[sock].partition_id = current_client_index;
+        partiton_id_to_sock.value[current_client_index] = sock;
+        sock_to_partition_id.value[sock] = current_client_index + 1;
+        
+        connected_client++;
+        std::cout << "Successfully connected to " << ip << ":" << port 
+                 << " (socket " << sock << ")" << std::endl;
+        
+        partiton_id_to_sock.unlock();
+        client_map.unlock();
     }
 
-    std::cout << "All clients connected. " << std::endl;
+    // Wait for all connections
+    while(true) {
+        client_map.lock();
+        if (client_map.value.size() >= total_clients - 1) {
+            client_map.unlock();
+            break;
+        }
+        client_map.unlock();
+        sleep(1);
+    }
+
+    std::cout << "All clients connected." << std::endl;
 }
 
 int main(int argc, char* argv[]) {
@@ -346,8 +358,6 @@ int main(int argc, char* argv[]) {
         std::cout << RED << "[Main Loop] [barrier passed] All partition prepare to proceed epoch "
                   << RESET << epoch << "!" << std::endl;
         
-            
-
         /* Application Execution */
         // 5.2 Wait application finished.
         std::cout << "[Main Loop] wait application execution. " << std::endl;
