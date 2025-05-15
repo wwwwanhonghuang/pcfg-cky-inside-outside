@@ -153,7 +153,7 @@ void connect_to_other_partitions(int& total_clients, int& connected_client,
         int partition_id, const std::string& program_name){
             
     while(connected_client < total_clients) {
-        sleep(1);
+        sleep(2);
         std::cout << "Try client index == " << client_index << std::endl;
         const YAML::Node& client = clients[client_index];
         std::string name = client["name"].as<std::string>();
@@ -192,6 +192,40 @@ void connect_to_other_partitions(int& total_clients, int& connected_client,
 
         int flags = fcntl(sock, F_GETFL, 0);
         fcntl(sock, F_SETFL, flags | O_NONBLOCK);
+
+        if (result < 0) {
+            if (errno == EINPROGRESS) {
+                // Connection in progress - use select/poll/epoll to check completion
+                fd_set writefds;
+                FD_ZERO(&writefds);
+                FD_SET(sock, &writefds);
+                
+                struct timeval timeout;
+                timeout.tv_sec = 1;  // 1 second timeout
+                timeout.tv_usec = 0;
+                
+                if (select(sock + 1, NULL, &writefds, NULL, &timeout) > 0) {
+                    int error = 0;
+                    socklen_t len = sizeof(error);
+                    getsockopt(sock, SOL_SOCKET, SO_ERROR, &error, &len);
+                    if (error == 0) {
+                        // Connection succeeded
+                    } else {
+                        // Connection failed
+                        close(sock);
+                        continue;
+                    }
+                } else {
+                    // Timeout or error
+                    close(sock);
+                    continue;
+                }
+            } else {
+                // Immediate error
+                close(sock);
+                continue;
+            }
+        }
 
         if (connect(sock, (struct sockaddr*)&client_addr, sizeof(client_addr)) == 0) {
             std::cout << "\t- connect " << ip << ":" << port << " success." << " sock ="
