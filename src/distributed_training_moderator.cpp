@@ -152,8 +152,8 @@ void connect_to_other_partitions(int& total_clients, int& connected_client,
         int& client_index, const YAML::Node& clients, 
         int partition_id, const std::string& program_name) {
             
-    while(connected_client < total_clients - 1) {  // -1 to exclude self
-        sleep(1);  // Reduced sleep time
+    while(connected_client < total_clients - 1) {
+        sleep(1);
         
         const YAML::Node& client = clients[client_index];
         std::string name = client["name"].as<std::string>();
@@ -161,118 +161,84 @@ void connect_to_other_partitions(int& total_clients, int& connected_client,
         client_index = (client_index + 1) % total_clients;
 
         if (name == program_name) {
-            std::cout << "Skip client name " << name << " (self)" << std::endl;
+            std::cout << "Skipping self (" << name << ")\n";
             continue;
         }
         
         // Check if already connected
         client_map.lock();
         partiton_id_to_sock.lock();
-        if(partiton_id_to_sock.value.find(current_client_index) != partiton_id_to_sock.value.end()) {
-            std::cout << "Client " << name << " already connected" << std::endl;
-            partiton_id_to_sock.unlock();
-            client_map.unlock();
+        if(partiton_id_to_sock.value.count(current_client_index)) {
+            std::cout << name << " already connected\n";
+            
             continue;
         }
-        partiton_id_to_sock.unlock();
-        client_map.unlock();
-
+        
         std::string ip = client["ip"].as<std::string>();
-        uint32_t port = client["port"].as<uint32_t>();
+        uint16_t port = client["port"].as<uint16_t>();
         
         int sock = socket(AF_INET, SOCK_STREAM, 0);
         if (sock < 0) {
-            perror("Socket creation failed");
+            perror("socket() failed");
             continue;
         }
 
-        // Set non-blocking
+        // Set non-blocking and configure
         fcntl(sock, F_SETFL, fcntl(sock, F_GETFL) | O_NONBLOCK);
+        sockaddr_in addr = {};
+        addr.sin_family = AF_INET;
+        addr.sin_port = htons(port);
+        inet_pton(AF_INET, ip.c_str(), &addr.sin_addr);
 
-        sockaddr_in client_addr = {};
-        client_addr.sin_family = AF_INET;
-        client_addr.sin_port = htons(port);
-        inet_pton(AF_INET, ip.c_str(), &client_addr.sin_addr);
-
-        // Attempt connection
-        int result = connect(sock, (struct sockaddr*)&client_addr, sizeof(client_addr));
-        
-        if (result == 0) {
-            // Immediate success (rare)
-            goto connection_success;
+        // Connection logic
+        bool connected = false;
+        if (connect(sock, (sockaddr*)&addr, sizeof(addr)) == 0) {
+            connected = true; // Immediate success
+        } 
+        else if (errno == EINPROGRESS) {
+            fd_set writefds;
+            FD_ZERO(&writefds);
+            FD_SET(sock, &writefds);
+            timeval timeout = {2, 0};
+            
+            if (select(sock+1, NULL, &writefds, NULL, &timeout) > 0) {
+                int err = 0;
+                socklen_t len = sizeof(err);
+                getsockopt(sock, SOL_SOCKET, SO_ERROR, &err, &len);
+                connected = (err == 0) && (send(sock, "", 0, MSG_NOSIGNAL) == 0);
+            }
         }
 
-        if (errno != EINPROGRESS) {
-            perror(("Connection to " + ip + " failed").c_str());
+        if (connected) {
+            client_map.lock();
+            partiton_id_to_sock.lock();
+            
+            Client c;
+            c.state = CONNETED;
+            c.sock = sock;
+            c.name = name;
+            
+            client_map.value[sock] = c;
+            client_map.value[sock].partition_id = current_client_index;
+            partiton_id_to_sock.value[current_client_index] = sock;
+            sock_to_partition_id.value[sock] = current_client_index + 1;
+            
+            connected_client++;
+            std::cout << "Connected to " << ip << ":" << port << " (fd " << sock << ")\n";
+            
+        } else {
             close(sock);
-            continue;
+            std::cerr << "Connection to " << ip << " failed\n";
         }
-
-        // Wait for connection completion
-        fd_set writefds;
-        FD_ZERO(&writefds);
-        FD_SET(sock, &writefds);
-        
-        timeval timeout = {2, 0};  // 2 second timeout
-        
-        if (select(sock + 1, NULL, &writefds, NULL, &timeout) <= 0) {
-            std::cerr << "Timeout connecting to " << ip << std::endl;
-            close(sock);
-            continue;
-        }
-
-        // Verify connection success
-        int so_error = 0;
-        socklen_t len = sizeof(so_error);
-        if (getsockopt(sock, SOL_SOCKET, SO_ERROR, &so_error, &len) < 0 || so_error != 0) {
-            std::cerr << "Connection to " << ip << " failed: " << strerror(so_error) << std::endl;
-            close(sock);
-            continue;
-        }
-
-        // Final check - attempt zero-byte send
-        if (send(sock, "", 0, MSG_NOSIGNAL) < 0) {
-            std::cerr << "Final verification failed for " << ip << std::endl;
-            close(sock);
-            continue;
-        }
-
-connection_success:
-        // Only mark as connected after all checks pass
-        client_map.lock();
-        partiton_id_to_sock.lock();
-        
-        Client new_client;
-        new_client.state = CONNECTED;
-        new_client.sock = sock;
-        new_client.name = name;
-        
-        client_map.value[sock] = new_client;
-        client_map.value[sock].partition_id = current_client_index;
-        partiton_id_to_sock.value[current_client_index] = sock;
-        sock_to_partition_id.value[sock] = current_client_index + 1;
-        
-        connected_client++;
-        std::cout << "Successfully connected to " << ip << ":" << port 
-                 << " (socket " << sock << ")" << std::endl;
-        
-        //partiton_id_to_sock.unlock();
-        //client_map.unlock();
     }
 
-    // Wait for all connections
-    while(true) {
-        client_map.lock();
-        if (client_map.value.size() >= total_clients - 1) {
-            client_map.unlock();
-            break;
-        }
-        // client_map.unlock();
+    // Final wait
+    while(client_map.value.size() < total_clients - 1) {
         sleep(1);
     }
-
-    std::cout << "All clients connected." << std::endl;
+    std::cout << "All clients connected\n";
 }
+
 
 int main(int argc, char* argv[]) {
     if (argc < 2) {
