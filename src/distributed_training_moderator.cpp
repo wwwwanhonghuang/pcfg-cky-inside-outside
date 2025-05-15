@@ -153,19 +153,29 @@ void connect_to_other_partitions(int& total_clients, int& connected_client,
         int partition_id, const std::string& program_name){
             
     while(connected_client < total_clients) {
+        sleep(1);
+        std::cout << "Try client index == " << client_index << std::endl;
         const YAML::Node& client = clients[client_index];
         std::string name = client["name"].as<std::string>();
+        std::cout << "Client name == " << name << std::endl;
+
         int current_client_index = client_index;
         client_index = (client_index + 1) % total_clients;
 
         if (name == program_name) {
+            std::cout << "Skip client name " << name << " (self)" MM std::endl;
+
             continue;
         }
         
         client_map.lock();
         partiton_id_to_sock.lock();
         // Key is not ID but sock. Follow code not work. 
-        if(partiton_id_to_sock.value.find(current_client_index) != partiton_id_to_sock.value.end()) continue;
+        if(partiton_id_to_sock.value.find(current_client_index) != partiton_id_to_sock.value.end()) {
+            std::cout << "Client name " << name << " (index:" << current_client_index << 
+            ")already exist, skip"  << std::endl;
+            continue;
+        }
 
         std::string ip = client["ip"].as<std::string>();
         uint32_t port = client["port"].as<uint32_t>();
