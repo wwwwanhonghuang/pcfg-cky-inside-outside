@@ -184,6 +184,7 @@ void connect_to_other_partitions(int& total_clients, int& connected_client,
             std::cout << "\t- connect " << ip << ":" << port << " success." << " sock ="
                 << sock << " \n";
             connected_client ++;
+            std::cout << "connected_client was updated to " << connected_client << std::endl;
             Client client;
             client.state = CONNETED;
             client.sock = sock;
