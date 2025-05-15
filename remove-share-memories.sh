@@ -1,0 +1,2 @@
+rm /dev/shm/pcfg*
+
