@@ -190,6 +190,9 @@ void connect_to_other_partitions(int& total_clients, int& connected_client,
         client_addr.sin_port = htons(port);
         inet_pton(AF_INET, ip.c_str(), &client_addr.sin_addr);
 
+        int flags = fcntl(sock, F_GETFL, 0);
+        fcntl(sock, F_SETFL, flags | O_NONBLOCK);
+
         if (connect(sock, (struct sockaddr*)&client_addr, sizeof(client_addr)) == 0) {
             std::cout << "\t- connect " << ip << ":" << port << " success." << " sock ="
                 << sock << " \n";
