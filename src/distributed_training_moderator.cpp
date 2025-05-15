@@ -151,6 +151,7 @@ void broadcast_message(int base_seq_number, int partition_id, const Message& mes
 void connect_to_other_partitions(int& total_clients, int& connected_client, 
         int& client_index, const YAML::Node& clients, 
         int partition_id, const std::string& program_name){
+            
     while(connected_client < total_clients) {
         const YAML::Node& client = clients[client_index];
         std::string name = client["name"].as<std::string>();
@@ -305,6 +306,7 @@ int main(int argc, char* argv[]) {
         {
             std::unique_lock<std::mutex> lock(application_mutex);
             while(storage->network_communicator_messages[0].status == EMPTY_SLOT){
+                sleep(1);
             }
             storage->network_communicator_messages[0].status = EMPTY_SLOT;
             int client_cnt_grammars = -1;
@@ -366,6 +368,7 @@ int main(int argc, char* argv[]) {
         {
             std::unique_lock<std::mutex> lock(application_mutex);
             while(storage->network_communicator_messages[0].status == EMPTY_SLOT){
+                sleep(1);
             }
             storage->network_communicator_messages[0].status = EMPTY_SLOT;
         }
