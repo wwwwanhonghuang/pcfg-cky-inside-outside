@@ -192,7 +192,7 @@ void connect_to_other_partitions(int& total_clients, int& connected_client,
 
         int flags = fcntl(sock, F_GETFL, 0);
         fcntl(sock, F_SETFL, flags | O_NONBLOCK);
-
+        int result = connect(sock, (struct sockaddr*)&client_addr, sizeof(client_addr)) == 0;
         if (result < 0) {
             if (errno == EINPROGRESS) {
                 // Connection in progress - use select/poll/epoll to check completion
@@ -227,7 +227,7 @@ void connect_to_other_partitions(int& total_clients, int& connected_client,
             }
         }
 
-        if (connect(sock, (struct sockaddr*)&client_addr, sizeof(client_addr)) == 0) {
+        if (result >= 0) {
             std::cout << "\t- connect " << ip << ":" << port << " success." << " sock ="
                 << sock << " \n";
             connected_client ++;
