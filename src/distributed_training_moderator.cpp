@@ -331,9 +331,11 @@ int main(int argc, char* argv[]) {
         std::cout << "[Main Loop] wait application execution. " << std::endl;
         {
             std::unique_lock<std::mutex> lock(application_mutex);
+            sleep_time = 600;
             while(storage->network_communicator_messages[0].status == EMPTY_SLOT){
                 sleep(600);
             }
+            sleep_time = 0;
             storage->network_communicator_messages[0].status = EMPTY_SLOT;
             int client_cnt_grammars = -1;
             memcpy(&client_cnt_grammars, storage->network_communicator_messages[0].data, sizeof(int));
