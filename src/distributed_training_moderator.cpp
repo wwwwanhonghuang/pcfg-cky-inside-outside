@@ -152,7 +152,7 @@ void connect_to_other_partitions(int& total_clients, int& connected_client,
         int& client_index, const YAML::Node& clients, 
         int partition_id, const std::string& program_name) {
             
-    while(connected_client < total_clients - 1) {
+    while(connected_client < total_clients) {
         sleep(1);
         
         const YAML::Node& client = clients[client_index];
