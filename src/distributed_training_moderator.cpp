@@ -170,7 +170,6 @@ void connect_to_other_partitions(int& total_clients, int& connected_client,
         partiton_id_to_sock.lock();
         if(partiton_id_to_sock.value.count(current_client_index)) {
             std::cout << name << " already connected\n";
-            
             continue;
         }
         
@@ -178,6 +177,7 @@ void connect_to_other_partitions(int& total_clients, int& connected_client,
         uint16_t port = client["port"].as<uint16_t>();
         
         int sock = socket(AF_INET, SOCK_STREAM, 0);
+        
         if (sock < 0) {
             perror("socket() failed");
             continue;
@@ -192,9 +192,11 @@ void connect_to_other_partitions(int& total_clients, int& connected_client,
 
         // Connection logic
         bool connected = false;
+        
         if (connect(sock, (sockaddr*)&addr, sizeof(addr)) == 0) {
             connected = true; // Immediate success
-        } 
+        }
+
         else if (errno == EINPROGRESS) {
             fd_set writefds;
             FD_ZERO(&writefds);
@@ -225,10 +227,9 @@ void connect_to_other_partitions(int& total_clients, int& connected_client,
             
             connected_client++;
             std::cout << "Connected to " << ip << ":" << port << " (fd " << sock << ")\n";
-            
         } else {
             close(sock);
-            std::cerr << "Connection to " << ip << " failed\n";
+            std::cerr << "Connection to " << ip << ":" << port << "failed\n";
         }
     }
 
@@ -236,6 +237,7 @@ void connect_to_other_partitions(int& total_clients, int& connected_client,
     while(client_map.value.size() < total_clients - 1) {
         sleep(1);
     }
+    
     std::cout << "All clients connected\n";
 }
 
