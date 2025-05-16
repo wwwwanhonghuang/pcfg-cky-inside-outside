@@ -332,7 +332,7 @@ int main(int argc, char* argv[]) {
         {
             std::unique_lock<std::mutex> lock(application_mutex);
             while(storage->network_communicator_messages[0].status == EMPTY_SLOT){
-                sleep(1);
+                sleep(600);
             }
             storage->network_communicator_messages[0].status = EMPTY_SLOT;
             int client_cnt_grammars = -1;
