@@ -307,7 +307,7 @@ int main(int argc, char* argv[]) {
  
 
     int epoch = 0;
-    const int MAX_EPOCHS = 3;
+    const int MAX_EPOCHS = 100;
     const int package_per_epoch = total_clients * 4;
     
     while(epoch < MAX_EPOCHS){
@@ -449,7 +449,6 @@ int main(int argc, char* argv[]) {
     }
 
     std::cin.get();
-    abort();
 
     return 0;
 }
