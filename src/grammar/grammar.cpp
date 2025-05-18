@@ -67,7 +67,7 @@ pcfg_grammar_item parse_grammar_single_line(std::string line){
         }
     }
     
-    std::cout << possibility_string << std::endl;;
+    // std::cout << possibility_string << std::endl;;
     return pcfg_grammar_item(left, right1, right2, std::stod(possibility_string));
 };
 

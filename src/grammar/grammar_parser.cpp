@@ -37,7 +37,7 @@ void _record_non_terminate_symbol(const std::string non_terminate_symbol, pcfg* 
     }
 }
 
-pcfg* _parse_grammar_file(const std::string& path, bool original_in_log_possibility){
+pcfg* _parse_grammar_file(const std::string& path, bool original_in_log_possibility, bool print_grammar_when_loading){
     pcfg* grammar = new pcfg();
     std::ifstream grammar_file = open_grammar_file(path);
     std::map<std::string, std::vector<pcfg_grammar_item>>& grammar_items_map = grammar->grammar_items_map;
@@ -55,8 +55,10 @@ pcfg* _parse_grammar_file(const std::string& path, bool original_in_log_possibil
             continue;
         }
         pcfg_grammar_item rule = parse_grammar_single_line(line);
-        std::cout << "[grammar: " << ++cnt_recognized_grammars << "] " << rule.left << "->" << rule.right1 << " " << rule.right2 << " " << rule.possibility << std::endl;
-        
+        if(print_grammar_when_loading){
+            std::cout << "[grammar: " << cnt_recognized_grammars + 1 << "] " << rule.left << "->" << rule.right1 << " " << rule.right2 << " " << rule.possibility << std::endl;
+        }
+        cnt_recognized_grammars++;
         if(original_in_log_possibility){
             rule.possibility = rule.possibility;
         }else{
@@ -95,10 +97,12 @@ pcfg* _parse_grammar_file(const std::string& path, bool original_in_log_possibil
         }
     }
     #ifdef DEBUG_PRINT_GRAMMAR_SYMBOL_MAP
-        print_map(grammar->nonterminate_map);
-        print_map(grammar->reversed_nonterminate_map);
-        print_map(grammar->terminate_map);
-        print_map(grammar->reversed_terminate_map);
+        if(print_grammar_when_loading){
+            print_map(grammar->nonterminate_map);
+            print_map(grammar->reversed_nonterminate_map);
+            print_map(grammar->terminate_map);
+            print_map(grammar->reversed_terminate_map);
+        }
     #endif
 
     #ifdef _STRICK_CHECK
@@ -415,8 +419,8 @@ pcfg* _build_preterminate_grammar_lookup_table(pcfg* grammar, uint32_t* non_term
     return grammar;
 }
 
-pcfg* prepare_grammar(const std::string& path, bool original_in_log_possibility){
-    pcfg* grammar = _parse_grammar_file(path, original_in_log_possibility);
+pcfg* prepare_grammar(const std::string& path, bool original_in_log_possibility, bool print_grammar_when_loading){
+    pcfg* grammar = _parse_grammar_file(path, original_in_log_possibility, print_grammar_when_loading);
     int cnt_grammar = grammar->cnt_grammar;
     auto& grammar_items_map = grammar->grammar_items_map;
     

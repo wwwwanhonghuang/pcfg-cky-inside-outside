@@ -53,11 +53,22 @@ int main(int argc, char* argv[])
     std::string validation_file = config["main"]["validation_file"].as<std::string>();
 
     bool grammar_weight_origin_in_log_form = config["main"]["grammar_weight_origin_in_log_form"].as<bool>(false);
+    bool validation_only = config["main"]["validation_only"].as<bool>(false);
 
+    bool print_grammar_when_loading = config["main"]["print_grammar_when_loading"].as<bool>(true);
+    if(validation_only){
+       std::cout << "validation_only mode." << std::endl;
+    }
     // 2. parse grammar file.
     pcfg* grammar = nullptr;
+    
     try {
-        grammar = prepare_grammar(grammar_filename, grammar_weight_origin_in_log_form);
+        
+	    std::cout 
+            << "Reading grammar file " << grammar_filename << ". Grammar possibility originally in log form = " 
+            << grammar_weight_origin_in_log_form 
+		    << std::endl;
+	    grammar = prepare_grammar(grammar_filename, grammar_weight_origin_in_log_form, print_grammar_when_loading);
         if (grammar == nullptr) {
             throw std::runtime_error("Error: Failed to parse grammar file.");
         }
@@ -65,6 +76,7 @@ int main(int argc, char* argv[])
         std::cerr << e.what() << std::endl;
         return 1;
     }
+    std::cout << "Grammar loaded." << std::endl;
     auto inside_order_1_rule_iteration_path = generate_inside_perterminate_iteration_paths(grammar);
 
     // 3. define matrices needed by the inside-outside algorithm.
@@ -89,6 +101,8 @@ int main(int argc, char* argv[])
     bool is_split_dataset = config["main"]["split_data"]["enabled"].as<bool>();
     std::vector<std::vector<uint32_t>> train_set;
     std::vector<std::vector<uint32_t>> valid_set;
+    
+    if(!validation_only){
     if(is_split_dataset){
         double train_fraction = config["main"]["split_data"]["train_fraction"].as<double>();
         std::string train_set_file_save_path = config["main"]["split_data"]["train_dataset_path"].as<std::string>();
@@ -98,6 +112,7 @@ int main(int argc, char* argv[])
         save_data_set_to_file(val_set_file_save_path, valid_set, grammar);
     }else{
         train_set = std::move(sentences);
+    }
     }
     
     std::cout << "Validation file: " << validation_file << std::endl;
@@ -252,7 +267,10 @@ int main(int argc, char* argv[])
         if(!logfile_ostream){
             std::cerr << "Error: Could not open log file for writing.\n";
         }
-        print_grammar(grammar, true, true, logfile_ostream);
+
+        if(!validation_only){
+            print_grammar(grammar, true, true, logfile_ostream);
+        }
 
         // Validation
         double log_likelihood = -INFINITY;
@@ -308,12 +326,14 @@ int main(int argc, char* argv[])
     
     // 7. log results.
     std::cout << std::endl << "All finished" << std::endl;
-    print_grammar(grammar, true, true);
-    
-    std::ofstream logfile_ostream = std::ofstream("./logs/log_final_" + std::to_string(sentences.size())  + 
-		    std::string(".pcfg"));
-    print_grammar(grammar, true, true, logfile_ostream);
 
+    if(!validation_only){
+        print_grammar(grammar, true, true);
+    
+        std::ofstream logfile_ostream = std::ofstream("./logs/log_final_" + std::to_string(sentences.size())  + 
+		    std::string(".pcfg"));
+        print_grammar(grammar, true, true, logfile_ostream);
+    }
     delete[] alpha;
     delete[] beta;
     delete[] mu;
