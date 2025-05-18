@@ -52,10 +52,12 @@ int main(int argc, char* argv[])
     bool log_warning_in_training = config["main"]["log_warning_in_training"].as<bool>();
     std::string validation_file = config["main"]["validation_file"].as<std::string>();
 
+    bool grammar_weight_origin_in_log_form = config["main"]["grammar_weight_origin_in_log_form"].as<bool>(false);
+
     // 2. parse grammar file.
     pcfg* grammar = nullptr;
     try {
-        grammar = prepare_grammar(grammar_filename, false);
+        grammar = prepare_grammar(grammar_filename, grammar_weight_origin_in_log_form);
         if (grammar == nullptr) {
             throw std::runtime_error("Error: Failed to parse grammar file.");
         }
