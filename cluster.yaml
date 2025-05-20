@@ -16,13 +16,13 @@ cluster:
 pcfg-train:
   pcfg-train-1:
     sentence_from: 0
-    sentence_to: 505827
+    sentence_to: 393093
   pcfg-train-2:
-    sentence_from: 505828
-    sentence_to: 1011655
+    sentence_from: 393094
+    sentence_to: 786187
   pcfg-train-3:
-    sentence_from: 1011656
-    sentence_to: 1517483
+    sentence_from: 786188
+    sentence_to: 1179281
   pcfg-train-4:
-    sentence_from: 1517484
-    sentence_to: 2023311                               
+    sentence_from: 1179282
+    sentence_to: 1572378                             
