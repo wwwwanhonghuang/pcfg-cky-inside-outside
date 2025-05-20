@@ -149,7 +149,7 @@ int main(int argc, char* argv[])
     // 2. parse grammar file.
     pcfg* grammar = nullptr;
     try {
-        grammar = prepare_grammar(grammar_filename, true, true);
+        grammar = prepare_grammar(grammar_filename, false, true);
         if (grammar == nullptr) {
             throw std::runtime_error("Error: Failed to parse grammar file.");
         }
