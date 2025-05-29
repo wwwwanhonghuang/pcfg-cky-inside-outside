@@ -4,25 +4,25 @@ cluster:
       ip: 10.203.0.4
       port: 9240
     - name: pcfg-train-2
-      ip: 10.203.0.5
+      ip: 10.203.0.7
       port: 9241
     - name: pcfg-train-3
-      ip: 10.203.0.14
+      ip: 10.203.0.8
       port: 9242
     - name: pcfg-train-4
-      ip: 10.203.0.15
+      ip: 10.203.0.10
       port: 9243
 
 pcfg-train:
   pcfg-train-1:
     sentence_from: 0
-    sentence_to: 393093
+    sentence_to: 401768
   pcfg-train-2:
-    sentence_from: 393094
-    sentence_to: 786187
+    sentence_from: 401769
+    sentence_to: 803537
   pcfg-train-3:
-    sentence_from: 786188
-    sentence_to: 1179281
+    sentence_from: 803538
+    sentence_to: 1205306
   pcfg-train-4:
-    sentence_from: 1179282
-    sentence_to: 1572378                             
+    sentence_from: 1205307
+    sentence_to: 1607077                             
