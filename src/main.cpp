@@ -56,6 +56,7 @@ int main(int argc, char* argv[])
     bool validation_only = config["main"]["validation_only"].as<bool>(false);
 
     bool print_grammar_when_loading = config["main"]["print_grammar_when_loading"].as<bool>(true);
+
     if(validation_only){
        std::cout << "validation_only mode." << std::endl;
     }
@@ -316,12 +317,13 @@ int main(int argc, char* argv[])
         std::cout << "Average log likelihood on validate set at epoch " << epoch << " = " ;
         std::cout << std::fixed << std::setprecision(96) << (double)(average_likelihood);
         std::cout << " = " << log_likelihood << "-" << std::log(n_sequences_val) << "  " << std::endl;
-	std::ofstream likelihood_output_stream(
-			std::string("logs/epoch_") + 
-			std::to_string(epoch) +
-			std::string(".likelihood")
-			);
-	likelihood_output_stream << log_likelihood << std::endl;
+        std::ofstream likelihood_output_stream(
+                log_path + 
+                std::string("epoch_") + 
+                std::to_string(epoch) +
+                std::string(".likelihood")
+        );
+	    likelihood_output_stream << log_likelihood << std::endl;
     }
     
     // 7. log results.
